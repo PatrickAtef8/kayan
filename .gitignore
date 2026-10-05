@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+tsconfig.tsbuildinfo
+npm-debug.log*
+.DS_Store

@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* 125% base scale, per client request: every rem-based Tailwind class
+     (spacing, sizing, text, radius) scales together from this one value,
+     since Tailwind's default scale is entirely rem-based. Icon `size={}`
+     props are raw px (not rem) and were scaled individually — see the
+     note in DESIGN.md. */
+  font-size: 20px;
+}
+
+body {
+  background: #F7F6F2;
+  color: #1C1C1A;
+}
+
+button {
+  font: inherit;
+}
+
+::selection {
+  background: #344E41;
+  color: #F7F6F2;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #344E41;
+  outline-offset: 3px;
+}
+
+/* §56 "PDF": reports are saved as PDF via the browser's print dialog, so
+   print output drops the app chrome and keeps just the report content. */
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  * {
+    box-shadow: none !important;
+  }
+}
+
+/* While a navigation is in flight (set by NavigationProgress): busy cursor,
+   and the page content fades slightly — after a short delay so instant
+   navigations don't flicker. */
+html[data-navigating="true"] { cursor: progress; }
+html[data-navigating="true"] [data-page-content] {
+  opacity: 0.6;
+  transition: opacity 200ms ease 150ms;
+}
+[data-page-content] { transition: opacity 120ms ease; }
