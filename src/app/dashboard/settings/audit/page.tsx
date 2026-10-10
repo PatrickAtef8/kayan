@@ -31,8 +31,9 @@ type AuditRow = {
   after_data: unknown;
 };
 
-export default async function AuditSettingsPage({ searchParams }: { searchParams: { entity?: string } }) {
-  const supabase = createClient();
+export default async function AuditSettingsPage(props: { searchParams: Promise<{ entity?: string }> }) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

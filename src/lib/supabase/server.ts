@@ -6,8 +6,8 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 // Server-side client, scoped to the signed-in user's session. RLS (see
 // supabase/migrations/0001_foundation.sql) is what actually enforces tenant
 // isolation — this client never uses the service-role key.
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

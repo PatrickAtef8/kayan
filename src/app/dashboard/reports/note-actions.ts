@@ -5,12 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 
 // Notes are plain text rows (party_notes). Nothing in the accounting reads them.
 export async function addPartyNote(input: { party_type: "customer" | "supplier"; party_id: string; note: string; invoice_id?: string }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
-  const { data: membership } = await supabase.from("organization_users").select("organization_id").eq("user_id", user.id).eq("status", "active").maybeSingle();
+  const { data: membership } = await supabase.from("organization_users").select("organization_id").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (!membership) return { error: "غير مصرح" };
   const note = input.note.trim();
   if (!note) return { error: "اكتب الملاحظة أولًا" };

@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { canEditCost, setProductCost } from "@/lib/costs";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,7 +24,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function createProduct(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -69,17 +70,21 @@ export async function createProduct(formData: FormData) {
   await supabase.from("product_prices").insert({
     organization_id: membership.organization_id,
     product_id: product.id,
-    cost,
     selling_price: sellingPrice,
     wholesale_price: wholesalePrice,
     distributor_price: distributorPrice,
   });
 
+  // cost is stored in its own protected table (0034); only users allowed to edit cost may set it
+  if (formData.has("cost") && cost > 0 && (await canEditCost(supabase, membership.organization_id))) {
+    await setProductCost(supabase, product.id, cost);
+  }
+
   revalidatePath("/dashboard/products");
 }
 
 export async function updateProduct(id: string, formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -118,15 +123,19 @@ export async function updateProduct(id: string, formData: FormData) {
   await supabase
     .from("product_prices")
     .upsert(
-      { organization_id: membership.organization_id, product_id: id, cost, selling_price: sellingPrice, wholesale_price: wholesalePrice, distributor_price: distributorPrice },
+      { organization_id: membership.organization_id, product_id: id, selling_price: sellingPrice, wholesale_price: wholesalePrice, distributor_price: distributorPrice },
       { onConflict: "organization_id,product_id" }
     );
+
+  if (formData.has("cost") && (await canEditCost(supabase, membership.organization_id))) {
+    await setProductCost(supabase, id, cost);
+  }
 
   revalidatePath("/dashboard/products");
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
@@ -141,10 +150,11 @@ export type ProductImportRow = { name: string; sku: string; unit: string; cost: 
 export type ProductImportResult = { created: number; skipped: { row: number; reason: string }[]; error: string | null };
 
 export async function importProductsCsv(rows: ProductImportRow[]): Promise<ProductImportResult> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { created: 0, skipped: [], error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
   const orgId = membership.organization_id;
+  const canSetCost = await canEditCost(supabase, orgId);
 
   const { data: existingCategories } = await supabase.from("product_categories").select("id, name").eq("organization_id", orgId);
   const categoryByName = new Map((existingCategories ?? []).map((c) => [c.name.trim(), c.id]));
@@ -203,9 +213,9 @@ export async function importProductsCsv(rows: ProductImportRow[]): Promise<Produ
     await supabase.from("product_prices").insert({
       organization_id: orgId,
       product_id: product.id,
-      cost: row.cost || 0,
       selling_price: row.selling_price || 0,
     });
+    if (canSetCost && row.cost > 0) await setProductCost(supabase, product.id, row.cost);
 
     existingNames.add(name);
     created++;

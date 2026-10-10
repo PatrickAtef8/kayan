@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,7 +25,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 // demand. Searches the invoice number and the customer name. RLS still
 // applies; the org filter just lets Postgres use the (organization_id, created_at) index.
 export async function searchSalesInvoices(query: string): Promise<{ value: string; label: string }[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return [];
   const orgId = membership.organization_id as string;
@@ -68,7 +68,7 @@ export type ReturnableItem = {
 };
 
 export async function getReturnableItems(salesInvoiceId: string): Promise<{ items: ReturnableItem[]; error: string | null }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { items: [], error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
@@ -90,7 +90,7 @@ export async function createSalesReturn(input: {
   cash_refund: number;
   notes: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 

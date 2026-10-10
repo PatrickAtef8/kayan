@@ -50,8 +50,11 @@ export type SalesInvoiceRow = {
   }[];
 };
 
-export default async function SalesPage({ searchParams }: { searchParams: { q?: string; from?: string; to?: string; page?: string } }) {
-  const supabase = getSupabase();
+export default async function SalesPage(
+  props: { searchParams: Promise<{ q?: string; from?: string; to?: string; page?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = (await getSupabase());
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
   const from = searchParams.from || undefined;
@@ -84,6 +87,21 @@ export default async function SalesPage({ searchParams }: { searchParams: { q?: 
       ? supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "view_financial" })
       : Promise.resolve({ data: false }),
   ]);
+
+  // may this user assign an invoice to a rep other than themselves? (permission sales.assign_any_rep)
+  const canAssignAnyRep = membership
+    ? !!(await supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "sales.assign_any_rep" })).data
+    : false;
+  const { data: ownRepData } = membership
+    ? await supabase.rpc("own_rep_id", { p_org: membership.organization_id })
+    : { data: null };
+  const ownRepId = (ownRepData as string | null) ?? null;
+
+  // what this user may do on an invoice (set by Owner/Admin in Settings → حدود الخصم)
+  const { data: limitsData } = membership
+    ? await supabase.rpc("my_sales_limits", { org_id: membership.organization_id })
+    : { data: null };
+  const limits = (limitsData ?? null) as { unlimited: boolean; max_discount_pct: number | null; can_give_manual_bonus: boolean } | null;
 
   const priceByProduct = new Map((salePrices ?? []).map((pr) => [pr.product_id, pr]));
   const productOptions: ProductOption[] = (products ?? []).map((p) => {
@@ -126,7 +144,7 @@ export default async function SalesPage({ searchParams }: { searchParams: { q?: 
       <PageHeader title="المبيعات" />
       <SalesTabs />
 
-      <SalesForm customers={customers ?? []} warehouses={warehouses ?? []} products={productOptions} representatives={representatives ?? []} restrictedRep={await isRestrictedRep()} />
+      <SalesForm canAssignAnyRep={canAssignAnyRep} ownRepId={ownRepId} limits={limits} customers={customers ?? []} warehouses={warehouses ?? []} products={productOptions} representatives={representatives ?? []} restrictedRep={await isRestrictedRep()} />
 
       <div className="mb-4 mt-9 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-medium text-charcoal/40">فواتير البيع</span>

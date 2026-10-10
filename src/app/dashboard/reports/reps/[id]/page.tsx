@@ -5,7 +5,11 @@ import { BackLink, Section, SimpleTable, Stat, money } from "../../party-analysi
 
 const TYPE: Record<string, string> = { operating: "تشغيلي", rep_expense: "مصاريف مندوب", salary: "مرتب", commission_payout: "صرف عمولة" };
 
-export default async function RepAnalysisPage({ params, searchParams }: { params: { id: string }; searchParams: { month?: string } }) {
+export default async function RepAnalysisPage(
+  props: { params: Promise<{ id: string }>; searchParams: Promise<{ month?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { supabase, orgId } = await getReportContext();
   if (!orgId) return null;
   const month = /^\d{4}-\d{2}$/.test(searchParams.month ?? "") ? `${searchParams.month}-01` : new Date().toISOString().slice(0, 7) + "-01";

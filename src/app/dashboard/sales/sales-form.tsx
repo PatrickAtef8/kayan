@@ -31,16 +31,23 @@ export function SalesForm({
   products,
   representatives,
   restrictedRep = false,
+  canAssignAnyRep = false,
+  ownRepId = null,
+  limits = null,
 }: {
   customers: CustomerOption[];
   warehouses: { id: string; name: string }[];
   products: ProductOption[];
   representatives: { id: string; name: string }[];
   restrictedRep?: boolean;
+  canAssignAnyRep?: boolean;
+  ownRepId?: string | null;
+  limits?: { unlimited: boolean; max_discount_pct: number | null; can_give_manual_bonus: boolean } | null;
 }) {
   const [customerId, setCustomerId] = useState("");
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
-  const [salesRepId, setSalesRepId] = useState("");
+  // without the override permission a user can only invoice under their own rep record (the database enforces it)
+  const [salesRepId, setSalesRepId] = useState(!canAssignAnyRep && ownRepId ? ownRepId : "");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [discountPct, setDiscountPct] = useState(0);
@@ -84,7 +91,7 @@ export function SalesForm({
     const nextTier = customers.find((c) => c.id === nextCustomerId)?.price_tier ?? "retail";
     setCustomerId(nextCustomerId);
     const nextRep = customers.find((c) => c.id === nextCustomerId)?.sales_rep_id;
-    if (nextRep) setSalesRepId(nextRep);
+    if (nextRep && (canAssignAnyRep || !ownRepId)) setSalesRepId(nextRep);
     if (previousTier === nextTier) return;
 
     setRows((current) =>
@@ -135,6 +142,12 @@ export function SalesForm({
 
   return (
     <Card className="p-5 sm:p-6">
+      {limits && !limits.unlimited && (
+        <p className="mb-4 rounded-card bg-paper px-3 py-2 text-xs text-charcoal/60">
+          أقصى خصم مسموح لدورك: <span dir="ltr">{Number(limits.max_discount_pct ?? 0)}%</span>
+          {!limits.can_give_manual_bonus && " — والبونص اليدوي غير متاح لدورك"}
+        </p>
+      )}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-5">
         <Field label="العميل">
           <ModernSelect value={customerId} onChange={selectCustomer} allowClear={false} placeholder="اختر عميلًا" options={customers.map((c) => ({ value: c.id, label: c.name }))} />
@@ -142,7 +155,7 @@ export function SalesForm({
         <Field label="المخزن">
           <ModernSelect value={warehouseId} onChange={setWarehouseId} allowClear={false} placeholder="اختر مخزنًا" options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
         </Field>
-        {!restrictedRep && (
+        {canAssignAnyRep && (
           <Field label="المندوب">
             <ModernSelect value={salesRepId} onChange={setSalesRepId} placeholder="بدون مندوب" clearLabel="بدون مندوب" options={representatives.map((r) => ({ value: r.id, label: r.name }))} />
           </Field>

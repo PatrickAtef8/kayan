@@ -1,5 +1,6 @@
 import { PartyBalanceReport } from "../party-balance-report";
 
-export default function CustomersReportPage({ searchParams }: { searchParams: { party?: string } }) {
+export default async function CustomersReportPage(props: { searchParams: Promise<{ party?: string }> }) {
+  const searchParams = await props.searchParams;
   return <PartyBalanceReport type="customer" basePath="/dashboard/reports/customers" searchParams={searchParams} />;
 }

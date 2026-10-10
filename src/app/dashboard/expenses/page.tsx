@@ -22,8 +22,9 @@ export type ExpenseRow = {
   sales_representatives: { name: string } | null;
 };
 
-export default async function ExpensesPage({ searchParams }: { searchParams: { page?: string; error?: string } }) {
-  const supabase = getSupabase();
+export default async function ExpensesPage(props: { searchParams: Promise<{ page?: string; error?: string }> }) {
+  const searchParams = await props.searchParams;
+  const supabase = (await getSupabase());
   const page = Math.max(1, Number(searchParams.page) || 1);
   const membership = await getMembership();
   const orgId = membership?.organization_id ?? NO_ORG_ID;

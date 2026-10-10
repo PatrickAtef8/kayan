@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -22,7 +22,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function adjustStock(input: { product_id: string; warehouse_id: string; quantity_delta: number; reason: string }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
@@ -54,7 +54,7 @@ export async function createStockTransfer(input: {
   items: TransferLineInput[];
   notes: string;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 

@@ -17,7 +17,10 @@ type SupRow = {
 
 const PAGE = 100;
 
-export default async function DebtsPage({ searchParams }: { searchParams: { type?: string; q?: string; rep?: string; all?: string; page?: string } }) {
+export default async function DebtsPage(
+  props: { searchParams: Promise<{ type?: string; q?: string; rep?: string; all?: string; page?: string }> }
+) {
+  const searchParams = await props.searchParams;
   const { supabase, orgId } = await getReportContext();
   if (!orgId) return null;
 

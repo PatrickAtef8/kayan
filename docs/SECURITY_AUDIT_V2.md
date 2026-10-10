@@ -119,3 +119,45 @@ where n.nspname='public' and relkind='r' and not relrowsecurity;
 select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
 where n.nspname='public' and has_function_privilege('anon',p.oid,'execute');
 ```
+
+
+---
+## Update 2 — decisions implemented and verified
+| Item | Status |
+|---|---|
+| H5 Next.js | **Fixed** — upgraded to 16.3.8 + React 19; `npm audit`: 0 critical, `next` no longer listed. Live check: security headers present, `/dashboard` redirects when signed out, the `x-middleware-subrequest` bypass header no longer works. |
+| H7 Discount / bonus limits | **Fixed** — configurable per role (0031), unlimited option, enforced in the shared pricing engine so the invoice RPC and the live preview agree. Verified: 0% default blocks discounts/low prices/bonus for a rep; 10% cap blocks 10.5%, 5%+6% combined and price 89; unlimited allows; non-managers and other orgs cannot change limits; changes are audited. |
+| H4 Balances | **Mostly fixed** — customer/supplier balances hidden unless permitted; warehouse cannot read suppliers or purchases. **Residual:** the `opening_balance` column of *customers* is still readable by anyone who can read the customer row (RLS cannot hide one column). Closing it needs the opening balance moved to a gated table, as 0027 did for profit. |
+| Remaining dev-tooling advisories | 10 (build-time only: Tailwind 3 file-watching deps, ESLint config). Clearing them needs Tailwind 4. |
+
+
+---
+## Update 3 — remaining gaps closed (migrations 0032, 0033) — verified by 142 automated checks
+| Gap | Fix | Verified |
+|---|---|---|
+| `customers.opening_balance` readable/writable by any role that could see the customer (RLS cannot hide one column) | Moved to `customer_opening_balances` (and `supplier_opening_balances`), RLS read/write split, audited, column dropped, 2 views + 5 report functions rewritten | Rep / plain sales / warehouse / other tenant: 0 rows, insert/update/delete blocked. Accountant/admin/owner allowed. View-only permission reads (scoped to own customers) but cannot write. Reports + balances still correct. Legacy data migrated exactly. |
+| Anyone could sell below cost | Trigger on the cost record written for every invoice line (uses the REAL average cost at sale time); only the system Owner role exempt | at cost / above cost allowed; 59, 59.98, 41% line, 41% invoice, qty-3 @59, price 0 blocked for rep, plain sales and **admin**; owner allowed; blocked attempts leave no invoice; error does not reveal the cost |
+| Reps could assign invoices/customers to other reps | Trigger on `sales_invoices` and `customers.sales_rep_id` + `sales.assign_any_rep` permission; `create_sales_invoice` honours the override (one-condition change) | own rep allowed; other rep refused or forced back to own; unlinked users keep only the customer's default rep; override granted -> allowed, removed -> blocked again; customer hand-offs blocked |
+
+**Known limits (be aware):**
+- (Fixed in Update 4) A restricted rep who named another rep used to be silently recorded under their own rep; they now get a clear error.
+- The below-cost rule is per invoice line and is not shown in the live preview (it fires on save). The refusal message does not reveal the cost, but repeated attempts could still binary-search it (cost itself is no longer readable — see Update 4).
+- "Owner" means the system `owner` role only; a custom role cloned from owner is NOT exempt.
+
+
+---
+## Update 4 — cost data protected; explicit rep error (migrations 0034, 0035) — 198 automated checks
+**Cost was leaking through five sources, not two.** A scan of every cost-like column as a warehouse user found, besides `product_prices.cost` and `inventory_stock.avg_cost`: `inventory_movements.unit_cost`, `stock_transfer_items.unit_cost/line_total` and `stock_transfers.total_value` (5 units x 60 = 300 was readable). All five moved into RLS-protected tables (read: `view_financial` | `products.view_cost`; product cost write: `view_financial` | `purchases.approve` | `manage_settings`). The movement/transfer columns are kept but forced NULL by a trigger + CHECK so no writer can put a cost back.
+
+| Check | Result |
+|---|---|
+| Costing maths unchanged | Same 8-step scenario (2 purchases at different prices, sale, transfer, adjustments, sales return, purchase return) run on the old and new schema: **60 snapshot rows identical** |
+| Legacy data | Applied 0034/0035 to a database holding real cost data: 0 rows lost, 0 extra, old columns gone, legacy columns NULL |
+| Blocked | warehouse, plain sales, restricted rep and other tenants: all cost columns gone/NULL, all protected tables empty, no writes, catch-all scan of every cost/cogs/profit/margin/total_value column finds nothing |
+| Allowed | owner, admin, accountant read all stores; owner/admin/accountant edit product cost (audited); every report still shows cost to them |
+| Rep error | restricted rep naming another rep -> refused with a clear message, nothing created; naming themselves or nobody works; override holders unaffected |
+| Mutation tests | removing a protection fails the suite (policy leak: 8 failed checks, diversion trigger removed: 7, old silent behaviour restored: 8, editor policy loosened: 2) |
+
+Bugs the tests caught in my own first draft (fixed before delivery): `product_costs` lacked a tenant column so any cost edit would have failed to write its audit row; `report_summary` broke because its loop variable `s` shadowed a table alias I introduced.
+
+**Known limits:** historical `audit_logs` rows written before 0034 still contain old cost values in their before/after JSON (visible only to roles with `audit.view`, i.e. owner/admin/accountant by default). `sales_item_financials` (cost/profit per sold line) was already restricted by 0027.

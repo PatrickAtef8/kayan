@@ -8,7 +8,8 @@ type Row = {
   min_target_met: boolean; potential_commission: number; earned_commission: number; commission_paid: number; commission_payable: number;
 };
 
-export default async function RepsReportPage({ searchParams }: { searchParams: { month?: string } }) {
+export default async function RepsReportPage(props: { searchParams: Promise<{ month?: string }> }) {
+  const searchParams = await props.searchParams;
   const { supabase, orgId } = await getReportContext();
   if (!orgId) return null;
   const month = /^\d{4}-\d{2}$/.test(searchParams.month ?? "") ? `${searchParams.month}-01` : new Date().toISOString().slice(0, 7) + "-01";

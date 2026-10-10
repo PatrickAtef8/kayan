@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getMembership } from "@/lib/org-context";
+import { canViewCost, canEditCost, getProductCosts } from "@/lib/costs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -23,14 +25,15 @@ type ProductRow = {
   product_prices: { cost: number; selling_price: number; wholesale_price: number | null; distributor_price: number | null }[];
 };
 
-export default async function ProductsPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
-  const supabase = createClient();
+export default async function ProductsPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient();
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
   let productsQuery = supabase
     .from("products")
-    .select("id, name, sku, unit, category_id, product_categories(name), product_prices(cost, selling_price, wholesale_price, distributor_price)", { count: "exact" })
+    .select("id, name, sku, unit, category_id, product_categories(name), product_prices(selling_price, wholesale_price, distributor_price)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) productsQuery = productsQuery.or(`name.ilike.%${q}%,sku.ilike.%${q}%`);
@@ -39,6 +42,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: { q
     productsQuery,
     supabase.from("product_categories").select("id, name").order("name"),
   ]);
+
+  // cost comes from its own protected table (0034); empty for roles that may not read it
+  const membership = await getMembership();
+  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
+  const editCost = membership ? await canEditCost(supabase, membership.organization_id) : false;
+  const costMap = viewCost ? await getProductCosts(supabase, (products ?? []).map((p) => p.id as string)) : new Map<string, number>();
+  const productsView = (products ?? []).map((p) => ({
+    ...p,
+    product_prices: ((p.product_prices as unknown as object[]) ?? []).map((pp) => ({ ...pp, cost: costMap.get(p.id as string) ?? 0 })),
+  }));
 
   return (
     <div>
@@ -65,9 +78,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: { q
           </Field>
           <div />
 
-          <Field label="التكلفة">
+          {editCost && (<Field label="التكلفة">
             <Input name="cost" type="number" step="0.01" dir="ltr" defaultValue={0} />
-          </Field>
+          </Field>)}
           <Field label="سعر البيع (تجزئة)">
             <Input name="selling_price" type="number" step="0.01" dir="ltr" defaultValue={0} />
           </Field>
@@ -88,7 +101,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: { q
         <SearchBox placeholder="بحث بالاسم أو الكود..." />
       </div>
 
-      <ProductsTable products={(products as unknown as ProductRow[]) ?? []} categories={categories ?? []} />
+      <ProductsTable canViewCost={viewCost} canEditCost={editCost} products={productsView as unknown as ProductRow[]} categories={categories ?? []} />
       <Pagination page={page} pageSize={PAGE_SIZE} totalCount={count ?? 0} />
     </div>
   );

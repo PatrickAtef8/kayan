@@ -1,7 +1,7 @@
 import { getSupabase, getMembership } from "@/lib/org-context";
 
 export async function getReportContext() {
-  const supabase = getSupabase();
+  const supabase = (await getSupabase());
   const membership = await getMembership();
 
   if (!membership) return { supabase, orgId: null as string | null, canViewFinancial: false, canExport: false };

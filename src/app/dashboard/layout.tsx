@@ -5,7 +5,7 @@ import { DashboardShell } from "@/components/dashboard/shell";
 import type { AppNotification } from "@/components/dashboard/topbar";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = getSupabase();
+  const supabase = (await getSupabase());
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -43,7 +43,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 // due) — not stored, just computed from current data each time the shell
 // renders. Balance-related ones are hidden from users without view_financial,
 // per "Notifications must respect user permissions."
-async function buildNotifications(supabase: ReturnType<typeof createClient>, orgId: string): Promise<AppNotification[]> {
+async function buildNotifications(supabase: Awaited<ReturnType<typeof createClient>>, orgId: string): Promise<AppNotification[]> {
   const [{ data: canViewFinancial }, { data: canViewAudit }, { data: stockRows }, { data: customerBalances }, { data: supplierBalances }] = await Promise.all([
     supabase.rpc("has_permission", { target_org: orgId, perm_key: "view_financial" }),
     supabase.rpc("has_permission", { target_org: orgId, perm_key: "audit.view" }),

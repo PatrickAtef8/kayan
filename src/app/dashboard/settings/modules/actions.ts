@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { MODULES, type ModuleKey } from "@/lib/modules";
 
 export async function toggleModule(moduleKey: ModuleKey, enabled: boolean) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

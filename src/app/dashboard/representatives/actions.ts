@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,7 +36,7 @@ function readFields(formData: FormData) {
 }
 
 export async function createRepresentative(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -60,7 +60,7 @@ export async function createRepresentative(formData: FormData) {
 }
 
 export async function updateRepresentative(id: string, formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -86,7 +86,7 @@ export async function updateRepresentative(id: string, formData: FormData) {
 }
 
 export async function toggleRepresentativeActive(id: string, isActive: boolean) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -96,7 +96,7 @@ export async function toggleRepresentativeActive(id: string, isActive: boolean) 
 }
 
 export async function deleteRepresentative(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
