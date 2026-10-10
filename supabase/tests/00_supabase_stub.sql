@@ -24,7 +24,7 @@ grant execute on function auth.uid() to authenticated, anon;
 -- bucket and RLS policies on storage.objects). Real projects already have
 -- the full schema; this is only enough for the migration to apply.
 create schema if not exists storage;
-create table if not exists storage.buckets (id text primary key, name text not null, public boolean default false);
+create table if not exists storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text references storage.buckets(id),

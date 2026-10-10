@@ -15,10 +15,11 @@ select t.as_user('92000000-0000-0000-0000-000000000001');
 insert into warehouses (organization_id, name) values (:'org_id', 'الرئيسي') returning id as wh \gset
 insert into suppliers (organization_id, name) values (:'org_id', 'مورد 1') returning id as sup \gset
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'أ', 'A', 'قطعة') returning id as pa \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'org_id', :'pa', 0, 100);
+insert into product_prices (organization_id, product_id, selling_price) values (:'org_id', :'pa', 100);
 insert into sales_representatives (organization_id, name, commission_basis, commission_rate, monthly_target, min_target_for_commission, user_id)
 values (:'org_id', 'مندوب', 'net_sales', 5, 2000, 1000, '92000000-0000-0000-0000-000000000002') returning id as rep \gset
-insert into customers (organization_id, name, sales_rep_id, opening_balance) values (:'org_id', 'عميل 1', :'rep', 100) returning id as c1 \gset
+insert into customers (organization_id, name, sales_rep_id) values (:'org_id', 'عميل 1', :'rep') returning id as c1 \gset
+insert into customer_opening_balances (customer_id, organization_id, amount) values (:'c1', :'org_id', 100);
 insert into customers (organization_id, name) values (:'org_id', 'عميل بدون مندوب') returning id as c2 \gset
 insert into discount_tiers (organization_id, applies_to, min_amount, discount_pct) values (:'org_id', 'sales', 1000, 5);
 

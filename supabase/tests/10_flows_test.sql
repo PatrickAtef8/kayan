@@ -38,7 +38,8 @@ insert into warehouses (organization_id, name) values (:'org_id', 'المخزن 
 insert into suppliers (organization_id, name) values (:'org_id', 'مورد أ') returning id as sup \gset
 insert into customers (organization_id, name) values (:'org_id', 'عميل أ') returning id as cus \gset
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'منتج أ', 'A-1', 'قطعة') returning id as prod \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'org_id', :'prod', 100, 150);
+insert into product_prices (organization_id, product_id, selling_price) values (:'org_id', :'prod', 150);
+insert into product_costs (product_id, cost) values (:'prod', 100);
 insert into sales_representatives (organization_id, name, commission_basis, commission_rate)
 values (:'org_id', 'مندوب أ', 'net_sales', 5) returning id as rep \gset
 
@@ -53,7 +54,7 @@ select create_purchase_invoice(:'org_id', :'sup', :'wh', 'P-2', '2026-03-02',
   0, 0, 0, null, null) as id \gset pi2_
 
 select t.eq((select quantity from inventory_stock where product_id = :'prod'), 200, 'purchases: stock is 200 units');
-select t.eq((select avg_cost from inventory_stock where product_id = :'prod'), 110, 'purchases: weighted average cost is 110 (§21 example)');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'prod'), 110, 'purchases: weighted average cost is 110 (§21 example)');
 select t.eq((select balance from supplier_balances where supplier_id = :'sup'), 18000, 'purchases: supplier owed 22,000 − 4,000 paid = 18,000');
 
 -- Give the cashbox an opening balance so the treasury figures are realistic.
@@ -80,7 +81,7 @@ select create_sales_invoice(:'org_id', :'cus', :'wh', 'S-2', '2026-04-05',
   4, 0, 0, null, null, null) as id \gset si2_
 
 select t.eq((select quantity from inventory_stock where product_id = :'prod'), 170, 'sales: stock down to 170');
-select t.eq((select avg_cost from inventory_stock where product_id = :'prod'), 110, 'sales: average cost is untouched by a sale (§21)');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'prod'), 110, 'sales: average cost is untouched by a sale (§21)');
 select t.eq((select cogs_total from v_sales_invoices where id = :'si1_id'), 1100, 'invoice 1 COGS = 10 × 110');
 select t.eq((select profit_total from v_sales_invoices where id = :'si1_id'), 400, 'invoice 1 profit = 1,500 − 1,100');
 select t.eq((select commission_amount from sales_invoices where id = :'si1_id'), 75, 'invoice 1 commission = 5% of net sales 1,500');

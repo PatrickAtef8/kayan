@@ -95,3 +95,9 @@ begin
 end $$;
 
 grant execute on all functions in schema t to authenticated, anon;
+
+-- Since migration 0034 the average cost lives in stock_costs (RLS-protected), not on inventory_stock.
+-- Tests that assert on stock valuation read it through this view (it runs with the owner's rights).
+create view t.stock_with_cost as
+  select s.*, sc.avg_cost from inventory_stock s left join stock_costs sc on sc.stock_id = s.id;
+grant select on t.stock_with_cost to authenticated;

@@ -47,7 +47,7 @@ select create_purchase_return(:'org_id', :'p1_id', '2026-04-05',
   jsonb_build_array(jsonb_build_object('purchase_invoice_item_id', :'p1_item', 'quantity', 30)), 0, 'عيب تصنيع') as id \gset r1_
 
 select t.eq((select quantity from inventory_stock where product_id = :'prod' and warehouse_id = :'wh1'), 70, 'return takes 30 units out of stock');
-select t.eq((select avg_cost from inventory_stock where product_id = :'prod' and warehouse_id = :'wh1'), 100, 'return leaves the weighted-average cost untouched');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'prod' and warehouse_id = :'wh1'), 100, 'return leaves the weighted-average cost untouched');
 select t.eq((select total from purchase_returns where id = :'r1_id'), 3000, 'return value = 30 × 100 at the original line cost');
 select t.eq((select balance from supplier_balances where supplier_id = :'sup'), 3000, 'payable drops by the return: 6,000 − 3,000');
 select t.eq((select total_returned from supplier_balances where supplier_id = :'sup'), 3000, 'supplier_balances exposes total_returned');
@@ -107,8 +107,8 @@ select create_stock_transfer(:'org_id', :'wh1', :'wh2', '2026-04-13',
   jsonb_build_array(jsonb_build_object('product_id', :'prod2', 'quantity', 10)), 'إعادة توزيع') as id \gset tr1_
 select t.eq((select quantity from inventory_stock where product_id = :'prod2' and warehouse_id = :'wh1'), 0, 'source warehouse emptied');
 select t.eq((select quantity from inventory_stock where product_id = :'prod2' and warehouse_id = :'wh2'), 20, 'destination now holds 20');
-select t.eq((select avg_cost from inventory_stock where product_id = :'prod2' and warehouse_id = :'wh2'), 150, 'destination average = (10×200 + 10×100) / 20');
-select t.eq((select total_value from stock_transfers where id = :'tr1_id'), 1000, 'transfer value at source cost');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'prod2' and warehouse_id = :'wh2'), 150, 'destination average = (10×200 + 10×100) / 20');
+select t.eq((select total_value from stock_transfer_costs where transfer_id = :'tr1_id'), 1000, 'transfer value at source cost');
 select t.eq((select count(*) from inventory_movements where reference_id = :'tr1_id'), 2, 'one transfer_out and one transfer_in movement');
 select t.eq((select sum(quantity_delta) from inventory_movements where reference_id = :'tr1_id'), 0, 'the two movements net to zero');
 select t.eq((select count(*) from audit_logs where entity = 'stock_transfer'), 1, 'transfers are audited');
@@ -165,8 +165,8 @@ select t.eq((select count(*) from roles where id = :'role_id'), 0, 'an unassigne
 -- ============================================================
 -- Price tiers (§17)
 -- ============================================================
-insert into product_prices (organization_id, product_id, cost, selling_price, wholesale_price, distributor_price)
-values (:'org_id', :'prod', 100, 150, 130, null) on conflict (organization_id, product_id) do update set wholesale_price = 130, selling_price = 150;
+insert into product_prices (organization_id, product_id, selling_price, wholesale_price, distributor_price)
+values (:'org_id', :'prod', 150, 130, null) on conflict (organization_id, product_id) do update set wholesale_price = 130, selling_price = 150;
 select t.eq((select wholesale_price from product_prices where product_id = :'prod'), 130, 'wholesale price stored');
 select t.ok((select distributor_price is null from product_prices where product_id = :'prod'), 'unset tier stays NULL (falls back to retail in the UI)');
 select t.eq_text((select price_tier from customers where id = :'cus'), 'retail', 'customers default to the retail tier');
@@ -175,8 +175,10 @@ select t.throws(format('update customers set price_tier = ''vip'' where id = %L'
 -- ============================================================
 -- Opening balances (§56)
 -- ============================================================
-insert into customers (organization_id, name, opening_balance) values (:'org_id', 'عميل بعهدة', 500) returning id as ocus \gset
-insert into suppliers (organization_id, name, opening_balance) values (:'org_id', 'مورد بعهدة', 800) returning id as osup \gset
+insert into customers (organization_id, name) values (:'org_id', 'عميل بعهدة') returning id as ocus \gset
+insert into customer_opening_balances (customer_id, organization_id, amount) values (:'ocus', :'org_id', 500);
+insert into suppliers (organization_id, name) values (:'org_id', 'مورد بعهدة') returning id as osup \gset
+insert into supplier_opening_balances (supplier_id, organization_id, amount) values (:'osup', :'org_id', 800);
 select t.eq((select balance from customer_balances where customer_id = :'ocus'), 500, 'customer balance starts at the opening balance');
 select t.eq((select balance from supplier_balances where supplier_id = :'osup'), 800, 'supplier balance starts at the opening balance');
 select t.eq((select total_sales from customer_balances where customer_id = :'ocus'), 0, 'opening balance is not counted as sales');

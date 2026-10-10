@@ -32,7 +32,7 @@ select t.eq_text((select line_total::text from purchase_invoice_items where purc
 select t.eq_text((select subtotal::text from purchase_invoices where id = :'a1_id'), '1000.00', '#1 purchase subtotal is gross 1,000');
 select t.eq_text((select discount_total::text from purchase_invoices where id = :'a1_id'), '100.00', '#1 purchase discount_total includes the line discount');
 select t.eq_text((select total::text from purchase_invoices where id = :'a1_id'), '900.00', '#1 purchase total = 900 (was 1,000)');
-select t.eq_text((select round(avg_cost, 2)::text from inventory_stock where product_id = :'pa'), '90.00', '#1 stock is valued at the net cost 90, not 100');
+select t.eq_text((select round(avg_cost, 2)::text from t.stock_with_cost where product_id = :'pa'), '90.00', '#1 stock is valued at the net cost 90, not 100');
 
 -- ============================================================
 -- #1/#2 purchase with line discount + invoice discount + tax, then full return
@@ -44,7 +44,7 @@ select create_purchase_invoice(:'org_id', :'s2', :'w1', 'B-1', '2026-09-02',
   jsonb_build_array(jsonb_build_object('product_id', :'pb', 'quantity', 10, 'unit_cost', 50, 'discount_pct', 10)), 10, 63, 0, null, null) as id \gset b1_
 select t.eq_text((select total::text from purchase_invoices where id = :'b1_id'), '468.00', '#1 purchase total = 500 − 50 − 45 + 63');
 select t.eq_text((select discount_total::text from purchase_invoices where id = :'b1_id'), '95.00', '#1 discount_total = 45 + 50');
-select t.eq_text((select round(avg_cost, 4)::text from inventory_stock where product_id = :'pb'), '40.5000', '#1 net unit cost = 405 / 10');
+select t.eq_text((select round(avg_cost, 4)::text from t.stock_with_cost where product_id = :'pb'), '40.5000', '#1 net unit cost = 405 / 10');
 select id as b1_item from purchase_invoice_items where purchase_invoice_id = :'b1_id' \gset
 select create_purchase_return(:'org_id', :'b1_id', '2026-09-03',
   jsonb_build_array(jsonb_build_object('purchase_invoice_item_id', :'b1_item', 'quantity', 10)), 0, null) as id \gset b1r_
@@ -60,11 +60,11 @@ select create_purchase_invoice(:'org_id', :'s3', :'w1', 'C-1', '2026-09-04',
 select create_purchase_invoice(:'org_id', :'s3', :'w1', 'C-2', '2026-09-05',
   jsonb_build_array(jsonb_build_object('product_id', :'pc', 'quantity', 100, 'unit_cost', 20, 'discount_pct', 0)), 0, 0, 0, null, null) as id \gset c2_
 select id as c2_item from purchase_invoice_items where purchase_invoice_id = :'c2_id' \gset
-select t.eq((select avg_cost from inventory_stock where product_id = :'pc'), 15, '#4 avg before the return = 15');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'pc'), 15, '#4 avg before the return = 15');
 select create_purchase_return(:'org_id', :'c2_id', '2026-09-06',
   jsonb_build_array(jsonb_build_object('purchase_invoice_item_id', :'c2_item', 'quantity', 100)), 0, null) as id \gset
-select t.eq_text((select round(avg_cost, 4)::text from inventory_stock where product_id = :'pc'), '10.0000', '#4 avg cost goes back to 10 after returning the 20-batch');
-select t.eq_text((select round(quantity * avg_cost, 2)::text from inventory_stock where product_id = :'pc'), '1000.00', '#4 inventory value = 100 × 10');
+select t.eq_text((select round(avg_cost, 4)::text from t.stock_with_cost where product_id = :'pc'), '10.0000', '#4 avg cost goes back to 10 after returning the 20-batch');
+select t.eq_text((select round(quantity * avg_cost, 2)::text from t.stock_with_cost where product_id = :'pc'), '1000.00', '#4 inventory value = 100 × 10');
 
 -- ============================================================
 -- #5 precision: 1,000 @ 10.00 + 1,000 @ 10.01 → value 20,010.00 (was 20,020)
@@ -73,7 +73,7 @@ select create_purchase_invoice(:'org_id', :'s4', :'w1', 'D-1', '2026-09-07',
   jsonb_build_array(jsonb_build_object('product_id', :'pd', 'quantity', 1000, 'unit_cost', 10.00, 'discount_pct', 0)), 0, 0, 0, null, null) as id \gset
 select create_purchase_invoice(:'org_id', :'s4', :'w1', 'D-2', '2026-09-08',
   jsonb_build_array(jsonb_build_object('product_id', :'pd', 'quantity', 1000, 'unit_cost', 10.01, 'discount_pct', 0)), 0, 0, 0, null, null) as id \gset
-select t.eq_text((select round(quantity * avg_cost, 2)::text from inventory_stock where product_id = :'pd'), '20010.00', '#5 stock value equals the real spend 20,010.00');
+select t.eq_text((select round(quantity * avg_cost, 2)::text from t.stock_with_cost where product_id = :'pd'), '20010.00', '#5 stock value equals the real spend 20,010.00');
 
 -- ============================================================
 -- Sales fixtures: PE bought 100 @ 30 (avg 30), PF bought 100 @ 30
@@ -210,12 +210,12 @@ select t.eq_text((select sum(net_sales)::text from report_sales_breakdown(:'org_
 -- #5 transfers keep the 6-decimal average (PD avg 10.005)
 -- ============================================================
 select create_stock_transfer(:'org_id', :'w1', :'w2', '2026-09-25', jsonb_build_array(jsonb_build_object('product_id', :'pd', 'quantity', 100)), null) as id \gset
-select t.eq_text((select round(avg_cost, 6)::text from inventory_stock where product_id = :'pd' and warehouse_id = :'w2'), '10.005000', '#5 destination warehouse inherits the exact average cost');
+select t.eq_text((select round(avg_cost, 6)::text from t.stock_with_cost where product_id = :'pd' and warehouse_id = :'w2'), '10.005000', '#5 destination warehouse inherits the exact average cost');
 
 -- ============================================================
 -- Balance sheet consistency: inventory value is quantity × avg_cost summed exactly
 -- ============================================================
-select t.eq_text((select round((report_summary(:'org_id')->'balances'->>'inventory_value')::numeric, 2)::text), (select round(sum(quantity * avg_cost), 2)::text from inventory_stock where organization_id = :'org_id'), 'inventory value in the summary = Σ qty × avg_cost');
+select t.eq_text((select round((report_summary(:'org_id')->'balances'->>'inventory_value')::numeric, 2)::text), (select round(sum(quantity * avg_cost), 2)::text from t.stock_with_cost where organization_id = :'org_id'), 'inventory value in the summary = Σ qty × avg_cost');
 
 -- ============================================================
 -- #6 a (manual) bonus item cannot oversell either

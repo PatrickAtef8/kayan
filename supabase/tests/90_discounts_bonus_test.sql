@@ -14,14 +14,14 @@ insert into customers (organization_id, name) values (:'org_id', 'عميل') ret
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'أ', 'A', 'قطعة') returning id as pa \gset
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'ب', 'B', 'قطعة') returning id as pb \gset
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'ج', 'C', 'قطعة') returning id as pc \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'org_id', :'pa', 0, 100), (:'org_id', :'pb', 0, 200), (:'org_id', :'pc', 0, 60);
+insert into product_prices (organization_id, product_id, selling_price) values (:'org_id', :'pa', 100), (:'org_id', :'pb', 200), (:'org_id', :'pc', 60);
 
 -- stock: 200 A @ 50, 200 B @ 40, 100 C @ 30
 select create_purchase_invoice(:'org_id', :'sup', :'wh', 'P-1', '2026-05-01', jsonb_build_array(
   jsonb_build_object('product_id', :'pa', 'quantity', 200, 'unit_cost', 50, 'discount_pct', 0),
   jsonb_build_object('product_id', :'pb', 'quantity', 200, 'unit_cost', 40, 'discount_pct', 0),
   jsonb_build_object('product_id', :'pc', 'quantity', 100, 'unit_cost', 30, 'discount_pct', 0)), 0, 0, 0, null, null) as id \gset p0_
-select t.eq((select avg_cost from inventory_stock where product_id = :'pa'), 50, 'setup: A avg cost 50');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'pa'), 50, 'setup: A avg cost 50');
 
 -- ------------------------------------------------------------
 -- Old automatic bonus rules still sitting in the table must do NOTHING

@@ -22,7 +22,8 @@ insert into warehouses (organization_id, name) values (:'org_id', 'م') returnin
 insert into suppliers (organization_id, name) values (:'org_id', 'مورد') returning id as s \gset
 insert into customers (organization_id, name) values (:'org_id', 'عميل') returning id as c \gset
 insert into products (organization_id, name) values (:'org_id', 'منتج') returning id as p \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'org_id', :'p', 10, 20);
+insert into product_prices (organization_id, product_id, selling_price) values (:'org_id', :'p', 20);
+insert into product_costs (product_id, cost) values (:'p', 10);
 select create_purchase_invoice(:'org_id', :'s', :'w', 'P-1', '2026-01-01', jsonb_build_array(jsonb_build_object('product_id', :'p', 'quantity', 100, 'unit_cost', 10, 'discount', 0)), 0, 0, 0, 'نقدًا', null) as id \gset
 select create_sales_invoice(:'org_id', :'c', :'w', 'S-1', '2026-01-02', jsonb_build_array(jsonb_build_object('product_id', :'p', 'quantity', 5, 'unit_price', 20, 'discount', 0)), 0, 0, 0, 'نقدًا', null, null) as id \gset
 select create_sales_invoice(:'org_id', :'c', :'w', 'S-2', '2026-03-02', jsonb_build_array(jsonb_build_object('product_id', :'p', 'quantity', 10, 'unit_price', 30, 'discount', 0)), 0, 0, 0, 'نقدًا', null, null) as id \gset

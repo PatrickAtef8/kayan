@@ -56,7 +56,7 @@ select create_sales_return(:'org_id', :'s1_id', '2026-03-15',
   0, 'تالف في التغليف') as id \gset ret1_
 
 select t.eq((select quantity from inventory_stock where product_id = :'prod'), 93, 'resalable return: stock goes back up to 93');
-select t.eq((select avg_cost from inventory_stock where product_id = :'prod'), 100, 'resalable return: average cost is unchanged (returned at its own historical cost)');
+select t.eq((select avg_cost from t.stock_with_cost where product_id = :'prod'), 100, 'resalable return: average cost is unchanged (returned at its own historical cost)');
 select t.eq((select total from sales_returns where id = :'ret1_id'), 600, 'return 1: revenue reversed = 3 × 200');
 select t.eq((select cost_reversed from v_sales_returns where id = :'ret1_id'), 300, 'return 1: cost reversed = 3 × 100 (resalable)');
 select t.eq((select profit_reversed from v_sales_returns where id = :'ret1_id'), 300, 'return 1: profit reversed = 600 − 300');

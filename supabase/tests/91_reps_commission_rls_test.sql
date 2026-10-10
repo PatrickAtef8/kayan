@@ -17,7 +17,7 @@ select t.as_user('91000000-0000-0000-0000-000000000001');
 insert into warehouses (organization_id, name) values (:'org_id', 'الرئيسي') returning id as wh \gset
 insert into suppliers (organization_id, name) values (:'org_id', 'مورد') returning id as sup \gset
 insert into products (organization_id, name, sku, unit) values (:'org_id', 'أ', 'A', 'قطعة') returning id as pa \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'org_id', :'pa', 0, 100);
+insert into product_prices (organization_id, product_id, selling_price) values (:'org_id', :'pa', 100);
 insert into sales_representatives (organization_id, name, commission_basis, commission_rate, monthly_target, min_target_for_commission, user_id)
 values (:'org_id', 'مندوب 1', 'net_sales', 10, 5000, 1000, '91000000-0000-0000-0000-000000000002') returning id as r1 \gset
 insert into sales_representatives (organization_id, name, commission_basis, commission_rate, user_id)
@@ -80,7 +80,8 @@ select t.as_user('91000000-0000-0000-0000-000000000002');
 select t.eq((select count(*) from sales_invoices), 3, 'rep 1 sees only their 3 invoices');
 select t.eq((select count(*) from customers), 1, 'rep 1 sees only their customer');
 select t.eq((select count(*) from sales_invoice_items), 3, 'and only their invoice lines');
-select t.eq((select balance from customer_balances where customer_id = :'c1'), 1100, 'rep sees their customer''s debt (600 + 600 − 600 returned + 500)') ;
+-- since 0031 a rep without customers.view_balance sees the customer row but a NULL balance
+select t.ok((select balance is null from customer_balances where customer_id = :'c1'), 'rep: their customer''s balance is hidden (NULL) without customers.view_balance');
 select t.empty('select 1 from customer_balances where customer_id = ''' || :'c2' || '''', 'rep 1 cannot see customer 2''s debt');
 select t.empty('select 1 from purchase_invoices', 'rep cannot see purchases');
 select t.empty('select 1 from suppliers', 'rep cannot see suppliers');
@@ -95,7 +96,10 @@ select t.throws(format('select create_sales_invoice(%L, %L, %L, null, null, %L::
 insert into party_notes (organization_id, party_type, customer_id, note) values (:'org_id', 'customer', :'c1', 'دفع 500 كاش اليوم');
 select t.eq((select count(*) from party_notes), 1, 'rep can write and read a note on their customer');
 select t.throws(format('insert into party_notes (organization_id, party_type, customer_id, note) values (%L, ''customer'', %L, ''x'')', :'org_id', :'c2'), 'row-level security', 'rep cannot note another rep''s customer');
+-- the rep can no longer read balances (0031), so check that a note changes nothing as the owner, then switch back
+select t.as_user('91000000-0000-0000-0000-000000000001');
 select t.eq((select balance from customer_balances where customer_id = :'c1'), 1100, 'notes changed no balance');
+select t.as_user('91000000-0000-0000-0000-000000000002');
 
 -- a customer a rep creates is assigned to them and cannot be given away
 insert into customers (organization_id, name) values (:'org_id', 'عميل جديد');

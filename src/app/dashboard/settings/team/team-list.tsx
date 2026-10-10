@@ -55,6 +55,7 @@ export function TeamList({ members, roles }: { members: Member[]; roles: RoleOpt
               <p className="text-charcoal">
                 {m.email}
                 {m.is_self && <span className="mr-1.5 text-[0.6875rem] text-charcoal/35">(أنت)</span>}
+                {m.status === "invited" && <span className="mr-1.5 text-[0.6875rem] text-brass">(بانتظار القبول)</span>}
               </p>
             </div>
             <div className="flex items-center gap-2">

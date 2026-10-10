@@ -44,8 +44,14 @@ select t.eq((select count(*) from organization_users where organization_id = :'o
 select t.ok((select role_id from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000002') = :'accountant_role'::uuid, 'with the chosen role');
 select t.eq((select count(*) from audit_logs where organization_id = :'org_id' and entity = 'user' and entity_id = (select id from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000002')), 1, 'adding a member is audited (§46 user creation)');
 
--- Adding the same person again is refused, not silently duplicated.
-select t.throws(format('select add_team_member(%L, ''existing@team.test'', %L)', :'org_id', :'accountant_role'), 'عضو بالفعل', 'adding an already-existing member a second time is refused');
+-- Since 0030 an existing account is enrolled as 'invited' (it must accept), not 'active'.
+select t.eq_text((select status from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000002'), 'invited', 'an existing user is enrolled as invited, not active (0030: no enrolment without consent)');
+-- Adding the same person again does not reveal that they are already a member (no error), and changes nothing:
+-- no duplicate row and the role is not overwritten.
+select add_team_member(:'org_id', 'existing@team.test', :'sales_role') as j \gset add1b_
+select t.eq_text(:'add1b_j'::jsonb ->> 'status', 'added', 'adding the same person again looks the same to the caller (no membership oracle)');
+select t.eq((select count(*) from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000002'), 1, 'adding the same person again does not duplicate the membership');
+select t.ok((select role_id from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000002') = :'accountant_role'::uuid, 'adding the same person again does not overwrite their role');
 
 -- ============================================================
 -- add_team_member — brand-new email: signals the caller to fall back to

@@ -28,7 +28,8 @@ insert into warehouses (organization_id, name) values (:'orga_id', 'مخزن أ'
 insert into suppliers (organization_id, name) values (:'orga_id', 'مورد أ') returning id as sa \gset
 insert into customers (organization_id, name) values (:'orga_id', 'عميل أ') returning id as ca \gset
 insert into products (organization_id, name) values (:'orga_id', 'منتج أ') returning id as pa \gset
-insert into product_prices (organization_id, product_id, cost, selling_price) values (:'orga_id', :'pa', 10, 20);
+insert into product_prices (organization_id, product_id, selling_price) values (:'orga_id', :'pa', 20);
+insert into product_costs (product_id, cost) values (:'pa', 10);
 insert into partners (organization_id, name) values (:'orga_id', 'شريك أ') returning id as para \gset
 select create_purchase_invoice(:'orga_id', :'sa', :'wa', 'PA-1', '2026-01-01', jsonb_build_array(jsonb_build_object('product_id', :'pa', 'quantity', 50, 'unit_cost', 10, 'discount', 0)), 0, 0, 100, 'نقدًا', null) as id \gset pia_
 select create_sales_invoice(:'orga_id', :'ca', :'wa', 'SA-1', '2026-01-02', jsonb_build_array(jsonb_build_object('product_id', :'pa', 'quantity', 5, 'unit_price', 20, 'discount', 0)), 0, 0, 30, 'نقدًا', null, null) as id \gset sia_
