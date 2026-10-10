@@ -11,11 +11,12 @@ function periodStart(period: Period): string | null {
   return null;
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: { period?: string } }) {
+export default async function DashboardPage(props: { searchParams: Promise<{ period?: string }> }) {
+  const searchParams = await props.searchParams;
   const period: Period = searchParams.period === "year" || searchParams.period === "all" ? (searchParams.period as Period) : "month";
   const start = periodStart(period);
 
-  const supabase = getSupabase();
+  const supabase = (await getSupabase());
   const membership = await getMembership();
 
   if (!membership) {
@@ -33,7 +34,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
       supabase.rpc("dashboard_sales_totals", { org_id: orgId, p_from: start }),
       supabase.from("customer_balances").select("balance").eq("organization_id", orgId),
       supabase.from("supplier_balances").select("balance").eq("organization_id", orgId),
-      supabase.from("inventory_stock").select("quantity, avg_cost").eq("organization_id", orgId),
+      supabase.from("inventory_stock").select("quantity, stock_costs(avg_cost)").eq("organization_id", orgId),
       supabase.from("treasury_balances").select("balance").eq("organization_id", orgId),
       supabase.rpc("report_recent_activity", { org_id: orgId, p_limit: 8 }),
       // Trend + top customers + top representatives in one pass (0021); top
@@ -50,7 +51,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
   const netProfit = Number(totalsRow?.total_profit ?? 0);
   const customerReceivable = (customerBalances ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
   const supplierPayable = (supplierBalances ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
-  const inventoryValue = (stockRows ?? []).reduce((sum, r) => sum + Number(r.quantity) * Number(r.avg_cost), 0);
+  // avg cost is protected (0034): empty for roles without cost access, so the value is only meaningful for financial viewers
+  type StockCostRow = { quantity: number; stock_costs: { avg_cost: number } | { avg_cost: number }[] | null };
+  const inventoryValue = ((stockRows ?? []) as unknown as StockCostRow[]).reduce((sum, r) => {
+    const c = Array.isArray(r.stock_costs) ? r.stock_costs[0] : r.stock_costs;
+    return sum + Number(r.quantity) * Number(c?.avg_cost ?? 0);
+  }, 0);
   const treasuryBalance = (treasuryRows ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
 
   return (

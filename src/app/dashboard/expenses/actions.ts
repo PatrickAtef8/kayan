@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -23,7 +23,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function createExpense(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 

@@ -16,7 +16,7 @@ export type WithdrawalRow = {
 };
 
 export default async function PartnersPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: partners }, { data: withdrawals }] = await Promise.all([
     supabase.from("partners").select("id, name, phone").order("created_at", { ascending: false }),

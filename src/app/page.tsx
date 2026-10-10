@@ -6,7 +6,7 @@ import { LandingPage } from "@/components/marketing/landing-page";
 // everyone else sees the landing page, which is the only place /login and
 // /signup are linked from now.
 export default async function RootPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

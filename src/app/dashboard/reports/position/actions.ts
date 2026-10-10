@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -22,7 +22,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function addOtherBalance(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 
@@ -44,7 +44,7 @@ export async function addOtherBalance(formData: FormData) {
 }
 
 export async function deactivateOtherBalance(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return;
 

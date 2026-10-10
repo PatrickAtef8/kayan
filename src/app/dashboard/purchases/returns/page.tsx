@@ -20,7 +20,7 @@ type ReturnRow = {
 };
 
 export default async function PurchaseReturnsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: returns }] = await Promise.all([
     supabase

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { createSupplier } from "./actions";
+import { getMembership } from "@/lib/org-context";
+import { getOpeningBalances } from "@/lib/opening-balance";
 import { SuppliersTable } from "./suppliers-table";
 import { ImportSuppliersButton } from "./import-suppliers-button";
 
@@ -14,14 +16,23 @@ const PAGE_SIZE = 20;
 type Supplier = { id: string; name: string; phone: string | null; opening_balance: number };
 export type SupplierBalance = { supplier_id: string; total_purchases: number; total_paid: number; balance: number };
 
-export default async function SuppliersPage({ searchParams }: { searchParams: { q?: string; page?: string } }) {
-  const supabase = createClient();
+export default async function SuppliersPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient();
+  const membership = await getMembership();
+  let canViewBalance = false;
+  if (membership) {
+    const checks = await Promise.all(
+      ["view_financial", "suppliers.view_balance"].map((perm_key) => supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key }))
+    );
+    canViewBalance = checks.some((c) => !!c.data);
+  }
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
   let suppliersQuery = supabase
     .from("suppliers")
-    .select("id, name, phone, opening_balance", { count: "exact" })
+    .select("id, name, phone", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) suppliersQuery = suppliersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
@@ -30,6 +41,11 @@ export default async function SuppliersPage({ searchParams }: { searchParams: { 
     suppliersQuery,
     supabase.from("supplier_balances").select("supplier_id, total_purchases, total_paid, balance"),
   ]);
+
+  const openingMap = canViewBalance
+    ? await getOpeningBalances(supabase, "supplier", (suppliers ?? []).map((s) => s.id as string))
+    : new Map<string, number>();
+  const suppliersView = (suppliers ?? []).map((s) => ({ ...s, opening_balance: openingMap.get(s.id as string) ?? 0 }));
 
   return (
     <div>
@@ -43,9 +59,11 @@ export default async function SuppliersPage({ searchParams }: { searchParams: { 
           <Field label="رقم الهاتف">
             <Input name="phone" dir="ltr" placeholder="01000000000" />
           </Field>
-          <Field label="الرصيد الافتتاحي (اختياري)">
-            <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={0} placeholder="مبلغ مستحق للمورد من قبل" />
-          </Field>
+          {canViewBalance && (
+            <Field label="الرصيد الافتتاحي (اختياري)">
+              <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={0} placeholder="مبلغ مستحق للمورد من قبل" />
+            </Field>
+          )}
           <div className="self-end">
             <Button type="submit">إضافة مورد</Button>
           </div>
@@ -56,7 +74,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: { 
         <SearchBox placeholder="بحث بالاسم أو رقم الهاتف..." />
       </div>
 
-      <SuppliersTable suppliers={(suppliers as Supplier[]) ?? []} balances={(balances as SupplierBalance[]) ?? []} />
+      <SuppliersTable canViewBalance={canViewBalance} suppliers={suppliersView as unknown as Supplier[]} balances={(balances as SupplierBalance[]) ?? []} />
       <Pagination page={page} pageSize={PAGE_SIZE} totalCount={count ?? 0} />
     </div>
   );

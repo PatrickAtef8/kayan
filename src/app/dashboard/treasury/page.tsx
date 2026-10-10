@@ -18,7 +18,7 @@ function money(n: number) {
 }
 
 export default async function TreasuryPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: balances }, { data: movements }] = await Promise.all([
     supabase.from("treasury_balances").select("balance"),

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-async function getMembership(supabase: ReturnType<typeof createClient>) {
+async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -22,7 +22,7 @@ async function getMembership(supabase: ReturnType<typeof createClient>) {
 }
 
 export async function createCustomRole(name: string, permissionKeys: string[]) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
@@ -38,7 +38,7 @@ export async function createCustomRole(name: string, permissionKeys: string[]) {
 }
 
 export async function updateCustomRole(roleId: string, name: string, permissionKeys: string[]) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
@@ -55,7 +55,7 @@ export async function updateCustomRole(roleId: string, name: string, permissionK
 }
 
 export async function deleteCustomRole(roleId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 

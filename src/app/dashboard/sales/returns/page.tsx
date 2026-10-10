@@ -22,7 +22,7 @@ type ReturnRow = {
 };
 
 export default async function SalesReturnsPage() {
-  const supabase = getSupabase();
+  const supabase = (await getSupabase());
   const membership = await getMembership();
   const orgId = membership?.organization_id ?? NO_ORG_ID;
 

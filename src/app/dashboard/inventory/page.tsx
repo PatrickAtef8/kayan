@@ -1,4 +1,5 @@
 import { getSupabase, getMembership, NO_ORG_ID } from "@/lib/org-context";
+import { canViewCost } from "@/lib/costs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -18,18 +19,24 @@ function money(n: number) {
 }
 
 export default async function InventoryPage() {
-  const supabase = getSupabase();
+  const supabase = (await getSupabase());
   const membership = await getMembership();
   const orgId = membership?.organization_id ?? NO_ORG_ID;
 
   const [{ data }, { data: canAdjust }, { data: products }, { data: warehouses }] = await Promise.all([
-    supabase.from("inventory_stock").select("id, quantity, avg_cost, products(name, unit), warehouses(name)").eq("organization_id", orgId).order("updated_at", { ascending: false }),
+    supabase.from("inventory_stock").select("id, quantity, stock_costs(avg_cost), products(name, unit), warehouses(name)").eq("organization_id", orgId).order("updated_at", { ascending: false }),
     membership ? supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "inventory.adjust" }) : Promise.resolve({ data: false }),
     supabase.from("products").select("id, name").eq("organization_id", orgId).order("name"),
     supabase.from("warehouses").select("id, name").eq("organization_id", orgId).order("name"),
   ]);
 
-  const rows = (data as unknown as StockRow[]) ?? [];
+  // cost comes from the protected stock_costs table (0034); hidden for roles without cost access
+  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
+  type RawRow = Omit<StockRow, "avg_cost"> & { stock_costs: { avg_cost: number } | { avg_cost: number }[] | null };
+  const rows: StockRow[] = ((data as unknown as RawRow[]) ?? []).map((r) => {
+    const c = Array.isArray(r.stock_costs) ? r.stock_costs[0] : r.stock_costs;
+    return { id: r.id, quantity: r.quantity, products: r.products, warehouses: r.warehouses, avg_cost: Number(c?.avg_cost ?? 0) };
+  });
   const totalValue = rows.reduce((sum, r) => sum + r.quantity * r.avg_cost, 0);
 
   return (
@@ -39,12 +46,14 @@ export default async function InventoryPage() {
       {canAdjust && <StockAdjustmentForm products={products ?? []} warehouses={warehouses ?? []} />}
       {canAdjust && (warehouses?.length ?? 0) > 1 && <StockTransferForm products={products ?? []} warehouses={warehouses ?? []} />}
 
-      <Card className="mb-7 flex items-center justify-between p-5 sm:p-6">
-        <div>
-          <p className="text-xs text-charcoal/45">قيمة المخزون الحالية (بمتوسط التكلفة المرجح)</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{money(totalValue)} ج.م</p>
-        </div>
-      </Card>
+      {viewCost && (
+        <Card className="mb-7 flex items-center justify-between p-5 sm:p-6">
+          <div>
+            <p className="text-xs text-charcoal/45">قيمة المخزون الحالية (بمتوسط التكلفة المرجح)</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{money(totalValue)} ج.م</p>
+          </div>
+        </Card>
+      )}
 
       <DataTable<StockRow>
         rows={rows.filter((r) => r.quantity !== 0)}
@@ -54,8 +63,12 @@ export default async function InventoryPage() {
           { header: "المنتج", render: (r) => r.products?.name ?? "—" },
           { header: "المخزن", render: (r) => r.warehouses?.name ?? "—" },
           { header: "الكمية", render: (r) => <span dir="ltr">{r.quantity} {r.products?.unit ?? ""}</span> },
-          { header: "متوسط التكلفة", render: (r) => <span dir="ltr">{money(r.avg_cost)} ج.م</span> },
-          { header: "القيمة", render: (r) => <span dir="ltr">{money(r.quantity * r.avg_cost)} ج.م</span> },
+          ...(viewCost
+            ? [
+                { header: "متوسط التكلفة", render: (r: StockRow) => <span dir="ltr">{money(r.avg_cost)} ج.م</span> },
+                { header: "القيمة", render: (r: StockRow) => <span dir="ltr">{money(r.quantity * r.avg_cost)} ج.م</span> },
+              ]
+            : []),
         ]}
       />
     </div>

@@ -22,7 +22,7 @@ type ProductRow = {
 
 type Category = { id: string; name: string };
 
-export function ProductsTable({ products, categories }: { products: ProductRow[]; categories: Category[] }) {
+export function ProductsTable({ products, categories, canViewCost, canEditCost }: { products: ProductRow[]; categories: Category[]; canViewCost: boolean; canEditCost: boolean }) {
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -92,9 +92,9 @@ export function ProductsTable({ products, categories }: { products: ProductRow[]
               <Input name="new_category" placeholder="اتركه فارغًا للإبقاء على التصنيف الحالي" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="التكلفة">
-                <Input name="cost" type="number" step="0.01" dir="ltr" defaultValue={editingPrice?.cost ?? 0} />
-              </Field>
+              {canViewCost && (<Field label="التكلفة">
+                <Input name="cost" type="number" step="0.01" dir="ltr" readOnly={!canEditCost} defaultValue={editingPrice?.cost ?? 0} />
+              </Field>)}
               <Field label="سعر البيع (تجزئة)">
                 <Input name="selling_price" type="number" step="0.01" dir="ltr" defaultValue={editingPrice?.selling_price ?? 0} />
               </Field>

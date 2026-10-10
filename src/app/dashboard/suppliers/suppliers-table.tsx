@@ -16,7 +16,7 @@ function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function SuppliersTable({ suppliers, balances }: { suppliers: Supplier[]; balances: SupplierBalance[] }) {
+export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppliers: Supplier[]; balances: SupplierBalance[]; canViewBalance: boolean }) {
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -47,17 +47,21 @@ export function SuppliersTable({ suppliers, balances }: { suppliers: Supplier[];
         columns={[
           { header: "الاسم", render: (s) => s.name },
           { header: "الهاتف", render: (s) => <span dir="ltr">{s.phone ?? "—"}</span> },
-          {
-            header: "الرصيد المستحق",
-            render: (s) => {
-              const bal = balanceOf(s.id);
-              return (
-                <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
-                  {money(bal)} ج.م
-                </span>
-              );
-            },
-          },
+          ...(canViewBalance
+            ? [
+                {
+                  header: "الرصيد المستحق",
+                  render: (s: Supplier) => {
+                    const bal = balanceOf(s.id);
+                    return (
+                      <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
+                        {money(bal)} ج.م
+                      </span>
+                    );
+                  },
+                },
+              ]
+            : []),
           {
             header: "",
             render: (s) => (
@@ -86,9 +90,11 @@ export function SuppliersTable({ suppliers, balances }: { suppliers: Supplier[];
             <Field label="رقم الهاتف">
               <Input name="phone" dir="ltr" defaultValue={editing.phone ?? ""} />
             </Field>
-            <Field label="الرصيد الافتتاحي">
-              <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
-            </Field>
+            {canViewBalance && (
+              <Field label="الرصيد الافتتاحي">
+                <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
+              </Field>
+            )}
             <Button type="submit" className="w-full">
               حفظ التعديلات
             </Button>

@@ -34,7 +34,7 @@ export type PricingPreviewInput = {
 // Same engine the invoice RPCs use (`_pricing`), so the screen shows exactly
 // what will be posted: tier reached, whether the immediate-payment discount applies, bonus.
 export async function previewPricing(input: PricingPreviewInput): Promise<{ preview: PricingPreview | null; error: string | null }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

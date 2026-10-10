@@ -34,7 +34,8 @@ const GROUP_OPTIONS = [
   { value: "representative", label: "حسب المندوب" },
 ];
 
-export default async function SalesReportPage({ searchParams }: { searchParams: { period?: string; group?: string } }) {
+export default async function SalesReportPage(props: { searchParams: Promise<{ period?: string; group?: string }> }) {
+  const searchParams = await props.searchParams;
   const period = (searchParams.period === "year" || searchParams.period === "all" ? searchParams.period : "month") as ReportPeriod;
   const group = ["date", "invoice", "customer", "product", "representative"].includes(searchParams.group ?? "") ? (searchParams.group as string) : "date";
   const { from, to } = periodRange(period);

@@ -35,7 +35,7 @@ function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function CustomersTable({ customers, balances, reps }: { customers: Customer[]; balances: CustomerBalance[]; reps: { id: string; name: string }[] }) {
+export function CustomersTable({ customers, balances, reps, canViewBalance, canAssignRep }: { customers: Customer[]; balances: CustomerBalance[]; reps: { id: string; name: string }[]; canViewBalance: boolean; canAssignRep: boolean }) {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -77,17 +77,21 @@ export function CustomersTable({ customers, balances, reps }: { customers: Custo
               </span>
             ),
           },
-          {
-            header: "الرصيد المستحق",
-            render: (c) => {
-              const bal = balanceOf(c.id);
-              return (
-                <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
-                  {money(bal)} ج.م
-                </span>
-              );
-            },
-          },
+          ...(canViewBalance
+            ? [
+                {
+                  header: "الرصيد المستحق",
+                  render: (c: Customer) => {
+                    const bal = balanceOf(c.id);
+                    return (
+                      <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
+                        {money(bal)} ج.م
+                      </span>
+                    );
+                  },
+                },
+              ]
+            : []),
           {
             header: "",
             render: (c) => (
@@ -122,14 +126,16 @@ export function CustomersTable({ customers, balances, reps }: { customers: Custo
             <Field label="مستوى السعر">
               <ModernSelect name="price_tier" defaultValue={editing.price_tier} allowClear={false} options={PRICE_TIER_OPTIONS} />
             </Field>
-            {reps.length > 0 && (
+            {canAssignRep && reps.length > 0 && (
               <Field label="المندوب المسؤول">
                 <ModernSelect name="sales_rep_id" defaultValue={editing.sales_rep_id ?? ""} placeholder="بدون مندوب" clearLabel="بدون مندوب" options={reps.map((r) => ({ value: r.id, label: r.name }))} />
               </Field>
             )}
-            <Field label="الرصيد الافتتاحي">
-              <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
-            </Field>
+            {canViewBalance && (
+              <Field label="الرصيد الافتتاحي">
+                <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
+              </Field>
+            )}
             <Button type="submit" className="w-full">
               حفظ التعديلات
             </Button>

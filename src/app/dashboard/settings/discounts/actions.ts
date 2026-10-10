@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 async function getOrg() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { supabase, orgId: null as string | null };
-  const { data } = await supabase.from("organization_users").select("organization_id").eq("user_id", user.id).eq("status", "active").maybeSingle();
+  const { data } = await supabase.from("organization_users").select("organization_id").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: true }).limit(1).maybeSingle();
   return { supabase, orgId: (data?.organization_id as string | undefined) ?? null };
 }
 

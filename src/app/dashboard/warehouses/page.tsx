@@ -9,7 +9,7 @@ import { WarehousesTable } from "./warehouses-table";
 type Warehouse = { id: string; name: string; location: string | null };
 
 export default async function WarehousesPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: warehouses } = await supabase
     .from("warehouses")
     .select("id, name, location")

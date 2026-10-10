@@ -1,7 +1,8 @@
 import { getReportContext } from "@/lib/report-context";
 import { BackLink, InvoiceList, PaymentsReturnsNotes, Section, Stat, money, type AnalysisInvoice } from "../../party-analysis";
 
-export default async function SupplierAnalysisPage({ params }: { params: { id: string } }) {
+export default async function SupplierAnalysisPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { supabase, orgId } = await getReportContext();
   if (!orgId) return null;
   const { data, error } = await supabase.rpc("report_supplier_analysis", { org_id: orgId, p_supplier_id: params.id });

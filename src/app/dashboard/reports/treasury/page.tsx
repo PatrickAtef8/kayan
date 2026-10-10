@@ -34,7 +34,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   purchase_return: "استرجاع نقدي (مرتجع شراء)",
 };
 
-export default async function TreasuryReportPage({ searchParams }: { searchParams: { period?: string } }) {
+export default async function TreasuryReportPage(props: { searchParams: Promise<{ period?: string }> }) {
+  const searchParams = await props.searchParams;
   const period = (searchParams.period === "year" || searchParams.period === "all" ? searchParams.period : "month") as ReportPeriod;
   const { from, to } = periodRange(period);
 

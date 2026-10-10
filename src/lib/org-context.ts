@@ -13,14 +13,14 @@ export const getSupabase = cache(() => createClient());
 export const getCurrentUser = cache(async () => {
   const {
     data: { user },
-  } = await getSupabase().auth.getUser();
+  } = await (await getSupabase()).auth.getUser();
   return user;
 });
 
 export const getMembership = cache(async () => {
   const user = await getCurrentUser();
   if (!user) return null;
-  const { data, error } = await getSupabase()
+  const { data, error } = await (await getSupabase())
     .from("organization_users")
     .select("organization_id, roles(name)")
     .eq("user_id", user.id)
@@ -47,6 +47,6 @@ export const NO_ORG_ID = "00000000-0000-0000-0000-000000000000";
 export const isRestrictedRep = cache(async () => {
   const membership = await getMembership();
   if (!membership) return false;
-  const { data } = await getSupabase().rpc("is_restricted_rep", { target_org: membership.organization_id });
+  const { data } = await (await getSupabase()).rpc("is_restricted_rep", { target_org: membership.organization_id });
   return !!data;
 });

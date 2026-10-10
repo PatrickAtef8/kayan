@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getMembership } from "@/lib/org-context";
+import { canViewCost, getProductCosts } from "@/lib/costs";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBox } from "@/components/ui/search-box";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
@@ -29,8 +31,11 @@ export type PurchaseInvoiceRow = {
   purchase_invoice_items: { quantity: number; bonus_quantity: number; is_bonus: boolean; unit_cost: number; net_total: number; effective_unit_cost: number; line_total: number; products: { name: string } | null }[];
 };
 
-export default async function PurchasesPage({ searchParams }: { searchParams: { q?: string; from?: string; to?: string; page?: string } }) {
-  const supabase = createClient();
+export default async function PurchasesPage(
+  props: { searchParams: Promise<{ q?: string; from?: string; to?: string; page?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const supabase = await createClient();
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
   const from = searchParams.from || undefined;
@@ -51,15 +56,19 @@ export default async function PurchasesPage({ searchParams }: { searchParams: { 
   const [{ data: suppliers }, { data: warehouses }, { data: products }, { data: invoices, count }] = await Promise.all([
     supabase.from("suppliers").select("id, name").order("name"),
     supabase.from("warehouses").select("id, name").order("name"),
-    supabase.from("products").select("id, name, unit, product_prices(cost)").order("name"),
+    supabase.from("products").select("id, name, unit").order("name"),
     invoicesQuery,
   ]);
 
+  // the default unit cost comes from the protected cost table; roles that may not read it simply start from 0
+  const membership = await getMembership();
+  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
+  const costMap = viewCost ? await getProductCosts(supabase, (products ?? []).map((p) => p.id as string)) : new Map<string, number>();
   const productOptions: ProductOption[] = (products ?? []).map((p) => ({
     id: p.id,
     name: p.name,
     unit: p.unit,
-    cost: Array.isArray(p.product_prices) && p.product_prices[0] ? p.product_prices[0].cost : 0,
+    cost: costMap.get(p.id as string) ?? 0,
   }));
 
   return (

@@ -5,7 +5,7 @@ import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createWarehouse(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -34,7 +34,7 @@ export async function createWarehouse(formData: FormData) {
 }
 
 export async function updateWarehouse(id: string, formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -52,7 +52,7 @@ export async function updateWarehouse(id: string, formData: FormData) {
 }
 
 export async function deleteWarehouse(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

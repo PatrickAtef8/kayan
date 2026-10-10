@@ -8,6 +8,7 @@ const TABS = [
   { href: "/dashboard/settings/general", label: "عام" },
   { href: "/dashboard/settings/modules", label: "الوحدات" },
   { href: "/dashboard/settings/discounts", label: "خصومات الشرائح" },
+  { href: "/dashboard/settings/limits", label: "حدود الخصم" },
   { href: "/dashboard/settings/team", label: "الفريق" },
   { href: "/dashboard/settings/audit", label: "سجل العمليات" },
 ];

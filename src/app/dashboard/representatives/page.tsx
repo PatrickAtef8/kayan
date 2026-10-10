@@ -25,7 +25,7 @@ export type Representative = {
 export type MemberOption = { value: string; label: string };
 
 export default async function RepresentativesPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: reps } = await supabase
     .from("sales_representatives")
     .select("id, name, phone, fixed_salary, transportation_allowance, commission_basis, commission_rate, is_active, monthly_target, min_target_for_commission, user_id")
