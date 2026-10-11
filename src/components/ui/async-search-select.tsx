@@ -39,10 +39,16 @@ export function AsyncSearchSelect({
   }, []);
 
   // Fetch when opened (empty query = most recent) and, debounced, as the user types.
+  const fetchKey = open ? query : null;
+  const [prevFetchKey, setPrevFetchKey] = useState<string | null>(null);
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    if (fetchKey !== null) setLoading(true);
+  }
+
   useEffect(() => {
     if (!open) return;
     const id = ++requestId.current;
-    setLoading(true);
     const handle = setTimeout(
       async () => {
         try {

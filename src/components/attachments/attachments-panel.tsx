@@ -30,20 +30,35 @@ export function AttachmentsPanel({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function refresh() {
-    setLoading(true);
-    const { data } = await supabase
+  function queryAttachments() {
+    return supabase
       .from("attachments")
       .select("id, storage_path, file_name, file_size, created_at")
       .eq("entity_type", entityType)
       .eq("entity_id", entityId)
       .order("created_at", { ascending: false });
+  }
+
+  async function refresh() {
+    setLoading(true);
+    const { data } = await queryAttachments();
     setAttachments(data ?? []);
     setLoading(false);
   }
 
+  // A different record starts a new load: raise the flag while rendering, not inside the effect.
+  const recordKey = `${entityType}:${entityId}`;
+  const [prevRecordKey, setPrevRecordKey] = useState(recordKey);
+  if (recordKey !== prevRecordKey) {
+    setPrevRecordKey(recordKey);
+    setLoading(true);
+  }
+
   useEffect(() => {
-    refresh();
+    queryAttachments().then(({ data }) => {
+      setAttachments(data ?? []);
+      setLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityType, entityId]);
 

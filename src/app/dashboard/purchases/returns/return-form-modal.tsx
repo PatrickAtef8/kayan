@@ -30,10 +30,19 @@ export function ReturnFormModal({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Entering "open for this invoice" starts a load: raise the flag while rendering, not inside the effect.
+  const fetchKey = open ? purchaseInvoiceId : null;
+  const [prevFetchKey, setPrevFetchKey] = useState<string | null>(null);
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    if (fetchKey) {
+      setLoading(true);
+      setError(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    setError(null);
     getReturnablePurchaseItems(purchaseInvoiceId).then((result) => {
       if (result.error) {
         setError(result.error);

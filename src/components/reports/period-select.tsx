@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { startNavigation } from "@/lib/navigation-state";
 import { ModernSelect } from "@/components/ui/select";
@@ -14,7 +14,11 @@ export function PeriodSelect({ period }: { period: ReportPeriod }) {
   const searchParams = useSearchParams();
   // Show the chosen period immediately; the server value catches up when the report arrives.
   const [selected, setSelected] = useState<string>(period);
-  useEffect(() => setSelected(period), [period]);
+  const [prevPeriod, setPrevPeriod] = useState<string>(period);
+  if (period !== prevPeriod) {
+    setPrevPeriod(period);
+    setSelected(period);
+  }
 
   function setPeriod(value: string) {
     setSelected(value);

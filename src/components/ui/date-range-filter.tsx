@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { startNavigation } from "@/lib/navigation-state";
 
@@ -10,7 +10,11 @@ export function DateRangeFilter({ from, to }: { from?: string; to?: string }) {
   const searchParams = useSearchParams();
   // Show the picked date immediately; the server value catches up when the page arrives.
   const [values, setValues] = useState({ from: from ?? "", to: to ?? "" });
-  useEffect(() => setValues({ from: from ?? "", to: to ?? "" }), [from, to]);
+  const [prevRange, setPrevRange] = useState({ from, to });
+  if (from !== prevRange.from || to !== prevRange.to) {
+    setPrevRange({ from, to });
+    setValues({ from: from ?? "", to: to ?? "" });
+  }
 
   function setParam(key: "from" | "to", value: string) {
     setValues((current) => ({ ...current, [key]: value }));

@@ -47,12 +47,17 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
     return () => document.removeEventListener("mousedown", onOutside);
   }, []);
 
+  // Typing a searchable query starts a load: raise the flag while rendering, not inside the effect.
+  const searchable = query.trim().length >= 2;
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
+    setLoading(searchable);
+  }
+  const shownResults = searchable ? results : [];
+
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    setLoading(true);
+    if (!searchable) return;
     const handle = setTimeout(async () => {
       // Loaded on first use so the Supabase browser client (~65 kB gzipped)
       // is not part of every dashboard page's initial JavaScript.
@@ -96,11 +101,11 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
         <div className="absolute right-0 z-30 mt-2 w-full overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)]">
           {loading ? (
             <div className="px-4 py-6 text-center text-xs text-charcoal/40">جارٍ البحث...</div>
-          ) : results.length === 0 ? (
+          ) : shownResults.length === 0 ? (
             <div className="px-4 py-6 text-center text-xs text-charcoal/40">لا توجد نتائج لـ &quot;{query}&quot;</div>
           ) : (
             <div className="max-h-96 overflow-y-auto">
-              {results.map((row) => (
+              {shownResults.map((row) => (
                 <button
                   key={`${row.entity_type}-${row.entity_id}`}
                   onClick={() => go(row)}

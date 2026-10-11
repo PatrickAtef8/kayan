@@ -22,6 +22,17 @@ export function NavigationProgress() {
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
   const wasActive = useRef(false);
+  // Bar start/finish follow the navigation store's active flag: adjust while rendering, not inside the effect.
+  const [prevActive, setPrevActive] = useState(state.active);
+  if (state.active !== prevActive) {
+    setPrevActive(state.active);
+    if (state.active) {
+      setVisible(true);
+      setProgress(12);
+    } else {
+      setProgress(100);
+    }
+  }
 
   // Any plain internal link click starts feedback immediately.
   useEffect(() => {
@@ -52,8 +63,6 @@ export function NavigationProgress() {
   useEffect(() => {
     if (state.active) {
       wasActive.current = true;
-      setVisible(true);
-      setProgress(12);
       const interval = setInterval(() => setProgress((p) => p + (90 - p) * 0.12), 180);
       document.documentElement.dataset.navigating = "true";
       return () => clearInterval(interval);
@@ -61,7 +70,6 @@ export function NavigationProgress() {
     delete document.documentElement.dataset.navigating;
     if (!wasActive.current) return;
     wasActive.current = false;
-    setProgress(100);
     const timer = setTimeout(() => {
       setVisible(false);
       setProgress(0);
