@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Undo2 } from "lucide-react";
+import { Eye, HandCoins, Undo2 } from "lucide-react";
+import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { COMMISSION_BASIS_LABELS } from "../representatives/commission-basis";
 import { ReturnFormModal } from "./returns/return-form-modal";
+import { PaymentModal } from "./payment-modal";
 import type { SalesInvoiceRow } from "./page";
 
 const STATUS_LABEL: Record<SalesInvoiceRow["payment_status"], string> = {
@@ -19,13 +21,17 @@ const STATUS_CLASS: Record<SalesInvoiceRow["payment_status"], string> = {
   unpaid: "bg-rose/10 text-rose",
 };
 
-function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+function money(n: number | null | undefined) {
+  return Number(n ?? 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function SalesTable({ invoices, canViewFinancial }: { invoices: SalesInvoiceRow[]; canViewFinancial: boolean }) {
-  const [viewing, setViewing] = useState<SalesInvoiceRow | null>(null);
+export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoices: SalesInvoiceRow[]; canViewFinancial: boolean; canCollect: boolean }) {
+  // keep ids, not row copies: after a payment the page data refreshes and the open details follow it
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [returning, setReturning] = useState<SalesInvoiceRow | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const viewing = invoices.find((inv) => inv.id === viewingId) ?? null;
+  const paying = invoices.find((inv) => inv.id === payingId) ?? null;
 
   return (
     <>
@@ -52,6 +58,14 @@ export function SalesTable({ invoices, canViewFinancial }: { invoices: SalesInvo
                 },
               ]
             : []),
+          { header: "المدفوع", render: (inv) => <span dir="ltr">{money(inv.amount_paid)} ج.م</span> },
+          {
+            header: "المتبقي",
+            render: (inv) => (
+              <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}>{money(inv.remaining)} ج.م</span>
+            ),
+          },
+          { header: "الصرف", render: (inv) => <FulfilmentBadge kind="sales" status={inv.dispatch_status} at={inv.dispatched_at} /> },
           {
             header: "الحالة",
             render: (inv) => (
@@ -62,8 +76,15 @@ export function SalesTable({ invoices, canViewFinancial }: { invoices: SalesInvo
             header: "",
             render: (inv) => (
               <div className="flex items-center gap-1">
-                <button onClick={() => setViewing(inv)} className="rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="عرض التفاصيل">
-                  <Eye size={16} strokeWidth={2} />
+                {canCollect && inv.remaining > 0 && (
+                  <button onClick={() => setPayingId(inv.id)} className="flex items-center gap-1 whitespace-nowrap rounded-card px-2 py-1.5 text-xs text-sage hover:bg-sageSoft/30">
+                    <HandCoins size={15} strokeWidth={2} />
+                    تسجيل دفعة
+                  </button>
+                )}
+                <button onClick={() => setViewingId(inv.id)} className="flex items-center gap-1 whitespace-nowrap rounded-card px-2 py-1.5 text-xs text-ink/55 hover:bg-paper hover:text-ink">
+                  <Eye size={15} strokeWidth={2} />
+                  عرض التفاصيل
                 </button>
                 <button onClick={() => setReturning(inv)} className="rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="تسجيل مرتجع">
                   <Undo2 size={16} strokeWidth={2} />
@@ -83,9 +104,21 @@ export function SalesTable({ invoices, canViewFinancial }: { invoices: SalesInvo
         />
       )}
 
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title="تفاصيل الفاتورة">
+      {paying && (
+        <PaymentModal
+          onClose={() => setPayingId(null)}
+          salesInvoiceId={paying.id}
+          invoiceLabel={paying.invoice_number ?? paying.invoice_date}
+          customerName={paying.customers?.name ?? "—"}
+          total={paying.total}
+          paid={paying.amount_paid}
+          remaining={paying.remaining}
+        />
+      )}
+
+      <Modal open={!!viewing} onClose={() => setViewingId(null)} title="تفاصيل الفاتورة">
         {viewing && (
-          <div className="space-y-3">
+          <div className="max-h-[75vh] space-y-3 overflow-y-auto">
             <div className="flex items-center justify-between text-xs text-charcoal/50">
               <span>{viewing.customers?.name ?? "—"}</span>
               <span dir="ltr">{viewing.invoice_date}</span>
@@ -181,6 +214,69 @@ export function SalesTable({ invoices, canViewFinancial }: { invoices: SalesInvo
                   </span>
                   <span dir="ltr">{money(viewing.commission_amount)} ج.م</span>
                 </div>
+              )}
+            </div>
+
+            <div className="space-y-2 border-t border-borderSoft pt-3">
+              <div className="flex items-center justify-between text-sm font-medium text-charcoal">
+                <span>سجل الدفعات</span>
+                <span className={`rounded-full px-2.5 py-1 text-[0.6875rem] font-medium ${STATUS_CLASS[viewing.payment_status]}`}>{STATUS_LABEL[viewing.payment_status]}</span>
+              </div>
+              {viewing.payments.length === 0 ? (
+                <p className="text-xs text-charcoal/45">لا توجد دفعات مسجلة على هذه الفاتورة.</p>
+              ) : (
+                <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
+                  {viewing.payments.map((p) => (
+                    <div key={p.id} className="px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-charcoal/60" dir="ltr">{p.collection_date}</span>
+                        <span className="font-medium text-charcoal" dir="ltr">{money(p.amount)} ج.م</span>
+                      </div>
+                      {(p.payment_method || p.notes) && (
+                        <div className="mt-0.5 text-[0.6875rem] text-charcoal/40">{[p.payment_method, p.notes].filter(Boolean).join(" — ")}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-1.5 pt-1 text-sm">
+                <div className="flex items-center justify-between text-charcoal/50">
+                  <span>إجمالي الفاتورة</span>
+                  <span dir="ltr">{money(viewing.total)} ج.م</span>
+                </div>
+                {viewing.returns_total > 0 && (
+                  <div className="flex items-center justify-between text-charcoal/50">
+                    <span>مرتجعات</span>
+                    <span dir="ltr">− {money(viewing.returns_total)} ج.م</span>
+                  </div>
+                )}
+                {viewing.cash_refunded > 0 && (
+                  <div className="flex items-center justify-between text-charcoal/50">
+                    <span>مبالغ استُرجعت نقدًا للعميل</span>
+                    <span dir="ltr">+ {money(viewing.cash_refunded)} ج.م</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-charcoal/50">
+                  <span>إجمالي المدفوع</span>
+                  <span dir="ltr" className="text-sage">{money(viewing.amount_paid)} ج.م</span>
+                </div>
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="text-charcoal">المتبقي</span>
+                  <span dir="ltr" className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
+                    {viewing.remaining > 0 ? `${money(viewing.remaining)} ج.م` : "لا يوجد مبلغ متبقي"}
+                  </span>
+                </div>
+              </div>
+              {canCollect && viewing.remaining > 0 && (
+                <button
+                  onClick={() => {
+                    setViewingId(null);
+                    setPayingId(viewing.id);
+                  }}
+                  className="mt-1 w-full rounded-xl border border-borderSoft py-2 text-sm text-sage hover:border-sage hover:bg-sageSoft/30"
+                >
+                  تسجيل دفعة جديدة
+                </button>
               )}
             </div>
           </div>

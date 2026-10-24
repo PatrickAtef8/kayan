@@ -7,7 +7,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Spinner } from "@/components/ui/spinner";
 import { ModernSelect } from "@/components/ui/select";
 import { updateRepresentative, deleteRepresentative, toggleRepresentativeActive } from "./actions";
@@ -18,7 +18,7 @@ function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function RepresentativesTable({ representatives, members }: { representatives: Representative[]; members: MemberOption[] }) {
+export function RepresentativesTable({ representatives, members, membersNote }: { representatives: Representative[]; members: MemberOption[]; membersNote?: string | null }) {
   const [editing, setEditing] = useState<Representative | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function RepresentativesTable({ representatives, members }: { representat
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات المندوب">
         {editing && (
-          <form action={updateRepresentative.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updateRepresentative.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم المندوب">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
@@ -108,14 +108,13 @@ export function RepresentativesTable({ representatives, members }: { representat
             </Field>
             <Field label="مستخدم النظام (دخول المندوب)">
               <ModernSelect name="user_id" defaultValue={editing.user_id ?? ""} placeholder="بدون" clearLabel="بدون" options={members} />
+              {membersNote && <p className="mt-1.5 text-xs text-rose">{membersNote}</p>}
             </Field>
             <Field label="أساس احتساب العمولة">
               <ModernSelect name="commission_basis" allowClear={false} defaultValue={editing.commission_basis} options={COMMISSION_BASIS_OPTIONS} />
             </Field>
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 

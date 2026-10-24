@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { createPartner } from "./actions";
 import { PartnersTable } from "./partners-table";
 
@@ -31,7 +31,7 @@ export default async function PartnersPage() {
       <PageHeader title="الشركاء" />
 
       <Card className="mb-7 p-5 sm:p-6">
-        <form action={createPartner} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ActionForm action={createPartner} successText="تمت إضافة الشريك بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="اسم الشريك">
             <Input name="name" required placeholder="مثال: أحمد محمد" />
           </Field>
@@ -39,9 +39,9 @@ export default async function PartnersPage() {
             <Input name="phone" dir="ltr" placeholder="اختياري" />
           </Field>
           <div className="self-end">
-            <Button type="submit">إضافة شريك</Button>
+            <SubmitButton pendingText="جارٍ إضافة الشريك...">إضافة شريك</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <div className="mb-4 text-xs font-medium text-charcoal/40">الشركاء</div>

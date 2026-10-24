@@ -3,14 +3,23 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
+
+// Default payment terms in days (optional, 0-365): new purchase invoices get their due date from it.
+function readTerms(formData: FormData): number | null {
+  const raw = String(formData.get("payment_terms_days") || "").trim();
+  if (!raw) return null;
+  const n = Math.round(Number(raw));
+  return Number.isFinite(n) ? Math.min(365, Math.max(0, n)) : null;
+}
 
 export async function createSupplier(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: AUTH_ERROR };
 
   const { data: membership } = await supabase
     .from("organization_users")
@@ -20,27 +29,32 @@ export async function createSupplier(formData: FormData) {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
-  const { data: created } = await supabase
+  const { data: created, error } = await supabase
     .from("suppliers")
     .insert({
       organization_id: membership.organization_id,
       name,
       phone: String(formData.get("phone") || "") || null,
+      payment_terms_days: readTerms(formData),
     })
     .select("id")
     .single();
 
+  if (error || !created) return { error: translateDbError(error, "suppliers") };
+
   const opening = Number(formData.get("opening_balance") || 0);
   if (created && formData.has("opening_balance") && opening !== 0) {
-    await setOpeningBalance(supabase, "supplier", created.id, opening);
+    const ob = await setOpeningBalance(supabase, "supplier", created.id, opening);
+    if (ob.error) return { error: `أُضيف المورد لكن تعذّر حفظ الرصيد الافتتاحي: ${ob.error}` };
   }
 
   revalidatePath("/dashboard/suppliers");
+  return { error: null };
 }
 
 export async function updateSupplier(id: string, formData: FormData) {
@@ -48,24 +62,28 @@ export async function updateSupplier(id: string, formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
-  await supabase
+  const { error } = await supabase
     .from("suppliers")
     .update({
       name,
       phone: String(formData.get("phone") || "") || null,
+      payment_terms_days: readTerms(formData),
     })
     .eq("id", id);
+  if (error) return { error: translateDbError(error, "suppliers") };
 
   if (formData.has("opening_balance")) {
-    await setOpeningBalance(supabase, "supplier", id, Number(formData.get("opening_balance") || 0));
+    const ob = await setOpeningBalance(supabase, "supplier", id, Number(formData.get("opening_balance") || 0));
+    if (ob.error) return { error: ob.error };
   }
 
   revalidatePath("/dashboard/suppliers");
+  return { error: null };
 }
 
 export async function deleteSupplier(id: string) {

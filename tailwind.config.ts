@@ -26,6 +26,14 @@ const config: Config = {
       borderRadius: {
         card: "0.625rem",
       },
+      keyframes: {
+        "auth-rise": { "0%": { opacity: "0", transform: "translateY(10px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
+        "auth-shake": { "0%,100%": { transform: "translateX(0)" }, "25%": { transform: "translateX(-4px)" }, "75%": { transform: "translateX(4px)" } },
+      },
+      animation: {
+        "auth-rise": "auth-rise 0.45s cubic-bezier(0.22,1,0.36,1) both",
+        "auth-shake": "auth-shake 0.28s ease-in-out",
+      },
     },
   },
   plugins: [],

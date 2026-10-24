@@ -1,4 +1,7 @@
-import type { Period } from "./page";
+import type { PeriodSel } from "@/lib/report-period";
+import { SalesTrendChart, type TrendPoint } from "./sales-trend-chart";
+
+export type { TrendPoint };
 
 export type BreakdownRow = {
   group_key: string;
@@ -10,7 +13,7 @@ export type BreakdownRow = {
 };
 
 export type DashboardAnalyticsData = {
-  trend: BreakdownRow[];
+  trend: TrendPoint[];
   products: BreakdownRow[];
   customers: BreakdownRow[];
   representatives: BreakdownRow[];
@@ -21,60 +24,20 @@ function money(n: number) {
 }
 
 // §42: sales/profit chart, top products, top customers, rep performance.
-// Plain CSS/SVG-free bars on purpose — no charting dependency for what is
-// four small read-only visuals.
-export function DashboardAnalytics({ data, period, canViewFinancial }: { data: DashboardAnalyticsData; period: Period; canViewFinancial: boolean }) {
-  // Daily points for "this month", monthly points for year / all time —
-  // a year of daily bars is unreadable.
-  const buckets = new Map<string, { sales: number; profit: number }>();
-  for (const row of data.trend) {
-    if (!row.ref_date) continue;
-    const key = period === "month" ? row.ref_date : row.ref_date.slice(0, 7);
-    const b = buckets.get(key) ?? { sales: 0, profit: 0 };
-    b.sales += Number(row.net_sales);
-    b.profit += Number(row.gross_profit ?? 0);
-    buckets.set(key, b);
-  }
-  const points = Array.from(buckets.entries()).sort(([a], [b]) => a.localeCompare(b));
-  const max = Math.max(1, ...points.map(([, v]) => Math.max(v.sales, canViewFinancial ? v.profit : 0)));
-
-  if (points.length === 0 && data.products.length === 0) return null;
+// No charting dependency on purpose: the trend is a small HTML/SVG chart (sales-trend-chart.tsx) fed by
+// dashboard_sales_trend (0055), and the three ranking cards are plain CSS bars.
+export function DashboardAnalytics({ data, period, canViewFinancial }: { data: DashboardAnalyticsData; period: PeriodSel; canViewFinancial: boolean }) {
+  if (data.trend.length === 0 && data.products.length === 0) return null;
 
   return (
     <div className="mt-10 space-y-6 border-t border-borderSoft pt-8">
       <div>
-        <p className="text-xs font-medium text-charcoal/40">أداء المبيعات</p>
-        <h2 className="mt-1 text-xl font-semibold text-charcoal">{period === "month" ? "المبيعات اليومية" : "المبيعات الشهرية"}</h2>
+        <p className="text-xs font-medium text-charcoal/40">أداء المبيعات · {period.title}</p>
+        <h2 className="mt-1 text-xl font-semibold text-charcoal">{period.kind === "month" ? "المبيعات والأرباح اليومية" : "المبيعات والأرباح الشهرية"}</h2>
       </div>
 
       <div className="rounded-2xl border border-borderSoft bg-white p-5">
-        {points.length === 0 ? (
-          <p className="py-10 text-center text-sm text-charcoal/40">لا توجد مبيعات في هذه الفترة</p>
-        ) : (
-          <>
-            <div className="flex h-44 items-end gap-1 overflow-x-auto" dir="ltr">
-              {points.map(([key, v]) => (
-                <div key={key} className="flex min-w-[1.25rem] flex-1 flex-col items-center gap-1" title={`${key} — مبيعات: ${money(v.sales)}${canViewFinancial ? ` — ربح: ${money(v.profit)}` : ""}`}>
-                  <div className="flex h-36 w-full items-end justify-center gap-0.5">
-                    <div className="w-full max-w-[0.9rem] rounded-t bg-sage" style={{ height: `${Math.max(2, (v.sales / max) * 100)}%` }} />
-                    {canViewFinancial && <div className="w-full max-w-[0.9rem] rounded-t bg-brass/70" style={{ height: `${Math.max(2, (Math.max(v.profit, 0) / max) * 100)}%` }} />}
-                  </div>
-                  <span className="text-[0.625rem] text-charcoal/40">{period === "month" ? key.slice(8) : key.slice(2)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center gap-4 text-[0.6875rem] text-charcoal/50">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-sage" /> صافي المبيعات
-              </span>
-              {canViewFinancial && (
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm bg-brass/70" /> إجمالي الربح
-                </span>
-              )}
-            </div>
-          </>
-        )}
+        <SalesTrendChart points={data.trend} bucket={period.kind === "month" ? "day" : "month"} canViewFinancial={canViewFinancial} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -1,9 +1,10 @@
 import { getReportContext } from "@/lib/report-context";
+import { getRoleKey } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { PeriodSelect } from "@/components/reports/period-select";
 import { ExportButtons } from "@/components/ui/export-buttons";
-import { periodRange, type ReportPeriod } from "@/lib/report-period";
+import { periodQuery, resolvePeriod } from "@/lib/report-period";
 
 function money(n: number | null) {
   if (n === null || n === undefined) return "—";
@@ -34,11 +35,13 @@ const GROUP_OPTIONS = [
   { value: "representative", label: "حسب المندوب" },
 ];
 
-export default async function SalesReportPage(props: { searchParams: Promise<{ period?: string; group?: string }> }) {
+export default async function SalesReportPage(props: { searchParams: Promise<{ period?: string; m?: string; y?: string; group?: string }> }) {
   const searchParams = await props.searchParams;
-  const period = (searchParams.period === "year" || searchParams.period === "all" ? searchParams.period : "month") as ReportPeriod;
-  const group = ["date", "invoice", "customer", "product", "representative"].includes(searchParams.group ?? "") ? (searchParams.group as string) : "date";
-  const { from, to } = periodRange(period);
+  const period = resolvePeriod(searchParams); // any month / year / all time
+  const isRep = (await getRoleKey()) === "sales";
+  const groupOptions = isRep ? GROUP_OPTIONS.filter((g) => g.value !== "representative") : GROUP_OPTIONS;   // a rep only ever sees himself
+  const group = groupOptions.some((g) => g.value === searchParams.group) ? (searchParams.group as string) : "date";
+  const { from, to } = period;
 
   const { supabase, orgId, canViewFinancial, canExport } = await getReportContext();
   if (!orgId) return null;
@@ -83,7 +86,7 @@ export default async function SalesReportPage(props: { searchParams: Promise<{ p
         )}
       </div>
 
-      <GroupSwitcher group={group} period={period} />
+      <GroupSwitcher group={group} period={periodQuery(period)} options={groupOptions} />
 
       <DataTable<BreakdownRow>
         rows={breakdown}
@@ -128,13 +131,13 @@ function SummaryCard({ label, value, highlight }: { label: string; value: string
   );
 }
 
-function GroupSwitcher({ group, period }: { group: string; period: string }) {
+function GroupSwitcher({ group, period, options }: { group: string; period: string; options: typeof GROUP_OPTIONS }) {
   return (
     <div className="mb-3 flex flex-wrap gap-1.5">
-      {GROUP_OPTIONS.map((g) => (
+      {options.map((g) => (
         <a
           key={g.value}
-          href={`?group=${g.value}&period=${period}`}
+          href={`?group=${g.value}&${period}`}
           className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${g.value === group ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}
         >
           {g.label}

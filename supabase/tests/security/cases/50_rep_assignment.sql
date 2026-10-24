@@ -25,13 +25,13 @@ select lab.check('repassign','rep2: own customer allowed', lab.sale(:'rep2','RA-
 select lab.check('repassign','rep2: assigning to rep_a is REFUSED', lab.sale(:'rep2','RA-6',:'cust_b',100,0,0,:'rep_a') like 'denied%');
 
 -- unlinked sales user (no override)
-select lab.check('repassign','unlinked: keeps customer''s default rep -> allowed', lab.sale(:'plain','RA-7',:'cust_a',100)='ALLOWED');
+select lab.check('repassign','unlinked sales user (no rep record): cannot invoice at all', lab.sale(:'plain','RA-7',:'cust_a',100) like 'denied%');
 select lab.as_owner() \gset
-select lab.check('repassign','... default rep applied', (select sales_rep_id from sales_invoices where invoice_number='RA-7')=:'rep_a');
-select lab.check('repassign','unlinked: explicit rep equal to default -> allowed', lab.sale(:'plain','RA-8',:'cust_a',100,0,0,:'rep_a')='ALLOWED');
+select lab.check('repassign','... and no invoice was left behind', (select count(*) from sales_invoices where invoice_number='RA-7')=0);
+select lab.check('repassign','unlinked: explicit rep equal to default BLOCKED too', lab.sale(:'plain','RA-8',:'cust_a',100,0,0,:'rep_a') like 'denied%');
 select lab.check('repassign','unlinked: a DIFFERENT rep BLOCKED', lab.sale(:'plain','RA-9',:'cust_a',100,0,0,:'rep_b') like 'denied%');
 select lab.check('repassign','unlinked: rep on a customer with no rep BLOCKED', lab.sale(:'plain','RA-10',:'cust_n',100,0,0,:'rep_a') like 'denied%');
-select lab.check('repassign','unlinked: customer with no rep, no rep -> allowed', lab.sale(:'plain','RA-11',:'cust_n',100)='ALLOWED');
+select lab.check('repassign','unlinked: customer with no rep BLOCKED (no longer an open door)', lab.sale(:'plain','RA-11',:'cust_n',100) like 'denied%');
 
 -- override holders (owner/admin by default)
 select lab.check('repassign','admin (override by default) can assign any rep', lab.sale(:'admin','RA-12',:'cust_a',100,0,0,:'rep_b')='ALLOWED');
@@ -58,9 +58,9 @@ select lab.check('repassign','rep cannot hand their customer to another rep', la
 select lab.as_owner() \gset
 select lab.check('repassign','... customer still belongs to rep_a', (select sales_rep_id from customers where id=:'cust_a')=:'rep_a');
 select lab.as_user(:'plain') \gset
-select lab.check('repassign','unlinked user cannot assign a customer to a rep', lab.try(format($q$update customers set sales_rep_id=%L where id=%L$q$,:'rep_a',:'cust_n')) like 'denied%');
+select lab.check('repassign','unlinked user cannot assign a customer to a rep (the row is not even visible: 0 rows touched)', lab.val(format($q$with u as (update customers set sales_rep_id=%L where id=%L returning 1) select count(*) from u$q$,:'rep_a',:'cust_n'))='0');
 select lab.check('repassign','unlinked user cannot create a customer already assigned to a rep', lab.try(format($q$insert into customers(organization_id,name,sales_rep_id) values (%L,'RA-new-1',%L)$q$,:'org_a',:'rep_a')) like 'denied%');
-select lab.check('repassign','unlinked user can create a customer with no rep', lab.try(format($q$insert into customers(organization_id,name) values (%L,'RA-new-2')$q$,:'org_a'))='ALLOWED');
+select lab.check('repassign','unlinked user cannot create a customer either', lab.try(format($q$insert into customers(organization_id,name) values (%L,'RA-new-2')$q$,:'org_a')) like 'denied%');
 select lab.as_user(:'admin') \gset
 select lab.check('repassign','admin can reassign a customer', lab.val(format($q$with u as (update customers set sales_rep_id=%L where id=%L returning 1) select count(*) from u$q$,:'rep_b',:'cust_n'))='1');
 select lab.as_user(:'owner_a') \gset
@@ -70,8 +70,8 @@ select lab.try(format($q$insert into customers(organization_id,name) values (%L,
 select lab.try(format($q$insert into customers(organization_id,name,sales_rep_id) values (%L,'RA-new-rep2',%L)$q$,:'org_a',:'rep_b')) as ins2 \gset
 select lab.as_owner() \gset
 -- (separate statements: one SQL statement cannot see rows it inserted itself)
-select lab.check('repassign','rep creating a customer: allowed', :'ins1'='ALLOWED');
-select lab.check('repassign','... and the customer is assigned to the rep THEMSELVES', (select sales_rep_id from customers where name='RA-new-rep')=:'rep_a');
+select lab.check('repassign','rep creating a customer: BLOCKED (customers are created by the owner only)', :'ins1' like 'denied%');
+select lab.check('repassign','... and no customer row appeared', (select count(*) from customers where name='RA-new-rep')=0);
 select lab.check('repassign','rep cannot create a customer for another rep (refused, or forced to own rep)', :'ins2' like 'denied%' or (select sales_rep_id from customers where name='RA-new-rep2') is distinct from :'rep_b');
 select lab.check('repassign','... never ends up on rep_b', (select count(*) from customers where name='RA-new-rep2' and sales_rep_id=:'rep_b')=0);
 -- direct tampering with an existing invoice

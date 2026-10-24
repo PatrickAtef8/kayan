@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { saveRoleLimit, resetRoleLimit } from "./actions";
 import type { RoleRow, LimitRow } from "./page";
 
 // Built-in behaviour when an Owner/Admin has not configured a role yet.
-const isBuiltInUnlimited = (key: string | null) => key === "owner" || key === "admin";
+const isBuiltInUnlimited = (key: string | null) => key === "owner";
 
 function RoleLimitRow({ role, limit }: { role: RoleRow; limit?: LimitRow }) {
   const configured = !!limit;
@@ -52,7 +53,7 @@ function RoleLimitRow({ role, limit }: { role: RoleRow; limit?: LimitRow }) {
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
           {error && <span className="text-xs text-rose">{error}</span>}
-          <Button type="button" disabled={pending} onClick={() => run(() => saveRoleLimit({ roleId: role.id, unlimited, maxPct: pct, canGiveBonus: bonus }))}>حفظ</Button>
+          <Button type="button" disabled={pending} onClick={() => run(() => saveRoleLimit({ roleId: role.id, unlimited, maxPct: pct, canGiveBonus: bonus }))} className="inline-flex items-center gap-2">{pending && <Spinner size={14} />}{pending ? "جارٍ الحفظ..." : "حفظ"}</Button>
           {configured && (
             <button type="button" disabled={pending} onClick={() => run(() => resetRoleLimit(role.id))} className="text-xs text-charcoal/50 underline hover:text-charcoal">
               استعادة الافتراضي

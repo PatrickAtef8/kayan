@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { addPartyNote } from "./note-actions";
 
 export function NoteForm({ partyType, partyId, invoiceId, compact = false }: { partyType: "customer" | "supplier"; partyId: string; invoiceId?: string; compact?: boolean }) {
@@ -24,8 +25,10 @@ export function NoteForm({ partyType, partyId, invoiceId, compact = false }: { p
             else { setNote(""); setError(null); }
           })
         }
+        className="inline-flex items-center gap-2"
       >
-        إضافة ملاحظة
+        {pending && <Spinner size={14} />}
+        {pending ? "جارٍ إضافة الملاحظة..." : "إضافة ملاحظة"}
       </Button>
       {error && <span className="text-xs text-rose">{error}</span>}
     </div>

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
-import { isRestrictedRep } from "@/lib/org-context";
+import { getRoleKey } from "@/lib/org-context";
 
-export default async function ReportsIndexPage() {
-  redirect((await isRestrictedRep()) ? "/dashboard/reports/debts" : "/dashboard/reports/sales");
+export default async function ReportsIndex() {
+  const role = await getRoleKey();
+  redirect(role === "warehouse" ? "/dashboard/reports/inventory" : "/dashboard/reports/sales");
 }

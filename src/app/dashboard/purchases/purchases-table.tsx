@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, HandCoins } from "lucide-react";
+import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
+import { PaymentModal } from "./payment-modal";
 import type { PurchaseInvoiceRow } from "./page";
 
 const STATUS_LABEL: Record<PurchaseInvoiceRow["payment_status"], string> = {
@@ -21,8 +23,12 @@ function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function PurchasesTable({ invoices }: { invoices: PurchaseInvoiceRow[] }) {
-  const [viewing, setViewing] = useState<PurchaseInvoiceRow | null>(null);
+export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: PurchaseInvoiceRow[]; canPay: boolean; showPayments: boolean }) {
+  // keep ids, not row copies: after a payment the page data refreshes and the open details follow it
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const viewing = invoices.find((inv) => inv.id === viewingId) ?? null;
+  const paying = invoices.find((inv) => inv.id === payingId) ?? null;
 
   return (
     <>
@@ -37,6 +43,17 @@ export function PurchasesTable({ invoices }: { invoices: PurchaseInvoiceRow[] })
           { header: "المخزن", render: (inv) => inv.warehouses?.name ?? "—" },
           { header: "الإجمالي", render: (inv) => <span dir="ltr">{money(inv.total)} ج.م</span> },
           { header: "المدفوع", render: (inv) => <span dir="ltr">{money(inv.amount_paid)} ج.م</span> },
+          ...(showPayments
+            ? [
+                {
+                  header: "المتبقي",
+                  render: (inv: PurchaseInvoiceRow) => (
+                    <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}>{money(inv.remaining)} ج.م</span>
+                  ),
+                },
+              ]
+            : []),
+          { header: "الاستلام", render: (inv) => <FulfilmentBadge kind="purchase" status={inv.receipt_status} at={inv.received_at} /> },
           {
             header: "الحالة",
             render: (inv) => (
@@ -46,17 +63,38 @@ export function PurchasesTable({ invoices }: { invoices: PurchaseInvoiceRow[] })
           {
             header: "",
             render: (inv) => (
-              <button onClick={() => setViewing(inv)} className="rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="عرض التفاصيل">
-                <Eye size={16} strokeWidth={2} />
-              </button>
+              <div className="flex items-center gap-1">
+                {canPay && inv.remaining > 0 && (
+                  <button onClick={() => setPayingId(inv.id)} className="flex items-center gap-1 whitespace-nowrap rounded-card px-2 py-1.5 text-xs text-sage hover:bg-sageSoft/30">
+                    <HandCoins size={15} strokeWidth={2} />
+                    تسجيل دفعة
+                  </button>
+                )}
+                <button onClick={() => setViewingId(inv.id)} className="flex items-center gap-1 whitespace-nowrap rounded-card px-2 py-1.5 text-xs text-ink/55 hover:bg-paper hover:text-ink">
+                  <Eye size={15} strokeWidth={2} />
+                  عرض التفاصيل
+                </button>
+              </div>
             ),
           },
         ]}
       />
 
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title="تفاصيل الفاتورة">
+      {paying && (
+        <PaymentModal
+          onClose={() => setPayingId(null)}
+          purchaseInvoiceId={paying.id}
+          invoiceLabel={paying.invoice_number ?? paying.invoice_date}
+          supplierName={paying.suppliers?.name ?? "—"}
+          total={paying.total}
+          paid={paying.amount_paid}
+          remaining={paying.remaining}
+        />
+      )}
+
+      <Modal open={!!viewing} onClose={() => setViewingId(null)} title="تفاصيل الفاتورة">
         {viewing && (
-          <div className="space-y-3">
+          <div className="max-h-[75vh] space-y-3 overflow-y-auto">
             <div className="flex items-center justify-between text-xs text-charcoal/50">
               <span>{viewing.suppliers?.name ?? "—"}</span>
               <span dir="ltr">{viewing.invoice_date}</span>
@@ -97,6 +135,71 @@ export function PurchasesTable({ invoices }: { invoices: PurchaseInvoiceRow[] })
               <span className="text-charcoal/50">الإجمالي</span>
               <span className="font-semibold text-charcoal" dir="ltr">{money(viewing.total)} ج.م</span>
             </div>
+
+            {showPayments && (
+              <div className="space-y-2 border-t border-borderSoft pt-3">
+                <div className="flex items-center justify-between text-sm font-medium text-charcoal">
+                  <span>سجل الدفعات</span>
+                  <span className={`rounded-full px-2.5 py-1 text-[0.6875rem] font-medium ${STATUS_CLASS[viewing.payment_status]}`}>{STATUS_LABEL[viewing.payment_status]}</span>
+                </div>
+                {viewing.payments.length === 0 ? (
+                  <p className="text-xs text-charcoal/45">لا توجد دفعات مسجلة على هذه الفاتورة.</p>
+                ) : (
+                  <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
+                    {viewing.payments.map((p) => (
+                      <div key={p.id} className="px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-charcoal/60" dir="ltr">{p.payment_date}</span>
+                          <span className="font-medium text-charcoal" dir="ltr">{money(p.amount)} ج.م</span>
+                        </div>
+                        {(p.payment_method || p.notes) && (
+                          <div className="mt-0.5 text-[0.6875rem] text-charcoal/40">{[p.payment_method, p.notes].filter(Boolean).join(" — ")}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-1.5 pt-1 text-sm">
+                  <div className="flex items-center justify-between text-charcoal/50">
+                    <span>إجمالي الفاتورة</span>
+                    <span dir="ltr">{money(viewing.total)} ج.م</span>
+                  </div>
+                  {viewing.returns_total > 0 && (
+                    <div className="flex items-center justify-between text-charcoal/50">
+                      <span>مرتجعات للمورد</span>
+                      <span dir="ltr">− {money(viewing.returns_total)} ج.م</span>
+                    </div>
+                  )}
+                  {viewing.cash_refunded > 0 && (
+                    <div className="flex items-center justify-between text-charcoal/50">
+                      <span>مبالغ استردها المورد نقدًا</span>
+                      <span dir="ltr">+ {money(viewing.cash_refunded)} ج.م</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-charcoal/50">
+                    <span>إجمالي المدفوع</span>
+                    <span dir="ltr" className="text-sage">{money(viewing.amount_paid)} ج.م</span>
+                  </div>
+                  <div className="flex items-center justify-between font-semibold">
+                    <span className="text-charcoal">المتبقي</span>
+                    <span dir="ltr" className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
+                      {viewing.remaining > 0 ? `${money(viewing.remaining)} ج.م` : "لا يوجد مبلغ متبقي"}
+                    </span>
+                  </div>
+                </div>
+                {canPay && viewing.remaining > 0 && (
+                  <button
+                    onClick={() => {
+                      setViewingId(null);
+                      setPayingId(viewing.id);
+                    }}
+                    className="mt-1 w-full rounded-xl border border-borderSoft py-2 text-sm text-sage hover:border-sage hover:bg-sageSoft/30"
+                  >
+                    تسجيل دفعة جديدة
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Modal>

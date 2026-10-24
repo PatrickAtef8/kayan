@@ -41,9 +41,20 @@ export function roleNameOf(membership: { roles: unknown } | null): string | unde
 // caller has no membership (the layout redirects such users anyway).
 export const NO_ORG_ID = "00000000-0000-0000-0000-000000000000";
 
-// A member with the Sales Representative role who is linked to a representative
-// record sees only their own customers/sales (enforced by RLS in the database;
-// this flag only trims the navigation so they aren't sent to empty screens).
+// The three roles of the system (0043). The database is the authority: every
+// restriction below is enforced by RLS / RPC checks. These helpers only decide
+// what to SHOW, so nobody is sent to a screen the database would refuse.
+export type RoleKey = "owner" | "sales" | "warehouse";
+
+export const getRoleKey = cache(async (): Promise<RoleKey | null> => {
+  const membership = await getMembership();
+  if (!membership) return null;
+  const { data } = await (await getSupabase()).rpc("my_role_key", { target_org: membership.organization_id });
+  return data === "owner" || data === "sales" || data === "warehouse" ? data : null;
+});
+
+// A member with the Sales Representative role sees only the customers assigned
+// to their rep record (all of this enforced by RLS in the database).
 export const isRestrictedRep = cache(async () => {
   const membership = await getMembership();
   if (!membership) return false;

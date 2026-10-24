@@ -67,9 +67,9 @@ select t.ok(:'sp3_id' is not null, 'the same payment is accepted again once 5 se
 -- Two different users performing the "same" action at the same moment are
 -- NOT treated as duplicates of each other.
 select t.as_owner();
-insert into auth.users (id, email) values ('d0000000-0000-0000-0000-000000000002', 'accountant@dup.test');
+insert into auth.users (id, email) values ('d0000000-0000-0000-0000-000000000002', 'owner2@dup.test');
 insert into organization_users (organization_id, user_id, role_id, status)
-select :'org_id', 'd0000000-0000-0000-0000-000000000002', id, 'active' from roles where key = 'accountant' and organization_id is null;
+select :'org_id', 'd0000000-0000-0000-0000-000000000002', id, 'active' from roles where key = 'owner' and organization_id is null;
 select t.as_user('d0000000-0000-0000-0000-000000000002');
 select create_expense(:'org_id', :'cat', null, 50, '2026-05-01', 'نقدًا', 'إيجار', null) as id \gset e2_
 select t.ok(:'e1_id' <> :'e2_id', 'the guard is per-user, not per-organization');
@@ -116,9 +116,9 @@ select t.throws(format('update audit_logs set action = ''x'' where organization_
 select t.as_user('d0000000-0000-0000-0000-000000000001');
 select t.throws(format('insert into audit_logs (organization_id, action, entity) values (%L, ''x'', ''y'')', :'org_id'), 'permission denied', 'nobody can insert a forged audit row directly');
 
--- accountant (has audit.view) can read it; a plain sales-only role cannot
+-- second owner (has audit.view) can read it; a plain sales-only role cannot
 select t.as_user('d0000000-0000-0000-0000-000000000002');
-select t.ok((select count(*) from audit_logs where organization_id = :'org_id') > 0, 'accountant (audit.view) can read the audit log');
+select t.ok((select count(*) from audit_logs where organization_id = :'org_id') > 0, 'second owner (audit.view) can read the audit log');
 
 select t.as_owner();
 insert into auth.users (id, email) values ('d0000000-0000-0000-0000-000000000003', 'sales@dup.test');
@@ -139,8 +139,8 @@ select t.eq((select quantity from inventory_stock where organization_id = :'org_
 select t.eq((select count(*) from audit_logs where organization_id = :'org_id' and entity = 'inventory_adjustment' and entity_id = :'adj1_id'), 1, 'the stock adjustment is audited');
 select t.throws(format('select adjust_inventory_stock(%L, %L, %L, %L, ''جرد'')', :'org_id', :'prod', :'wh', -999999), 'سالبًا', 'an adjustment that would make stock negative is refused');
 
--- accountant has no inventory.adjust permission
-select t.as_user('d0000000-0000-0000-0000-000000000002');
+-- a sales rep has no inventory.adjust permission
+select t.as_user('d0000000-0000-0000-0000-000000000003');
 select t.throws(format('select adjust_inventory_stock(%L, %L, %L, 1, ''x'')', :'org_id', :'prod', :'wh'), 'صلاحية تسوية المخزون', 'a user without inventory.adjust cannot adjust stock');
 
 select t.as_owner();

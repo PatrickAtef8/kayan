@@ -31,9 +31,17 @@ export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseR
         emptyLabel="لا توجد مصروفات مسجلة بعد"
         columns={[
           { header: "التاريخ", render: (e) => <span dir="ltr">{e.expense_date}</span> },
-          { header: "التصنيف", render: (e) => e.expense_categories?.name ?? "—" },
-          { header: "النوع", render: (e) => `${EXPENSE_TYPE_LABELS[e.expense_type] ?? e.expense_type}${e.sales_representatives ? ` — ${e.sales_representatives.name}` : ""}` },
-          { header: "الوصف", render: (e) => e.description ?? "—" },
+          {
+            header: "نوع المصروف",
+            render: (e) => (
+              <div>
+                <span className="rounded-full bg-paper px-2.5 py-1 text-[0.6875rem] font-medium text-charcoal/70">{EXPENSE_TYPE_LABELS[e.expense_type] ?? e.expense_type}</span>
+                {e.sales_representatives && <div className="mt-1 text-[0.6875rem] text-charcoal/45">{e.sales_representatives.name}</div>}
+              </div>
+            ),
+          },
+          { header: "التصنيف (للتقارير)", render: (e) => e.expense_categories?.name ?? <span className="text-charcoal/30">بدون تصنيف</span> },
+          { header: "ملاحظة", render: (e) => e.description ?? "—" },
           { header: "طريقة الدفع", render: (e) => e.payment_method ?? "—" },
           { header: "المبلغ", render: (e) => <span dir="ltr" className="font-medium text-rose">− {money(e.amount)} ج.م</span> },
           {

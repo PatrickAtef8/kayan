@@ -81,7 +81,8 @@ export async function getReturnableItems(salesInvoiceId: string): Promise<{ item
   return { items: (data as ReturnableItem[]) ?? [], error: null };
 }
 
-export type ReturnLineInput = { sales_invoice_item_id: string; quantity: number; condition: "resalable" | "damaged" };
+export type ReturnReason = "damaged" | "expired" | "slow_moving" | "other";
+export type ReturnLineInput = { sales_invoice_item_id: string; quantity: number; condition: "resalable" | "damaged"; reason?: ReturnReason };
 
 export async function createSalesReturn(input: {
   sales_invoice_id: string;

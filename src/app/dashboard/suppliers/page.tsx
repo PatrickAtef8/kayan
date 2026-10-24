@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { createSupplier } from "./actions";
@@ -13,7 +13,7 @@ import { ImportSuppliersButton } from "./import-suppliers-button";
 
 const PAGE_SIZE = 20;
 
-type Supplier = { id: string; name: string; phone: string | null; opening_balance: number };
+type Supplier = { id: string; name: string; phone: string | null; payment_terms_days: number | null; opening_balance: number };
 export type SupplierBalance = { supplier_id: string; total_purchases: number; total_paid: number; balance: number };
 
 export default async function SuppliersPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
@@ -32,7 +32,7 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
 
   let suppliersQuery = supabase
     .from("suppliers")
-    .select("id, name, phone", { count: "exact" })
+    .select("id, name, phone, payment_terms_days", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) suppliersQuery = suppliersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
@@ -52,12 +52,15 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
       <PageHeader title="الموردين" action={<ImportSuppliersButton />} />
 
       <Card className="mb-7 p-5 sm:p-6">
-        <form action={createSupplier} className="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:items-end">
+        <ActionForm action={createSupplier} successText="تمت إضافة المورد بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:items-end">
           <Field label="اسم المورد">
             <Input name="name" required placeholder="مثال: مصنع الفا" />
           </Field>
           <Field label="رقم الهاتف">
             <Input name="phone" dir="ltr" placeholder="01000000000" />
+          </Field>
+          <Field label="مدة السداد (أيام)">
+            <Input name="payment_terms_days" type="number" min="0" max="365" step="1" dir="ltr" placeholder="اختياري" />
           </Field>
           {canViewBalance && (
             <Field label="الرصيد الافتتاحي (اختياري)">
@@ -65,9 +68,9 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
             </Field>
           )}
           <div className="self-end">
-            <Button type="submit">إضافة مورد</Button>
+            <SubmitButton pendingText="جارٍ إضافة المورد...">إضافة مورد</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <div className="mb-4">

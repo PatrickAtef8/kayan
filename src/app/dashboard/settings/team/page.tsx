@@ -1,50 +1,30 @@
+import Link from "next/link";
 import { getSettingsContext } from "@/lib/settings-context";
 import { NoSettingsAccess } from "@/components/settings/no-settings-access";
 import { TeamManager } from "./team-manager";
 
-const ROLE_ORDER = ["owner", "admin", "accountant", "sales", "warehouse"];
+const ROLE_ORDER = ["owner", "sales", "warehouse"];
+
+const ROLE_NOTES = [
+  { name: "مالك", text: "يرى ويدير كل بيانات النظام، وهو الوحيد الذي ينشئ العملاء ويعيّنهم للمناديب ويغيّر التعيين في أي وقت." },
+  { name: "مندوب", text: "يرى العملاء المعيّنين له فقط (فواتيرهم ومبيعاتهم ومدفوعاتهم ومديونياتهم وتقاريرهم)، ولا يصل لبيانات أي مندوب آخر حتى لو فتح الصفحات أو الـ API مباشرة." },
+  { name: "أمين مخزن", text: "يرى أصناف وكميات فواتير البيع والشراء ليجهّز البضاعة ويؤكد الصرف والاستلام، بدون أي أسعار أو إجماليات أو مديونيات أو مدفوعات أو تقارير مالية." },
+];
 
 export default async function TeamSettingsPage() {
   const { supabase, orgId, canManage } = await getSettingsContext();
   if (!orgId) return null;
   if (!canManage) return <NoSettingsAccess />;
 
-  const [{ data: members }, { data: roles }, { data: permissions }, { data: memberCounts }] = await Promise.all([
+  const [{ data: members }, { data: roles }, { data: reps }] = await Promise.all([
     supabase.rpc("list_org_members", { org_id: orgId }),
-    supabase.from("roles").select("id, key, name, is_system").or(`organization_id.is.null,organization_id.eq.${orgId}`),
-    supabase.from("permissions").select("key, description, category"),
-    supabase.from("organization_users").select("role_id").eq("organization_id", orgId).eq("status", "active"),
+    supabase.from("roles").select("id, key, name").is("organization_id", null),
+    supabase.from("sales_representatives").select("id, name, user_id, is_active").eq("organization_id", orgId),
   ]);
 
-  const allRoles = roles ?? [];
-  const sortedRoles = allRoles
-    .slice()
-    .sort((a, b) => {
-      const ai = ROLE_ORDER.indexOf(a.key);
-      const bi = ROLE_ORDER.indexOf(b.key);
-      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-      return a.name.localeCompare(b.name, "ar");
-    });
-
-  // role_permissions has no organization_id column of its own, so scope by
-  // this org's custom role ids (system roles' permission sets are fixed
-  // and seeded once — never shown for editing here).
-  const customRoleRows = allRoles.filter((r) => !r.is_system);
-  const { data: rolePermissions } = customRoleRows.length
-    ? await supabase.from("role_permissions").select("role_id, permission_key").in("role_id", customRoleRows.map((r) => r.id))
-    : { data: [] as { role_id: string; permission_key: string }[] };
-
-  const countByRole = (memberCounts ?? []).reduce<Record<string, number>>((acc, m) => {
-    if (m.role_id) acc[m.role_id] = (acc[m.role_id] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const customRoles = customRoleRows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    permissionKeys: (rolePermissions ?? []).filter((rp) => rp.role_id === r.id).map((rp) => rp.permission_key),
-    memberCount: countByRole[r.id] ?? 0,
-  }));
+  const sortedRoles = (roles ?? []).slice().sort((a, b) => ROLE_ORDER.indexOf(a.key) - ROLE_ORDER.indexOf(b.key));
+  const linkedUserIds = (reps ?? []).filter((r) => r.user_id).map((r) => r.user_id as string);
+  const freeReps = (reps ?? []).filter((r) => !r.user_id && r.is_active).map((r) => ({ id: r.id as string, name: r.name as string }));
 
   return (
     <div className="max-w-2xl">
@@ -52,7 +32,18 @@ export default async function TeamSettingsPage() {
         إضافة شخص لديه حساب بالفعل تتم فورًا. أما إضافة بريد إلكتروني جديد تمامًا فترسل له دعوة لإنشاء حساب — يحتاج هذا
         إلى إعداد مفتاح الخدمة (service role) في متغيرات البيئة، راجع ملف .env.example.
       </p>
-      <TeamManager members={members ?? []} roles={sortedRoles} customRoles={customRoles} permissions={permissions ?? []} />
+      <TeamManager members={members ?? []} roles={sortedRoles} linkedUserIds={linkedUserIds} freeReps={freeReps} />
+      <div className="mt-8 rounded-xl border border-borderSoft bg-paper/60 p-4">
+        <p className="mb-3 text-xs font-medium text-charcoal/60">الأدوار في النظام (ثلاثة فقط، ثابتة)</p>
+        <ul className="space-y-2 text-xs leading-6 text-charcoal/55">
+          {ROLE_NOTES.map((r) => (
+            <li key={r.name}><span className="font-medium text-charcoal">{r.name}:</span> {r.text}</li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[0.6875rem] text-charcoal/40">
+          لكي يعمل حساب المندوب: اضغط «ربط بسجل مندوب» بجوار اسمه في القائمة أعلاه (أو اربطه من صفحة <Link href="/dashboard/representatives" className="text-sage underline">المندوبين</Link>)، ثم من صفحة <Link href="/dashboard/customers" className="text-sage underline">العملاء</Link> اضغط أيقونة التعديل ✎ بجوار العميل واختر «المندوب المسؤول».
+        </p>
+      </div>
     </div>
   );
 }

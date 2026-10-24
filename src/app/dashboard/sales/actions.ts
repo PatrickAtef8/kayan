@@ -32,6 +32,7 @@ export async function createSalesInvoice(input: {
   customer_id: string;
   warehouse_id: string;
   sales_rep_id: string;
+  sales_channel?: string; // wholesale | retail | social — empty = derived from the customer's price tier by the database
   invoice_number: string;
   invoice_date: string;
   items: SalesItemInput[];
@@ -64,6 +65,7 @@ export async function createSalesInvoice(input: {
     p_payment_method: input.payment_method,
     p_notes: input.notes,
     p_sales_rep_id: input.sales_rep_id || null,
+    p_sales_channel: input.sales_channel || null,
     p_cash_discount_pct: input.cash_discount_pct || 0,
     p_bonus_items: input.bonus_items.filter((b) => b.product_id && b.quantity > 0),
   });
@@ -74,6 +76,56 @@ export async function createSalesInvoice(input: {
   revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/treasury");
+  revalidatePath("/dashboard");
+  return { error: null };
+}
+
+// Records one more payment against ONE invoice. Each call adds its own row (amount + date)
+// to customer_collections and its own treasury movement — earlier payments are never edited
+// or replaced. The database re-checks everything (permission, that the invoice belongs to
+// the customer, and that the amount does not exceed what is still owed) and flips the
+// invoice to partial / paid; this action only shapes the input and the error message.
+export async function recordInvoicePayment(input: {
+  sales_invoice_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string;
+  notes: string;
+}) {
+  const supabase = await createClient();
+  const membership = await getMembership(supabase);
+  if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
+
+  const amount = Math.round(Number(input.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "أدخل مبلغًا صحيحًا أكبر من صفر" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.payment_date || "")) return { error: "أدخل تاريخ دفع صحيحًا" };
+
+  // the customer is read from the invoice itself, never trusted from the browser
+  const { data: invoice } = await supabase
+    .from("sales_invoices")
+    .select("customer_id, invoice_date")
+    .eq("id", input.sales_invoice_id)
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+  if (!invoice) return { error: "الفاتورة غير موجودة" };
+  if (input.payment_date < invoice.invoice_date) return { error: "تاريخ الدفعة لا يمكن أن يسبق تاريخ الفاتورة" };
+
+  const { error } = await supabase.rpc("record_customer_collection", {
+    org_id: membership.organization_id,
+    p_customer_id: invoice.customer_id,
+    p_sales_invoice_id: input.sales_invoice_id,
+    p_amount: amount,
+    p_collection_date: input.payment_date,
+    p_payment_method: input.payment_method,
+    p_reference: "",
+    p_notes: input.notes,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/sales");
+  revalidatePath("/dashboard/customers");
+  revalidatePath("/dashboard/treasury");
+  revalidatePath("/dashboard/reports", "layout");
   revalidatePath("/dashboard");
   return { error: null };
 }

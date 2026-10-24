@@ -16,17 +16,17 @@
 select t.as_owner();
 insert into auth.users (id, email) values
   ('a0000000-0000-0000-0000-000000000001', 'owner@flows.test'),
-  ('a0000000-0000-0000-0000-000000000002', 'accountant@flows.test'),
+  ('a0000000-0000-0000-0000-000000000002', 'owner2@flows.test'),
   ('a0000000-0000-0000-0000-000000000003', 'salesman@flows.test');
 
 select t.as_user('a0000000-0000-0000-0000-000000000001');
 select create_organization('شركة الاختبار', 'تجارة', 'EG', 'EGP', 'ar',
   array['sales','customers','inventory','purchases','suppliers','expenses','treasury','representatives','partners']) as id \gset org_
 
--- Extra members with system roles (accountant has view_financial, sales does not).
+-- Extra members with system roles (second owner has view_financial, sales does not).
 select t.as_owner();
 insert into organization_users (organization_id, user_id, role_id, status)
-select :'org_id', 'a0000000-0000-0000-0000-000000000002', id, 'active' from roles where key = 'accountant' and organization_id is null;
+select :'org_id', 'a0000000-0000-0000-0000-000000000002', id, 'active' from roles where key = 'owner' and organization_id is null;
 insert into organization_users (organization_id, user_id, role_id, status)
 select :'org_id', 'a0000000-0000-0000-0000-000000000003', id, 'active' from roles where key = 'sales' and organization_id is null;
 
@@ -204,6 +204,8 @@ select t.ok((select count(*) from report_recent_activity(:'org_id', 20)) >= 6, '
 -- ============================================================
 -- Permissions inside the database (§14): the salesman has no view_financial
 -- ============================================================
+select t.as_owner();
+select t.make_rep(:'org_id', 'a0000000-0000-0000-0000-000000000003');
 select t.as_user('a0000000-0000-0000-0000-000000000003');
 select t.throws(format('select report_financial_position(%L)', :'org_id'), 'صلاحية', 'salesman cannot read the financial position');
 select t.throws(format('select * from report_party_balances(%L, ''customer'')', :'org_id'), 'صلاحية', 'salesman cannot read customer balances');
@@ -211,15 +213,15 @@ select t.throws(format('select report_treasury_summary(%L)', :'org_id'), 'صلا
 select report_summary(:'org_id') as j \gset sm_
 select t.ok((:'sm_j'::jsonb -> 'financial') = 'null'::jsonb and (:'sm_j'::jsonb -> 'balances') = 'null'::jsonb, 'salesman: summary carries no profit, cost or balances');
 select t.ok((select bool_and(cogs is null and gross_profit is null and commission is null) from report_sales_breakdown(:'org_id', null, null, 'invoice')), 'salesman: cost, profit and commission columns are NULL');
-select t.ok((select bool_and(avg_cost is null and stock_value is null) from report_inventory_stock(:'org_id')), 'salesman: stock cost and value are NULL');
+select t.ok((select coalesce(bool_and(avg_cost is null and stock_value is null), true) from report_inventory_stock(:'org_id')), 'salesman: stock cost and value are NULL (he sees no stock rows at all)');
 select t.eq((select sum(net_sales) from report_sales_breakdown(:'org_id', null, null, 'customer')), 3900, 'salesman still sees sales figures');
 select t.ok((select count(*) from report_recent_activity(:'org_id', 20)) >= 1 and (select bool_and(kind = 'sale') from report_recent_activity(:'org_id', 20)), 'salesman: activity feed is sales only');
 select t.throws(format('select add_other_balance(%L, ''liability'', ''x'', 10, null)', :'org_id'), 'صلاحية', 'salesman cannot record other liabilities');
 select t.empty('select * from other_balances', 'salesman cannot read other_balances directly');
 
--- The accountant does have view_financial
+-- The second owner does have view_financial
 select t.as_user('a0000000-0000-0000-0000-000000000002');
-select t.eq((report_financial_position(:'org_id') ->> 'general_capital')::numeric, 19550, 'accountant can read the financial position');
+select t.eq((report_financial_position(:'org_id') ->> 'general_capital')::numeric, 19550, 'second owner can read the financial position');
 
 -- Anonymous callers get nothing
 select t.as_anon();

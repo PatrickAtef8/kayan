@@ -89,7 +89,7 @@ export default async function DebtsPage(
       {type === "customer" ? (
         <SimpleTable
           empty="لا توجد مديونيات مطابقة"
-          head={["العميل", "المندوب", "إجمالي المبيعات", "إجمالي المدفوعات", "المرتجعات", "المديونية الحالية", "آخر دفعة", "تاريخها"]}
+          head={["العميل", "المندوب", "إجمالي المبيعات", "إجمالي المدفوعات", "المرتجعات", "المديونية الحالية", "آخر دفعة", "تاريخها", ""]}
           rows={(rows as CustRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/customers/${r.customer_id}`} className="text-sage hover:underline">{r.customer_name}</Link>,
             r.rep_name ?? "—",
@@ -99,12 +99,13 @@ export default async function DebtsPage(
             <span dir="ltr" key="o" className="font-semibold text-rose">{money(r.outstanding)}</span>,
             <span dir="ltr" key="la">{r.last_payment_amount != null ? money(r.last_payment_amount) : "—"}</span>,
             <span dir="ltr" key="ld">{r.last_payment_date ?? "—"}</span>,
+            <Link key="st" href={`/dashboard/reports/debts/statement/customer/${r.customer_id}`} className="text-xs text-sage hover:underline">كشف حساب</Link>,
           ])}
         />
       ) : (
         <SimpleTable
           empty="لا توجد مديونيات مطابقة"
-          head={["المورد", "إجمالي المشتريات", "المدفوع", "المرتجعات", "المستحق له", "آخر دفعة", "تاريخها"]}
+          head={["المورد", "إجمالي المشتريات", "المدفوع", "المرتجعات", "المستحق له", "آخر دفعة", "تاريخها", ""]}
           rows={(rows as SupRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/suppliers/${r.supplier_id}`} className="text-sage hover:underline">{r.supplier_name}</Link>,
             <span dir="ltr" key="s">{money(r.total_purchases)}</span>,
@@ -113,6 +114,7 @@ export default async function DebtsPage(
             <span dir="ltr" key="o" className="font-semibold text-rose">{money(r.outstanding)}</span>,
             <span dir="ltr" key="la">{r.last_payment_amount != null ? money(r.last_payment_amount) : "—"}</span>,
             <span dir="ltr" key="ld">{r.last_payment_date ?? "—"}</span>,
+            <Link key="st" href={`/dashboard/reports/debts/statement/supplier/${r.supplier_id}`} className="text-xs text-sage hover:underline">كشف حساب</Link>,
           ])}
         />
       )}

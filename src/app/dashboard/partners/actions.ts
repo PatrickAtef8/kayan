@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -25,27 +26,31 @@ async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>)
 export async function createPartner(formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
   const phone = String(formData.get("phone") || "").trim() || null;
 
-  await supabase.from("partners").insert({ organization_id: membership.organization_id, name, phone });
+  const { error } = await supabase.from("partners").insert({ organization_id: membership.organization_id, name, phone });
+  if (error) return { error: translateDbError(error, "partners") };
   revalidatePath("/dashboard/partners");
+  return { error: null };
 }
 
 export async function updatePartner(id: string, formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
   const phone = String(formData.get("phone") || "").trim() || null;
 
-  await supabase.from("partners").update({ name, phone }).eq("id", id);
+  const { error } = await supabase.from("partners").update({ name, phone }).eq("id", id);
+  if (error) return { error: translateDbError(error, "partners") };
   revalidatePath("/dashboard/partners");
+  return { error: null };
 }
 
 export async function deletePartner(id: string) {

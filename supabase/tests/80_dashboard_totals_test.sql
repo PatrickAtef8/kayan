@@ -39,6 +39,8 @@ select t.eq((select total_sales from dashboard_sales_totals(:'org_id', '2026-03-
 select t.eq((select total_sales from dashboard_sales_totals(:'org_id', '2026-03-03')), 0, 'a period with no invoices returns 0, not NULL');
 
 -- 3. A member without view_financial sees sales totals but never profit.
+select t.as_owner();
+select t.make_rep(:'org_id', 'f0000000-0000-0000-0000-00000000000b');
 select t.as_user('f0000000-0000-0000-0000-00000000000b');
 select t.eq((select total_sales  from dashboard_sales_totals(:'org_id', null)), 400, 'sales-role member still gets the sales total');
 select t.eq((select total_profit from dashboard_sales_totals(:'org_id', null)), 0, 'but profit is withheld (= 0)');
@@ -56,7 +58,7 @@ select t.ok(not exists (
   (select group_key, group_label, invoices, net_sales, gross_profit from report_sales_breakdown(:'org_id', null, null, 'customer', 5, 0)
    except select group_key, group_label, invoices, net_sales, gross_profit from dashboard_sales_rollups(:'org_id', null) where kind = 'customer')), 'top customers match report_sales_breakdown');
 select t.eq((select net_sales from dashboard_sales_rollups(:'org_id', null) where kind = 'customer'), 400, 'customer net sales = 400');
-select t.eq_text((select group_key::text from dashboard_sales_rollups(:'org_id', null) where kind = 'representative'), ''::text, 'invoices without a rep fall in the empty group (page filters it)');
+select t.eq((select count(*) from dashboard_sales_rollups(:'org_id', null) where kind = 'representative'), 1, 'one representative group: the member''s own rep');
 
 -- 4. Non-members and anonymous callers are refused.
 select t.as_user('f0000000-0000-0000-0000-00000000000c');

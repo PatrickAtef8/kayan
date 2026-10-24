@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -24,23 +26,25 @@ async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>)
 export async function addOtherBalance(formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const kind = String(formData.get("kind") || "asset");
   const name = String(formData.get("name") || "").trim();
   const amount = Number(formData.get("amount") || 0);
   const notes = String(formData.get("notes") || "").trim() || null;
-  if (!name || !(amount > 0)) return;
+  if (!name || !(amount > 0)) return { error: "أدخل الاسم ومبلغًا أكبر من صفر" };
 
-  await supabase.rpc("add_other_balance", {
+  const { error } = await supabase.rpc("add_other_balance", {
     org_id: membership.organization_id,
     p_kind: kind,
     p_name: name,
     p_amount: amount,
     p_notes: notes,
   });
+  if (error) return { error: translateDbError(error) };
 
   revalidatePath("/dashboard/reports/position");
+  return { error: null };
 }
 
 export async function deactivateOtherBalance(id: string) {

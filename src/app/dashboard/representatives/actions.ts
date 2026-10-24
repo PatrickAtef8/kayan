@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -38,12 +39,12 @@ function readFields(formData: FormData) {
 export async function createRepresentative(formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const fields = readFields(formData);
-  if (!fields.name) return;
+  if (!fields.name) return { error: NAME_REQUIRED };
 
-  await supabase.from("sales_representatives").insert({
+  const { error } = await supabase.from("sales_representatives").insert({
     organization_id: membership.organization_id,
     name: fields.name,
     phone: fields.phone,
@@ -55,19 +56,21 @@ export async function createRepresentative(formData: FormData) {
     min_target_for_commission: fields.minTarget,
     user_id: fields.userId,
   });
+  if (error) return { error: translateDbError(error, "sales_representatives") };
 
   revalidatePath("/dashboard/representatives");
+  return { error: null };
 }
 
 export async function updateRepresentative(id: string, formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const fields = readFields(formData);
-  if (!fields.name) return;
+  if (!fields.name) return { error: NAME_REQUIRED };
 
-  await supabase
+  const { error } = await supabase
     .from("sales_representatives")
     .update({
       name: fields.name,
@@ -81,8 +84,10 @@ export async function updateRepresentative(id: string, formData: FormData) {
       user_id: fields.userId,
     })
     .eq("id", id);
+  if (error) return { error: translateDbError(error, "sales_representatives") };
 
   revalidatePath("/dashboard/representatives");
+  return { error: null };
 }
 
 export async function toggleRepresentativeActive(id: string, isActive: boolean) {

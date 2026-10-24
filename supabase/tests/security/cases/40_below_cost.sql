@@ -21,14 +21,14 @@ select lab.check('belowcost','rep qty 3 @60 allowed', lab.sale(:'rep','BC-10',:'
 select lab.check('belowcost','rep price 0 BLOCKED', lab.sale(:'rep','BC-11',:'cust_a',0) like 'denied%');
 select lab.check('belowcost','manual bonus lines are not treated as below-cost', lab.sale(:'rep','BC-12',:'cust_a',100,0,0,null,1,jsonb_build_array(jsonb_build_object('product_id',:'prod_a','quantity',2)))='ALLOWED');
 select lab.check('belowcost','plain (unlinked) sales also blocked', lab.sale(:'plain','BC-13',:'cust_a',50) like 'denied%');
-select lab.check('belowcost','ADMIN is blocked too (only the Owner is exempt)', lab.sale(:'admin','BC-14',:'cust_a',10) like 'denied%');
+select lab.check('belowcost','a second OWNER (the old admin persona) is exempt like any owner', lab.sale(:'admin','BC-14',:'cust_a',10)='ALLOWED');
 select lab.check('belowcost','admin at cost allowed', lab.sale(:'admin','BC-15',:'cust_a',60)='ALLOWED');
 select lab.check('belowcost','OWNER can sell below cost', lab.sale(:'owner_a','BC-16',:'cust_a',10)='ALLOWED');
 select lab.check('belowcost','OWNER can sell at 0', lab.sale(:'owner_a','BC-17',:'cust_a',0)='ALLOWED');
 select lab.as_user(:'rep') \gset
 select lab.check('belowcost','error message does not reveal the cost', lab.sale(:'rep','BC-18',:'cust_a',59) not like '%60%');
 select lab.as_owner() \gset
-select lab.check('belowcost','blocked attempts left no invoice behind', (select count(*) from sales_invoices where invoice_number in ('BC-5','BC-6','BC-7','BC-8','BC-9','BC-11','BC-13','BC-14','BC-18'))=0);
+select lab.check('belowcost','blocked attempts left no invoice behind', (select count(*) from sales_invoices where invoice_number in ('BC-5','BC-6','BC-7','BC-8','BC-9','BC-11','BC-13','BC-18'))=0);
 select lab.check('belowcost','allowed attempts did create invoices', (select count(*) from sales_invoices where invoice_number in ('BC-1','BC-2','BC-3','BC-4','BC-10','BC-12','BC-15','BC-16','BC-17'))=9);
 -- a user cannot bypass the rule by writing the cost row directly
 select lab.as_user(:'rep') \gset

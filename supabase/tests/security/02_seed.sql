@@ -4,7 +4,7 @@ insert into auth.users(id, email) values
  ('aaaaaaaa-0000-0000-0000-000000000001','ownerA@a.test'),
  ('aaaaaaaa-0000-0000-0000-000000000002','rep@a.test'),         -- sales role, linked to rep_a
  ('aaaaaaaa-0000-0000-0000-000000000003','warehouse@a.test'),
- ('aaaaaaaa-0000-0000-0000-000000000004','accountant@a.test'),
+ ('aaaaaaaa-0000-0000-0000-000000000004','owner2@a.test'),
  ('aaaaaaaa-0000-0000-0000-000000000005','plainsales@a.test'),  -- sales role, NOT linked to any rep
  ('aaaaaaaa-0000-0000-0000-000000000006','admin@a.test'),
  ('aaaaaaaa-0000-0000-0000-000000000007','rep2@a.test'),        -- sales role, linked to rep_b
@@ -21,8 +21,8 @@ select lab.as_owner() \gset
 insert into organization_users(organization_id,user_id,role_id,status)
 select :'org_a', u.id, r.id, 'active'
 from (values ('aaaaaaaa-0000-0000-0000-000000000002'::uuid,'sales'),('aaaaaaaa-0000-0000-0000-000000000003','warehouse'),
-             ('aaaaaaaa-0000-0000-0000-000000000004','accountant'),('aaaaaaaa-0000-0000-0000-000000000005','sales'),
-             ('aaaaaaaa-0000-0000-0000-000000000006','admin'),('aaaaaaaa-0000-0000-0000-000000000007','sales')) u(id,k)
+             ('aaaaaaaa-0000-0000-0000-000000000004','owner'),('aaaaaaaa-0000-0000-0000-000000000005','sales'),
+             ('aaaaaaaa-0000-0000-0000-000000000006','owner'),('aaaaaaaa-0000-0000-0000-000000000007','sales')) u(id,k)
 join roles r on r.key = u.k and r.organization_id is null;
 
 select lab.as_user('aaaaaaaa-0000-0000-0000-000000000001') \gset

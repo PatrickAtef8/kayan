@@ -4,15 +4,16 @@ import { m } from "framer-motion";
 import { NumberTicker } from "./effects/number-ticker";
 
 const STATS = [
-  { value: 11, suffix: "", label: "وحدة إدارية متكاملة", index: "٠١" },
-  { value: 100, suffix: "%", label: "واجهة عربية بالكامل", index: "٠٢" },
-  { value: 0, suffix: "", label: "أوراق أو ملفات متفرقة", index: "٠٣" },
+  { value: 12, suffix: "", label: "وحدة تشغيلية متكاملة", index: "٠١" },
+  { value: 12, suffix: "", label: "قسم تقارير مالية وتشغيلية", index: "٠٢" },
+  { value: 3, suffix: "", label: "أدوار بصلاحيات مفصولة", index: "٠٣" },
+  { value: 100, suffix: "%", label: "واجهة عربية من اليمين لليسار", index: "٠٤" },
 ];
 
 export function Stats() {
   return (
     <section className="border-y border-borderSoft bg-white/45 px-6 py-7">
-      <div className="mx-auto grid max-w-6xl divide-y divide-borderSoft md:grid-cols-3 md:divide-x md:divide-y-0 md:divide-x-reverse">
+      <div className="mx-auto grid max-w-6xl divide-y divide-borderSoft md:grid-cols-4 md:divide-x md:divide-y-0 md:divide-x-reverse">
         {STATS.map((s, i) => (
           <m.div
             key={s.label}

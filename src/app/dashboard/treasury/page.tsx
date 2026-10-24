@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { TreasuryForm } from "./treasury-form";
 import { TreasuryTable } from "./treasury-table";
+import { OpeningBalanceCard } from "./opening-balance-card";
+import { Money } from "@/components/ui/money";
 
 export type MovementRow = {
   id: string;
@@ -13,15 +15,11 @@ export type MovementRow = {
   description: string | null;
 };
 
-function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
-}
-
 export default async function TreasuryPage() {
   const supabase = await createClient();
 
   const [{ data: balances }, { data: movements }] = await Promise.all([
-    supabase.from("treasury_balances").select("balance"),
+    supabase.from("treasury_balances").select("balance, opening_balance"),
     supabase
       .from("treasury_movements")
       .select("id, direction, amount, category, movement_date, description")
@@ -30,6 +28,7 @@ export default async function TreasuryPage() {
   ]);
 
   const totalBalance = (balances ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
+  const openingBalance = (balances ?? []).reduce((sum, r) => sum + Number(r.opening_balance), 0);
 
   return (
     <div>
@@ -37,8 +36,10 @@ export default async function TreasuryPage() {
 
       <Card className="mb-7 p-5 sm:p-6">
         <p className="text-xs text-charcoal/45">الرصيد الحالي</p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{money(totalBalance)} ج.م</p>
+        <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal"><Money value={totalBalance} /></p>
       </Card>
+
+      <OpeningBalanceCard openingBalance={openingBalance} />
 
       <TreasuryForm />
 

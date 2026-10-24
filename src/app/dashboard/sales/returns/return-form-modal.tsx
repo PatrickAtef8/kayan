@@ -4,13 +4,20 @@ import { useEffect, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { getReturnableItems, createSalesReturn, type ReturnableItem } from "./actions";
+import { getReturnableItems, createSalesReturn, type ReturnableItem, type ReturnReason } from "./actions";
 
 function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-type LineState = { quantity: string; condition: "resalable" | "damaged" };
+type LineState = { quantity: string; condition: "resalable" | "damaged"; reason: "" | "damaged" | "expired" | "slow_moving" | "other" };
+
+const REASONS = [
+  { value: "damaged", label: "تالف" },
+  { value: "expired", label: "صلاحية منتهية" },
+  { value: "slow_moving", label: "عدم الدوران عند التاجر" },
+  { value: "other", label: "أخرى" },
+] as const;
 
 export function ReturnFormModal({
   open,
@@ -50,7 +57,7 @@ export function ReturnFormModal({
         setError(result.error);
       } else {
         setItems(result.items.filter((i) => i.returnable > 0));
-        setLines(Object.fromEntries(result.items.map((i) => [i.sales_invoice_item_id, { quantity: "", condition: "resalable" as const }])));
+        setLines(Object.fromEntries(result.items.map((i) => [i.sales_invoice_item_id, { quantity: "", condition: "resalable" as const, reason: "" as const }])));
       }
       setLoading(false);
     });
@@ -64,7 +71,7 @@ export function ReturnFormModal({
   function fillAll() {
     setLines((prev) => {
       const next = { ...prev };
-      for (const item of items) next[item.sales_invoice_item_id] = { ...(prev[item.sales_invoice_item_id] ?? { condition: "resalable" as const }), quantity: String(item.returnable) };
+      for (const item of items) next[item.sales_invoice_item_id] = { ...(prev[item.sales_invoice_item_id] ?? { condition: "resalable" as const, reason: "" as const }), quantity: String(item.returnable) };
       return next;
     });
   }
@@ -91,6 +98,7 @@ export function ReturnFormModal({
         sales_invoice_item_id: item.sales_invoice_item_id,
         quantity: Number(lines[item.sales_invoice_item_id]?.quantity || 0),
         condition: lines[item.sales_invoice_item_id]?.condition ?? "resalable",
+        reason: lines[item.sales_invoice_item_id]?.reason ?? "",
       }))
       .filter((line) => line.quantity > 0);
 
@@ -98,12 +106,16 @@ export function ReturnFormModal({
       setError("أدخل كمية لصنف واحد على الأقل");
       return;
     }
+    if (payload.some((line) => !line.reason)) {
+      setError("اختر سبب الإرجاع لكل صنف");
+      return;
+    }
 
     startTransition(async () => {
       const result = await createSalesReturn({
         sales_invoice_id: salesInvoiceId,
         return_date: returnDate,
-        items: payload,
+        items: payload.map((line) => ({ ...line, reason: line.reason as ReturnReason })),
         cash_refund: cashRefund,
         notes,
       });
@@ -140,7 +152,7 @@ export function ReturnFormModal({
                     {item.bonus_quantity > 0 ? ` (شامل ${item.bonus_quantity} Bonus)` : ""} · {money(item.unit_price)} ج.م/قطعة
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <Input
                     type="number"
                     min="0"
@@ -158,6 +170,20 @@ export function ReturnFormModal({
                   >
                     <option value="resalable">صالح لإعادة البيع</option>
                     <option value="damaged">تالف</option>
+                  </select>
+                  <select
+                    value={lines[item.sales_invoice_item_id]?.reason ?? ""}
+                    onChange={(e) => {
+                      const reason = e.target.value as LineState["reason"];
+                      // damaged / expired goods are normally not re-sold: suggest it (the user can still change the condition)
+                      updateLine(item.sales_invoice_item_id, reason === "damaged" || reason === "expired" ? { reason, condition: "damaged" } : { reason });
+                    }}
+                    className="rounded-lg border border-borderSoft bg-white px-2.5 text-sm text-charcoal focus:border-sage focus:outline-none"
+                  >
+                    <option value="">سبب الإرجاع…</option>
+                    {REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -2,7 +2,7 @@ import { getSettingsContext } from "@/lib/settings-context";
 import { NoSettingsAccess } from "@/components/settings/no-settings-access";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updateOrgName } from "./actions";
 
 const LANGUAGE_LABEL: Record<string, string> = { ar: "العربية", en: "English" };
@@ -18,12 +18,12 @@ export default async function GeneralSettingsPage() {
   return (
     <div className="max-w-lg">
       <Card className="p-5 sm:p-6">
-        <form action={updateOrgName} className="mb-6 space-y-4">
+        <ActionForm action={updateOrgName} successText="تم حفظ اسم المؤسسة" className="mb-6 space-y-4">
           <Field label="اسم المؤسسة">
             <Input name="name" defaultValue={org.name} required />
           </Field>
-          <Button type="submit">حفظ</Button>
-        </form>
+          <SubmitButton pendingText="جارٍ الحفظ...">حفظ</SubmitButton>
+        </ActionForm>
 
         <div className="space-y-3 border-t border-borderSoft pt-5 text-sm">
           <p className="text-xs text-charcoal/40">

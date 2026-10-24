@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl" className={arabicFont.variable}>
+    <html lang="ar" dir="rtl" className={arabicFont.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="font-arabic antialiased leading-relaxed">{children}</body>
     </html>
   );

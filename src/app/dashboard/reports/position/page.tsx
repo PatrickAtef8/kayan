@@ -1,7 +1,7 @@
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { ModernSelect } from "@/components/ui/select";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { addOtherBalance } from "./actions";
@@ -77,7 +77,7 @@ export default async function FinancialPositionReportPage() {
 
       <Card className="p-5 sm:p-6">
         <p className="mb-4 text-xs font-medium text-charcoal/40">أصول والتزامات أخرى</p>
-        <form action={addOtherBalance} className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
+        <ActionForm action={addOtherBalance} successText="تمت الإضافة بنجاح" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
           <Field label="النوع">
             <ModernSelect name="kind" allowClear={false} defaultValue="liability" options={[{ value: "asset", label: "أصل" }, { value: "liability", label: "التزام" }]} />
           </Field>
@@ -87,8 +87,8 @@ export default async function FinancialPositionReportPage() {
           <Field label="المبلغ">
             <Input name="amount" type="number" step="0.01" min="0" dir="ltr" required defaultValue={0} />
           </Field>
-          <Button type="submit">إضافة</Button>
-        </form>
+          <SubmitButton pendingText="جارٍ الإضافة...">إضافة</SubmitButton>
+        </ActionForm>
         <OtherBalancesList items={p.other_items} />
       </Card>
     </div>

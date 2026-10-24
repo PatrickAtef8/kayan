@@ -1,17 +1,14 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LandingPage } from "@/components/marketing/landing-page";
 
-// Public marketing page. Signed-in users skip straight to the dashboard;
-// everyone else sees the landing page, which is the only place /login and
-// /signup are linked from now.
+// Public marketing page. It is reachable by everyone, signed in or not: a signed-in visitor sees the same page,
+// but its buttons lead to the dashboard instead of login / signup — so «الصفحة التعريفية» can be opened from
+// the dashboard and from the login / signup screens and there is always a way back to it.
 export default async function RootPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) redirect("/dashboard");
-
-  return <LandingPage />;
+  return <LandingPage signedIn={!!user} />;
 }

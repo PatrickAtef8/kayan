@@ -23,9 +23,9 @@ function hrefFor(row: ResultRow): string {
     case "product":
       return `/dashboard/products?q=${encodeURIComponent(row.title)}`;
     case "sales_invoice":
-      return `/dashboard/sales?q=${encodeURIComponent(row.title)}`;
+      return `/dashboard/sales?inv=${encodeURIComponent(row.entity_id)}`;
     case "purchase_invoice":
-      return `/dashboard/purchases?q=${encodeURIComponent(row.title)}`;
+      return `/dashboard/purchases?inv=${encodeURIComponent(row.entity_id)}`;
     default:
       return "/dashboard";
   }

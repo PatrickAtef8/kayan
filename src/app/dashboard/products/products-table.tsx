@@ -6,7 +6,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { ModernSelect } from "@/components/ui/select";
 import { updateProduct, deleteProduct } from "./actions";
 
@@ -14,6 +14,9 @@ type ProductRow = {
   id: string;
   name: string;
   sku: string | null;
+  barcode: string | null;
+  reorder_level: number;
+  units_per_carton: number | null;
   unit: string;
   category_id: string | null;
   product_categories: { name: string } | null;
@@ -22,7 +25,7 @@ type ProductRow = {
 
 type Category = { id: string; name: string };
 
-export function ProductsTable({ products, categories, canViewCost, canEditCost }: { products: ProductRow[]; categories: Category[]; canViewCost: boolean; canEditCost: boolean }) {
+export function ProductsTable({ products, categories, canViewCost, canEditCost, readOnly = false }: { products: ProductRow[]; categories: Category[]; canViewCost: boolean; canEditCost: boolean; readOnly?: boolean }) {
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -52,12 +55,14 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost }
         columns={[
           { header: "المنتج", render: (p) => p.name },
           { header: "الكود", render: (p) => <span dir="ltr">{p.sku ?? "—"}</span> },
+          { header: "الباركود", render: (p) => <span dir="ltr">{p.barcode ?? "—"}</span> },
+          { header: "حد الطلب", render: (p) => <span dir="ltr">{Number(p.reorder_level) > 0 ? Number(p.reorder_level) : "—"}</span> },
           { header: "التصنيف", render: (p) => p.product_categories?.name ?? "—" },
           { header: "الوحدة", render: (p) => p.unit },
-          { header: "سعر البيع", render: (p) => <span dir="ltr">{(p.product_prices?.[0]?.selling_price ?? 0).toFixed(2)} ج.م</span> },
-          {
+          ...(readOnly ? [] : [{ header: "سعر البيع", render: (p: ProductRow) => <span dir="ltr">{(p.product_prices?.[0]?.selling_price ?? 0).toFixed(2)} ج.م</span> }]),
+          ...(readOnly ? [] : [{
             header: "",
-            render: (p) => (
+            render: (p: ProductRow) => (
               <div className="flex items-center justify-end gap-1">
                 <button onClick={() => setEditing(p)} className="cursor-pointer rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="تعديل">
                   <Pencil size={15} strokeWidth={2} />
@@ -67,13 +72,13 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost }
                 </button>
               </div>
             ),
-          },
+          }]),
         ]}
       />
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات المنتج">
         {editing && (
-          <form action={updateProduct.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updateProduct.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم المنتج">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
@@ -83,6 +88,17 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost }
               </Field>
               <Field label="وحدة القياس">
                 <Input name="unit" defaultValue={editing.unit} />
+              </Field>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="الباركود">
+                <Input name="barcode" dir="ltr" defaultValue={editing.barcode ?? ""} />
+              </Field>
+              <Field label="حد الطلب">
+                <Input name="reorder_level" type="number" step="0.001" min="0" dir="ltr" defaultValue={Number(editing.reorder_level) || 0} />
+              </Field>
+              <Field label="وحدات/كرتونة">
+                <Input name="units_per_carton" type="number" step="0.001" min="0" dir="ltr" defaultValue={editing.units_per_carton ?? ""} />
               </Field>
             </div>
             <Field label="التصنيف">
@@ -107,10 +123,8 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost }
                 <Input name="distributor_price" type="number" step="0.01" dir="ltr" defaultValue={editingPrice?.distributor_price ?? ""} placeholder="بلا — يُستخدم سعر التجزئة" />
               </Field>
             </div>
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 

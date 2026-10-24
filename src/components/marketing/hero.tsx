@@ -13,7 +13,7 @@ const word = {
   show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
-export function Hero() {
+export function Hero({ signedIn = false }: { signedIn?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const pointerX = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
   const pointerY = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
@@ -45,7 +45,7 @@ export function Hero() {
           >
             <span>إدارة أبسط. قرار أسرع.</span>
             <span className="h-px w-10 bg-sage" />
-            <span className="text-sage">٠١ / ٠٤</span>
+            <span className="text-sage">٠١ / ٠٦</span>
           </m.div>
 
           <m.h1
@@ -67,7 +67,7 @@ export function Hero() {
             transition={{ delay: 0.65, duration: 0.7 }}
             className="mt-8 max-w-md text-base leading-8 text-charcoal/58 sm:text-lg"
           >
-            كيان يجمع مبيعاتك ومشترياتك ومخزونك وخزنتك في نظام واحد، لتعرف ماذا يحدث في شركتك قبل أن تسأل.
+            كيان يجمع مبيعاتك ومشترياتك ومخزونك وخزنتك ومندوبيك في نظام واحد، ويربط كل رقم بمصدره، لتعرف ماذا يحدث في شركتك قبل أن تسأل.
           </m.p>
 
           <m.div
@@ -76,8 +76,8 @@ export function Hero() {
             transition={{ delay: 0.78, duration: 0.7 }}
             className="mt-9 flex flex-wrap items-center justify-end gap-3"
           >
-            <PrimaryButton href="/signup" className="rounded-[4px] px-6 py-3.5">
-              ابدأ مجانًا
+            <PrimaryButton href={signedIn ? "/dashboard" : "/signup"} className="rounded-[4px] px-6 py-3.5">
+              {signedIn ? "افتح لوحة التحكم" : "ابدأ مجانًا"}
               <ArrowLeft size={19} strokeWidth={2} />
             </PrimaryButton>
             <SecondaryLink href="#how" className="rounded-[4px] border border-borderSoft px-5 py-3.5 hover:border-charcoal">
@@ -95,7 +95,7 @@ export function Hero() {
           <div className="relative overflow-hidden border border-borderSoft bg-white p-2 shadow-[18px_22px_0_rgba(52,78,65,0.14)]">
             <div className="flex items-center justify-between border-b border-borderSoft px-4 py-3 text-[0.625rem] tracking-[0.16em] text-charcoal/45">
               <span dir="ltr">كيان / نظرة عامة</span>
-              <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sage" /> مباشر الآن</span>
+              <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sage" /> مثال توضيحي</span>
             </div>
             <div className="grid min-h-[463px] gap-4 p-4 sm:grid-cols-[0.85fr_1.15fr] sm:p-5" dir="rtl">
               <div className="flex flex-col justify-between border border-borderSoft p-4">
@@ -122,10 +122,10 @@ export function Hero() {
                   <Sparkles size={19} className="text-sage" />
                 </div>
                 {[
-                  ["فاتورة مبيعات #1042", "+ 2,400 ج.م"],
-                  ["توريد مخزون — مصنع ألفا", "− 8,100 ج.م"],
-                  ["تحصيل من مندوب", "+ 1,850 ج.م"],
-                  ["مصروفات تشغيلية", "− 620 ج.م"],
+                  ["فاتورة بيع S-001042", "+ 2,400 ج.م"],
+                  ["فاتورة شراء P-000318", "− 8,100 ج.م"],
+                  ["تحصيل من عميل", "+ 1,850 ج.م"],
+                  ["مصروف — إيجار", "− 620 ج.م"],
                 ].map(([label, amount], i) => (
                   <m.div
                     key={label}
@@ -142,8 +142,8 @@ export function Hero() {
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-borderSoft px-4 py-3 text-[0.625rem] text-charcoal/35">
-              <span>آخر تحديث منذ لحظات</span>
-              <span dir="ltr">١١ وحدة مفعّلة</span>
+              <span>أرقام توضيحية لشكل الرئيسية</span>
+              <span dir="ltr">١٢ وحدة تشغيلية</span>
             </div>
           </div>
           <div className="mt-5 flex items-center justify-between text-xs text-charcoal/40">

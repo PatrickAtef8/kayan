@@ -5,6 +5,7 @@ import { Trash2, Power } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { ModernSelect } from "@/components/ui/select";
 import { DataTable } from "@/components/ui/data-table";
 import { addTier, deleteTier, toggleTier } from "./actions";
@@ -57,8 +58,9 @@ export function DiscountsManager({ tiers }: { tiers: Tier[] }) {
             <Field label="نسبة الخصم (%)">
               <Input type="number" min="0" max="100" step="0.01" dir="ltr" value={tierPct} onChange={(e) => setTierPct(Number(e.target.value))} />
             </Field>
-            <Button type="button" disabled={pending} onClick={() => run(() => addTier({ applies_to: tierSide, min_amount: minAmount, discount_pct: tierPct }), () => { setMinAmount(0); setTierPct(0); })}>
-              إضافة شريحة
+            <Button type="button" disabled={pending} onClick={() => run(() => addTier({ applies_to: tierSide, min_amount: minAmount, discount_pct: tierPct }), () => { setMinAmount(0); setTierPct(0); })} className="inline-flex items-center gap-2">
+              {pending && <Spinner size={14} />}
+              {pending ? "جارٍ إضافة الشريحة..." : "إضافة شريحة"}
             </Button>
           </div>
         </Card>

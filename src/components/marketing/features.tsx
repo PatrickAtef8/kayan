@@ -1,14 +1,16 @@
 "use client";
 
 import { m } from "framer-motion";
-import { ShoppingCart, Boxes, Wallet, BarChart3, UserCheck, ArrowUpLeft } from "lucide-react";
+import { ShoppingCart, Boxes, Wallet, BarChart3, UserCheck, Truck, Zap, ArrowUpLeft } from "lucide-react";
 
 const FEATURES = [
-  { eyebrow: "المبيعات", title: "من البيع إلى الربح، بلا خطوة ضائعة", description: "كل عملية بيع تحدّث مخزونك وخزنتك وأرباحك في نفس اللحظة.", icon: ShoppingCart, size: "md:col-span-7" },
-  { eyebrow: "المخزون", title: "اعرف اللي عندك فعلًا", description: "كمية دقيقة لكل منتج، لحظة بلحظة.", icon: Boxes, size: "md:col-span-5" },
-  { eyebrow: "الخزنة", title: "رصيدك الحقيقي", description: "كل قرش داخل وخارج مسجل ومربوط بمصدره.", icon: Wallet, size: "md:col-span-4" },
-  { eyebrow: "المندوبين", title: "أداء كل مندوب أمامك", description: "مبيعات وعمولات وتحصيل، لكل مندوب على حدة.", icon: UserCheck, size: "md:col-span-4" },
-  { eyebrow: "التقارير", title: "أرقام تفهمها من أول نظرة", description: "أرباح، مصروفات، وموقفك المالي — بدون تعقيد محاسبي.", icon: BarChart3, size: "md:col-span-4" },
+  { eyebrow: "المبيعات", title: "من الفاتورة إلى الربح، بلا خطوة ضائعة", description: "خصومات بالنسبة المئوية وشرائح خصم وبونص يدوي، ومرتجعات بنفس السعر الفعلي. كل فاتورة تحدّث المخزون والخزنة والربح معًا.", icon: ShoppingCart, size: "md:col-span-7" },
+  { eyebrow: "المخزون", title: "اعرف اللي عندك فعلًا", description: "رصيد لكل مخزن، تحويل بينها، جرد وتسوية، ودفعات بتواريخ صلاحية — والكمية المباعة تُحجز قبل صرفها.", icon: Boxes, size: "md:col-span-5" },
+  { eyebrow: "المشتريات والموردين", title: "من المورد إلى الرف", description: "فواتير مشتريات بمتوسط تكلفة مرجّح، ومرتجعات، وكشف حساب لكل مورد.", icon: Truck, size: "md:col-span-4" },
+  { eyebrow: "الخزنة والمصروفات", title: "رصيدك الحقيقي", description: "حركة لكل تحصيل ودفعة ومصروف، مع مرفقات، وسحوبات الشركاء بمعزل عن الأرباح.", icon: Wallet, size: "md:col-span-4" },
+  { eyebrow: "المندوبين", title: "أداء كل مندوب أمامك", description: "أهداف شهرية وحد أدنى للعمولة، وتحصيل من عملائه المسندين إليه فقط.", icon: UserCheck, size: "md:col-span-4" },
+  { eyebrow: "التقارير", title: "أرقام تفهمها من أول نظرة", description: "أرباح وخسائر، ديون العملاء والموردين، المركز المالي، رواتب المناديب والمرتجعات — لأي شهر أو سنة تختارها.", icon: BarChart3, size: "md:col-span-7" },
+  { eyebrow: "ابدأ بسرعة", title: "استورد، وابحث في ثانية", description: "استورد منتجاتك وعملاءك وموردينك من ملف CSV، وابحث في كل شيء من مكان واحد.", icon: Zap, size: "md:col-span-5" },
 ];
 
 export function Features() {
@@ -17,8 +19,8 @@ export function Features() {
       <div className="mx-auto max-w-6xl">
         <m.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-14 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <p className="mb-4 text-xs font-medium tracking-[0.16em] text-sage">٠٢ / ما الذي يتضمنه كيان</p>
-            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل ست شاشات متفرقة.</h2>
+            <p className="mb-4 text-xs font-medium tracking-[0.16em] text-sage">٠٣ / ما الذي يتضمنه كيان</p>
+            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل أوراق وجداول متفرقة.</h2>
           </div>
           <p className="max-w-xs text-sm leading-7 text-charcoal/50 md:text-left">الأدوات التي تحتاجها شركتك، مرتبة حول طريقة عملك — لا حول تعقيد البرنامج.</p>
         </m.div>

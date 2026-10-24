@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { canEditCost, setProductCost } from "@/lib/costs";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -23,13 +24,24 @@ async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>)
   return membership;
 }
 
+// Phase 1 (reports package): barcode, reorder level, units per carton — all optional.
+function readInventoryFields(formData: FormData) {
+  const barcode = String(formData.get("barcode") || "").trim() || null;
+  const levelRaw = String(formData.get("reorder_level") || "").trim();
+  const cartonRaw = String(formData.get("units_per_carton") || "").trim();
+  const reorderLevel = levelRaw ? Math.max(0, Number(levelRaw) || 0) : 0;
+  const cartonNum = cartonRaw ? Number(cartonRaw) : null;
+  const unitsPerCarton = cartonNum && cartonNum > 0 ? cartonNum : null;
+  return { barcode, reorder_level: reorderLevel, units_per_carton: unitsPerCarton };
+}
+
 export async function createProduct(formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
   let categoryId = String(formData.get("category_id") || "") || null;
   const newCategory = String(formData.get("new_category") || "").trim();
@@ -61,35 +73,39 @@ export async function createProduct(formData: FormData) {
       name,
       sku,
       unit,
+      ...readInventoryFields(formData),
     })
     .select("id")
     .single();
 
-  if (error || !product) return;
+  if (error || !product) return { error: translateDbError(error, "products") };
 
-  await supabase.from("product_prices").insert({
+  const { error: priceError } = await supabase.from("product_prices").insert({
     organization_id: membership.organization_id,
     product_id: product.id,
     selling_price: sellingPrice,
     wholesale_price: wholesalePrice,
     distributor_price: distributorPrice,
   });
+  if (priceError) return { error: translateDbError(priceError, "products") };
 
   // cost is stored in its own protected table (0034); only users allowed to edit cost may set it
   if (formData.has("cost") && cost > 0 && (await canEditCost(supabase, membership.organization_id))) {
-    await setProductCost(supabase, product.id, cost);
+    const costResult = await setProductCost(supabase, product.id, cost);
+    if (costResult.error) return { error: `أُضيف المنتج لكن تعذّر حفظ التكلفة: ${costResult.error}` };
   }
 
   revalidatePath("/dashboard/products");
+  return { error: null };
 }
 
 export async function updateProduct(id: string, formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
   let categoryId = String(formData.get("category_id") || "") || null;
   const newCategory = String(formData.get("new_category") || "").trim();
@@ -112,26 +128,30 @@ export async function updateProduct(id: string, formData: FormData) {
   const wholesalePrice = wholesalePriceRaw ? Number(wholesalePriceRaw) : null;
   const distributorPrice = distributorPriceRaw ? Number(distributorPriceRaw) : null;
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("products")
-    .update({ name, sku, unit, category_id: categoryId })
+    .update({ name, sku, unit, category_id: categoryId, ...readInventoryFields(formData) })
     .eq("id", id);
+  if (updateError) return { error: translateDbError(updateError, "products") };
 
   // One current price row per product (see 0004_master_data.sql) — upsert
   // rather than insert, since editing a product usually means changing a
   // price that already exists.
-  await supabase
+  const { error: priceError } = await supabase
     .from("product_prices")
     .upsert(
       { organization_id: membership.organization_id, product_id: id, selling_price: sellingPrice, wholesale_price: wholesalePrice, distributor_price: distributorPrice },
       { onConflict: "organization_id,product_id" }
     );
+  if (priceError) return { error: translateDbError(priceError, "products") };
 
   if (formData.has("cost") && (await canEditCost(supabase, membership.organization_id))) {
-    await setProductCost(supabase, id, cost);
+    const costResult = await setProductCost(supabase, id, cost);
+    if (costResult.error) return { error: costResult.error };
   }
 
   revalidatePath("/dashboard/products");
+  return { error: null };
 }
 
 export async function deleteProduct(id: string) {
@@ -146,7 +166,7 @@ export async function deleteProduct(id: string) {
   return { error: null };
 }
 
-export type ProductImportRow = { name: string; sku: string; unit: string; cost: number; selling_price: number; category: string };
+export type ProductImportRow = { name: string; sku: string; unit: string; cost: number; selling_price: number; category: string; barcode?: string; reorder_level?: number; units_per_carton?: number };
 export type ProductImportResult = { created: number; skipped: { row: number; reason: string }[]; error: string | null };
 
 export async function importProductsCsv(rows: ProductImportRow[]): Promise<ProductImportResult> {
@@ -201,7 +221,16 @@ export async function importProductsCsv(rows: ProductImportRow[]): Promise<Produ
 
     const { data: product, error: productError } = await supabase
       .from("products")
-      .insert({ organization_id: orgId, category_id: categoryId, name, sku: row.sku.trim() || null, unit: row.unit.trim() || "قطعة" })
+      .insert({
+        organization_id: orgId,
+        category_id: categoryId,
+        name,
+        sku: row.sku.trim() || null,
+        unit: row.unit.trim() || "قطعة",
+        barcode: row.barcode?.trim() || null,
+        reorder_level: row.reorder_level && row.reorder_level > 0 ? row.reorder_level : 0,
+        units_per_carton: row.units_per_carton && row.units_per_carton > 0 ? row.units_per_carton : null,
+      })
       .select("id")
       .single();
 

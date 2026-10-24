@@ -11,6 +11,7 @@ function money(n: number) {
 export function usePricingPreview(input: PricingPreviewInput) {
   const [preview, setPreview] = useState<PricingPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [settledKey, setSettledKey] = useState<string | null>(null);
   const seq = useRef(0);
   const key = JSON.stringify(input);
 
@@ -21,11 +22,13 @@ export function usePricingPreview(input: PricingPreviewInput) {
       if (id !== seq.current) return;
       setPreview(result.preview);
       setError(result.error);
+      setSettledKey(key);
     }, 350);
     return () => clearTimeout(timer);
   }, [key]);
 
-  return { preview, error };
+  // true while the engine has not yet answered for what is on screen right now
+  return { preview, error, pending: settledKey !== key };
 }
 
 export function PricingSummary({

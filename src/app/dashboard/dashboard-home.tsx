@@ -2,23 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import { MotionProvider } from "@/components/motion-provider";
 import { TrendingUp, Wallet, Users, Truck, Boxes, Landmark, ChevronDown, Check, Plus, Clock } from "lucide-react";
-import { ModernSelect } from "@/components/ui/select";
-import type { Period } from "./page";
+import { formatMoney, isNegativeMoney } from "@/lib/money";
+import { PeriodPicker } from "@/components/ui/period-picker";
+import type { PeriodSel } from "@/lib/report-period";
 import { DashboardAnalytics, type DashboardAnalyticsData } from "./dashboard-analytics";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
-
-const PERIOD_OPTIONS: { value: Period; label: string }[] = [
-  { value: "month", label: "هذا الشهر" },
-  { value: "year", label: "هذا العام" },
-  { value: "all", label: "كل الوقت" },
-];
 
 type ActivityRow = { occurred_at: string; kind: string; label: string; amount: number };
 
@@ -66,7 +60,7 @@ function DashboardHomeContent({
   recentActivity,
   analytics,
 }: {
-  period: Period;
+  period: PeriodSel;
   hasProducts: boolean;
   canViewFinancial: boolean;
   totalSales: number;
@@ -79,16 +73,15 @@ function DashboardHomeContent({
   analytics: DashboardAnalyticsData;
 }) {
   const [showMore, setShowMore] = useState(false);
-  const router = useRouter();
 
   const locked = { value: "—", note: "غير مصرح بعرض هذا المؤشر" };
   const CARDS = [
-    { label: "صافي المبيعات", value: `${money(totalSales)} ج.م`, icon: TrendingUp, note: PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? "" },
+    { label: "صافي المبيعات", value: `${money(totalSales)} ج.م`, icon: TrendingUp, note: period.label },
     canViewFinancial
-      ? { label: "صافي الربح", value: `${money(netProfit)} ج.م`, icon: Landmark, note: PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? "" }
+      ? { label: "صافي الربح", value: `${money(netProfit)} ج.م`, icon: Landmark, note: period.label }
       : { label: "صافي الربح", icon: Landmark, ...locked },
     canViewFinancial
-      ? { label: "رصيد الخزنة", value: `${money(treasuryBalance)} ج.م`, icon: Wallet, note: "الرصيد الحالي" }
+      ? { label: "رصيد الخزنة", value: `${money(treasuryBalance)} ج.م`, icon: Wallet, note: "الرصيد الحالي", negative: isNegativeMoney(treasuryBalance) }
       : { label: "رصيد الخزنة", icon: Wallet, ...locked },
     canViewFinancial
       ? { label: "فلوس عند العملاء", value: `${money(customerReceivable)} ج.م`, icon: Users, note: "الرصيد الحالي" }
@@ -110,13 +103,8 @@ function DashboardHomeContent({
           <h1 className="text-3xl font-semibold tracking-[-0.04em] text-charcoal sm:text-4xl">نظرة واضحة على يومك.</h1>
           <p className="mt-3 max-w-lg text-sm leading-7 text-charcoal/50">كل ما تحتاجه لتبدأ، في مكان واحد وبدون تشتيت.</p>
         </div>
-        <div className="hidden w-40 shrink-0 sm:block">
-          <ModernSelect
-            value={period}
-            onChange={(value) => router.push(`/dashboard?period=${value}`, { scroll: false })}
-            allowClear={false}
-            options={PERIOD_OPTIONS}
-          />
+        <div className="hidden w-48 shrink-0 sm:block">
+          <PeriodPicker sel={period} />
         </div>
       </div>
 
@@ -145,7 +133,7 @@ function DashboardHomeContent({
         <span className="text-[0.6875rem] text-charcoal/35">تتحدث تلقائيًا</span>
       </div>
       <div className="mb-4 sm:hidden">
-        <ModernSelect value={period} onChange={(value) => router.push(`/dashboard?period=${value}`, { scroll: false })} allowClear={false} options={PERIOD_OPTIONS} />
+        <PeriodPicker sel={period} />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -160,7 +148,7 @@ function DashboardHomeContent({
                 <span className="text-[0.625rem] text-charcoal/25" dir="ltr">٠{index + 1}</span>
               </div>
               <p className="text-xs text-charcoal/50">{card.label}</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{card.value}</p>
+              <p className={`mt-2 text-3xl font-semibold tracking-tight ${"negative" in card && card.negative ? "text-rose" : "text-charcoal"}`} dir="ltr">{card.value}</p>
               <p className="mt-1 text-[0.6875rem] text-charcoal/35">{card.note}</p>
             </m.div>
           );

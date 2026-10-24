@@ -53,7 +53,7 @@ select lab.check('opening','admin can update a supplier balance', lab.val(format
 -- view-only permission: can READ (scoped) but not WRITE
 select lab.as_owner() \gset
 insert into customer_opening_balances(customer_id,amount) values (:'cust_a',111),(:'cust_b',222);
-insert into role_permissions values ((select id from roles where key='sales' and organization_id is null),'customers.view_balance');
+insert into role_permissions values ((select id from roles where key='sales' and organization_id is null),'customers.view_balance') on conflict do nothing;
 select lab.as_user(:'rep') \gset
 select lab.check('opening','view_balance: restricted rep reads ONLY own customer (1 row)', (select count(*) from customer_opening_balances)=1 and (select amount from customer_opening_balances)=111);
 select lab.check('opening','view_balance: still cannot write', lab.val(format($q$with u as (update customer_opening_balances set amount=0 where customer_id=%L returning 1) select count(*) from u$q$,:'cust_a'))='0');
@@ -62,6 +62,8 @@ select lab.as_owner() \gset
 delete from role_permissions where permission_key='customers.view_balance' and role_id=(select id from roles where key='sales' and organization_id is null);
 select lab.as_user(:'rep') \gset
 select lab.check('opening','permission removed -> hidden again', (select count(*) from customer_opening_balances)=0);
+select lab.as_owner() \gset
+insert into role_permissions values ((select id from roles where key='sales' and organization_id is null),'customers.view_balance') on conflict do nothing;   -- restore the 0043 default for the next cases
 
 -- audit trail
 select lab.as_owner() \gset

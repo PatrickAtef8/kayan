@@ -1,13 +1,8 @@
 import { getSupabase, getMembership, NO_ORG_ID } from "@/lib/org-context";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
-import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ModernSelect } from "@/components/ui/select";
-import { createExpense } from "./actions";
 import { Pagination } from "@/components/ui/pagination";
 import { ExpensesTable } from "./expenses-table";
-import { EXPENSE_TYPE_LABELS } from "./expense-types";
+import { ExpenseForm } from "./expense-form";
 
 const PAGE_SIZE = 20;
 
@@ -22,7 +17,7 @@ export type ExpenseRow = {
   sales_representatives: { name: string } | null;
 };
 
-export default async function ExpensesPage(props: { searchParams: Promise<{ page?: string; error?: string }> }) {
+export default async function ExpensesPage(props: { searchParams: Promise<{ page?: string }> }) {
   const searchParams = await props.searchParams;
   const supabase = (await getSupabase());
   const page = Math.max(1, Number(searchParams.page) || 1);
@@ -44,44 +39,9 @@ export default async function ExpensesPage(props: { searchParams: Promise<{ page
     <div>
       <PageHeader title="المصروفات" />
 
-      {searchParams.error && <p className="mb-4 rounded-xl bg-rose/10 px-4 py-3 text-sm text-rose">{searchParams.error}</p>}
-      <Card className="mb-7 p-5 sm:p-6">
-        <form action={createExpense} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="التصنيف">
-            <ModernSelect name="category_id" placeholder="اختر تصنيفًا" options={(categories ?? []).map((c) => ({ value: c.id, label: c.name }))} />
-          </Field>
-          <Field label="أو تصنيف جديد">
-            <Input name="new_category" placeholder="اكتب اسم تصنيف جديد" />
-          </Field>
-          <Field label="المبلغ">
-            <Input name="amount" type="number" step="0.01" min="0" dir="ltr" required defaultValue={0} />
-          </Field>
+      <ExpenseForm categories={categories ?? []} reps={reps ?? []} />
 
-          <Field label="التاريخ">
-            <Input name="expense_date" type="date" dir="ltr" defaultValue={new Date().toISOString().slice(0, 10)} />
-          </Field>
-          <Field label="طريقة الدفع">
-            <Input name="payment_method" placeholder="نقدًا، تحويل بنكي..." defaultValue="نقدًا" />
-          </Field>
-          <Field label="الوصف">
-            <Input name="description" placeholder="اختياري" />
-          </Field>
-
-          <Field label="نوع المصروف">
-            <ModernSelect name="expense_type" allowClear={false} defaultValue="operating" options={Object.entries(EXPENSE_TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
-          </Field>
-          <Field label="المندوب (لمصاريف المندوب / المرتب / صرف العمولة)">
-            <ModernSelect name="sales_rep_id" placeholder="بدون مندوب" clearLabel="بدون مندوب" options={(reps ?? []).map((r) => ({ value: r.id, label: r.name }))} />
-          </Field>
-          <p className="self-end pb-3 text-xs text-charcoal/45">المرتب ومصاريف المندوب بتخصم من الخزنة ومن الربح. صرف العمولة بيخصم من الخزنة فقط لأن العمولة اتخصمت من الربح لما استُحقت.</p>
-
-          <div className="sm:col-span-3">
-            <Button type="submit">تسجيل المصروف</Button>
-          </div>
-        </form>
-      </Card>
-
-      <div className="mb-4 text-xs font-medium text-charcoal/40">سجل المصروفات</div>
+      <div className="mb-4 text-xs font-medium text-charcoal/40">سجل المصروفات المسجّلة</div>
       <ExpensesTable expenses={(expenses as unknown as ExpenseRow[]) ?? []} organizationId={membership?.organization_id ?? ""} />
       <Pagination page={page} pageSize={PAGE_SIZE} totalCount={count ?? 0} />
     </div>

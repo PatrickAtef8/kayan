@@ -17,7 +17,7 @@ select create_organization('شركة الفريق', 'x', 'EG', 'EGP', 'ar', arra
 select t.as_owner();
 insert into organization_users (organization_id, user_id, role_id, status)
 select :'org_id', 'f0000000-0000-0000-0000-000000000003', id, 'active' from roles where key = 'sales' and organization_id is null;
-select id as accountant_role from roles where key = 'accountant' and organization_id is null \gset
+select id as accountant_role from roles where key = 'warehouse' and organization_id is null \gset
 select id as sales_role from roles where key = 'sales' and organization_id is null \gset
 select id as owner_role from roles where key = 'owner' and organization_id is null \gset
 select t.as_user('f0000000-0000-0000-0000-000000000001');
@@ -87,10 +87,10 @@ insert into auth.users (id, email) values
   ('f0000000-0000-0000-0000-000000000004', 'admin@team.test'),
   ('f0000000-0000-0000-0000-000000000005', 'freshexisting@team.test');
 insert into organization_users (organization_id, user_id, role_id, status)
-select :'org_id', 'f0000000-0000-0000-0000-000000000004', id, 'active' from roles where key = 'admin' and organization_id is null;
+select :'org_id', 'f0000000-0000-0000-0000-000000000004', id, 'active' from roles where key = 'warehouse' and organization_id is null;
 select t.as_user('f0000000-0000-0000-0000-000000000004');
 select t.throws(format('select add_team_member(%L, ''freshexisting@team.test'', %L)', :'org_id', :'owner_role'),
-  'إضافة مالك', 'an admin (manage_settings, but not owner) cannot hand out the owner role via add_team_member');
+  'إضافة أعضاء', 'a non-owner cannot hand out the owner role (or any role) via add_team_member');
 select t.eq((select count(*) from organization_users where organization_id = :'org_id' and user_id = 'f0000000-0000-0000-0000-000000000005'), 0, 'the blocked insert leaves no partial membership row behind');
 select t.as_user('f0000000-0000-0000-0000-000000000001');
 

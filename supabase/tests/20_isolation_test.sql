@@ -8,8 +8,8 @@ select t.as_owner();
 insert into auth.users (id, email) values
   ('c0000000-0000-0000-0000-00000000000a', 'alice@iso.test'),   -- owner of org A (the victim)
   ('c0000000-0000-0000-0000-00000000000b', 'bob@iso.test'),     -- owner of org B (the attacker)
-  ('c0000000-0000-0000-0000-00000000000c', 'carol@iso.test'),   -- admin in org A
-  ('c0000000-0000-0000-0000-00000000000d', 'dave@iso.test');    -- accountant in org A
+  ('c0000000-0000-0000-0000-00000000000c', 'carol@iso.test'),   -- storekeeper in org A
+  ('c0000000-0000-0000-0000-00000000000d', 'dave@iso.test');    -- sales rep in org A
 
 select t.as_user('c0000000-0000-0000-0000-00000000000a');
 select create_organization('الضحية', 'x', 'EG', 'EGP', 'ar', array['sales','customers','inventory','purchases','suppliers','expenses','treasury','partners']) as id \gset orga_
@@ -18,9 +18,9 @@ select create_organization('المهاجم', 'x', 'EG', 'EGP', 'ar', array['sale
 
 select t.as_owner();
 insert into organization_users (organization_id, user_id, role_id, status)
-select :'orga_id', 'c0000000-0000-0000-0000-00000000000c', id, 'active' from roles where key = 'admin' and organization_id is null;
+select :'orga_id', 'c0000000-0000-0000-0000-00000000000c', id, 'active' from roles where key = 'warehouse' and organization_id is null;
 insert into organization_users (organization_id, user_id, role_id, status)
-select :'orga_id', 'c0000000-0000-0000-0000-00000000000d', id, 'active' from roles where key = 'accountant' and organization_id is null;
+select :'orga_id', 'c0000000-0000-0000-0000-00000000000d', id, 'active' from roles where key = 'sales' and organization_id is null;
 
 -- Org A gets a full set of business data.
 select t.as_user('c0000000-0000-0000-0000-00000000000a');
@@ -100,23 +100,21 @@ select t.throws(format('select create_expense(%L, null, null, 1, null, null, ''x
 
 -- ============================================================
 -- 5. Privilege escalation inside an organization (§50)
---    carol = admin (manage_settings), dave = accountant, alice = owner
+--    carol = storekeeper, dave = sales rep, alice = owner.  Only an owner holds manage_settings, so a
+--    non-owner cannot touch ANY membership row: RLS hides the rows (0 affected) or refuses the insert.
 -- ============================================================
 select t.as_user('c0000000-0000-0000-0000-00000000000c');
-select t.eq(t.affected(format('delete from organization_users where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a')), 0, 'placeholder')
-where false;
-select t.throws(format('delete from organization_users where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a'), 'المالك', 'an admin cannot remove the owner');
-select t.throws(format('update organization_users set role_id = (select id from roles where key = ''owner'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000c'), 'المالك', 'an admin cannot promote themselves to owner');
-select t.throws(format('update organization_users set status = ''disabled'' where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a'), 'المالك', 'an admin cannot disable the owner');
-select t.throws(format('insert into organization_users (organization_id, user_id, role_id) values (%L, %L, (select id from roles where key = ''owner'' and organization_id is null))', :'orga_id', 'c0000000-0000-0000-0000-00000000000b'), 'المالك', 'an admin cannot add a new owner');
-select t.eq(t.affected(format('update organization_users set status = ''disabled'' where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000d')), 1, 'an admin can still manage ordinary members');
-select t.affected(format('update organization_users set status = ''active'' where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000d'));
+select t.eq(t.affected(format('delete from organization_users where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a')), 0, 'a non-owner cannot remove the owner');
+select t.eq(t.affected(format('update organization_users set role_id = (select id from roles where key = ''owner'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000c')), 0, 'a non-owner cannot promote themselves to owner');
+select t.eq(t.affected(format('update organization_users set status = ''disabled'' where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a')), 0, 'a non-owner cannot disable the owner');
+select t.throws(format('insert into organization_users (organization_id, user_id, role_id) values (%L, %L, (select id from roles where key = ''owner'' and organization_id is null))', :'orga_id', 'c0000000-0000-0000-0000-00000000000b'), 'المالك', 'a non-owner cannot add a new owner');
+select t.eq(t.affected(format('update organization_users set status = ''disabled'' where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000d')), 0, 'a non-owner cannot manage ordinary members either');
 
 select t.as_user('c0000000-0000-0000-0000-00000000000a');
 select t.throws(format('delete from organization_users where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a'), 'بدون مالك', 'the last owner cannot remove themselves');
-select t.throws(format('update organization_users set role_id = (select id from roles where key = ''admin'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a'), 'بدون مالك', 'the last owner cannot demote themselves');
+select t.throws(format('update organization_users set role_id = (select id from roles where key = ''sales'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a'), 'بدون مالك', 'the last owner cannot demote themselves');
 -- With a second owner in place, the first may step down.
 select t.eq(t.affected(format('update organization_users set role_id = (select id from roles where key = ''owner'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000d')), 1, 'an owner can appoint another owner');
-select t.eq(t.affected(format('update organization_users set role_id = (select id from roles where key = ''admin'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a')), 1, 'an owner can step down once another owner exists');
+select t.eq(t.affected(format('update organization_users set role_id = (select id from roles where key = ''sales'' and organization_id is null) where organization_id = %L and user_id = %L', :'orga_id', 'c0000000-0000-0000-0000-00000000000a')), 1, 'an owner can step down once another owner exists');
 
 select t.as_owner();

@@ -35,7 +35,7 @@ done
 run supabase/tests/01_helpers.sql
 
 status=0
-for f in $(ls supabase/tests/[1-9][0-9]_*_test.sql 2>/dev/null | sort); do
+for f in $(ls supabase/tests/[1-9][0-9]*_test.sql 2>/dev/null | sort -V); do
   echo
   echo "=== $f"
   if ! run "$f"; then status=1; echo "!!! FAILED: $f"; fi

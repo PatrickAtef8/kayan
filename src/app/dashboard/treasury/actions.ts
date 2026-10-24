@@ -48,3 +48,18 @@ export async function recordTreasuryMovement(input: {
   revalidatePath("/dashboard");
   return { error: null };
 }
+
+export async function setTreasuryOpeningBalance(amount: number) {
+  const supabase = await createClient();
+  const membership = await getMembership(supabase);
+  if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
+
+  if (!Number.isFinite(amount) || amount < 0) return { error: "أدخل مبلغًا صحيحًا (صفر أو أكثر)" };
+
+  const { error } = await supabase.rpc("set_treasury_opening_balance", { org_id: membership.organization_id, p_amount: amount });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/treasury");
+  revalidatePath("/dashboard");
+  return { error: null };
+}

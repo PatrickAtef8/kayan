@@ -7,10 +7,11 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updateSupplier, deleteSupplier, recordSupplierPayment } from "./actions";
 import type { SupplierBalance } from "./page";
 
-type Supplier = { id: string; name: string; phone: string | null; opening_balance: number };
+type Supplier = { id: string; name: string; phone: string | null; payment_terms_days: number | null; opening_balance: number };
 
 function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
@@ -47,6 +48,7 @@ export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppli
         columns={[
           { header: "الاسم", render: (s) => s.name },
           { header: "الهاتف", render: (s) => <span dir="ltr">{s.phone ?? "—"}</span> },
+          { header: "مدة السداد", render: (s) => (s.payment_terms_days === null ? "—" : <span dir="ltr">{s.payment_terms_days} يوم</span>) },
           ...(canViewBalance
             ? [
                 {
@@ -83,22 +85,23 @@ export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppli
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات المورد">
         {editing && (
-          <form action={updateSupplier.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updateSupplier.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم المورد">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
             <Field label="رقم الهاتف">
               <Input name="phone" dir="ltr" defaultValue={editing.phone ?? ""} />
             </Field>
+            <Field label="مدة السداد (أيام)">
+              <Input name="payment_terms_days" type="number" min="0" max="365" step="1" dir="ltr" defaultValue={editing.payment_terms_days ?? ""} />
+            </Field>
             {canViewBalance && (
               <Field label="الرصيد الافتتاحي">
                 <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
               </Field>
             )}
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 

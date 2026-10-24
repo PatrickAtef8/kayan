@@ -117,6 +117,8 @@ select t.eq((select count(*) from report_recent_activity(:'org_id', 20) where ki
 
 -- A plain sales role (no view_financial) still sees returns happened, just
 -- not cost/profit — same treatment as a plain sale.
+select t.as_owner();
+select t.make_rep(:'org_id', 'e0000000-0000-0000-0000-000000000002');
 select t.as_user('e0000000-0000-0000-0000-000000000002');
 select t.ok((select count(*) from report_recent_activity(:'org_id', 20) where kind = 'sales_return') = 2, 'sales role still sees return activity (no financial figures exposed)');
 select t.ok((select bool_and(cogs is null and gross_profit is null) from report_sales_breakdown(:'org_id', null, null, 'invoice')), 'sales role: cost/profit columns stay NULL even with returns present');

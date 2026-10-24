@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:notifications": "node --test --experimental-strip-types src/lib/notifications.test.ts",
+    "test:db": "bash supabase/tests/run.sh",
+    "test:unit": "node --test --experimental-strip-types src/lib/stock-requirements.test.ts src/lib/site-url.test.ts src/lib/auth-link.test.ts src/lib/auth-errors.test.ts src/lib/password-strength.test.ts src/lib/doc-search.test.ts src/lib/money.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

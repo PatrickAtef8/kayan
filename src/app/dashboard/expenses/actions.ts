@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -22,49 +21,73 @@ async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>)
   return membership ? { ...membership, userId: user!.id } : null;
 }
 
-export async function createExpense(formData: FormData) {
+export type ExpenseInput = {
+  expense_type: string;
+  sales_rep_id: string;
+  category_id: string; // an existing category …
+  new_category: string; // … or a new one (wins when filled in)
+  amount: number;
+  expense_date: string;
+  payment_method: string;
+  description: string;
+};
+
+const REP_TYPES = ["rep_expense", "salary", "commission_payout"];
+
+export async function createExpense(input: ExpenseInput) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
-  if (!membership) return;
+  if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
-  const amount = Number(formData.get("amount") || 0);
-  if (!(amount > 0)) return;
+  const amount = Math.round(Number(input.amount) * 100) / 100;
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "أدخل مبلغًا أكبر من صفر" };
 
-  let categoryId = String(formData.get("category_id") || "") || null;
-  const newCategory = String(formData.get("new_category") || "").trim();
+  const expenseType = input.expense_type || "operating";
+  const repId = REP_TYPES.includes(expenseType) ? input.sales_rep_id || null : null; // an operating expense never carries a rep
+  if (REP_TYPES.includes(expenseType) && !repId) return { error: "اختر المندوب المعني بهذا المصروف" };
 
+  // the category is only a label for the reports; reuse one with the same name instead of
+  // failing on the unique (organization, name) rule and silently saving the expense without it
+  let categoryId = input.category_id || null;
+  const newCategory = input.new_category.trim();
   if (newCategory) {
-    const { data: category } = await supabase
+    const { data: existing } = await supabase
       .from("expense_categories")
-      .insert({ organization_id: membership.organization_id, name: newCategory })
       .select("id")
-      .single();
-    categoryId = category?.id ?? null;
+      .eq("organization_id", membership.organization_id)
+      .ilike("name", newCategory.replace(/[\%_]/g, "\$&"))
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      categoryId = existing.id;
+    } else {
+      const { data: created, error: catError } = await supabase
+        .from("expense_categories")
+        .insert({ organization_id: membership.organization_id, name: newCategory })
+        .select("id")
+        .single();
+      if (catError || !created) return { error: "تعذّر إنشاء التصنيف الجديد" };
+      categoryId = created.id;
+    }
   }
-
-  const expenseDate = String(formData.get("expense_date") || "") || new Date().toISOString().slice(0, 10);
-  const paymentMethod = String(formData.get("payment_method") || "").trim() || null;
-  const description = String(formData.get("description") || "").trim() || null;
-
-  const expenseType = String(formData.get("expense_type") || "operating");
-  const repId = String(formData.get("sales_rep_id") || "") || null;
 
   const { error } = await supabase.rpc("create_expense", {
     org_id: membership.organization_id,
     p_category_id: categoryId,
     p_treasury_account_id: null,
     p_amount: amount,
-    p_expense_date: expenseDate,
-    p_payment_method: paymentMethod,
-    p_description: description,
+    p_expense_date: input.expense_date || new Date().toISOString().slice(0, 10),
+    p_payment_method: input.payment_method.trim() || null,
+    p_description: input.description.trim() || null,
     p_responsible_user: membership.userId,
     p_expense_type: expenseType,
     p_sales_rep_id: repId,
   });
-  if (error) redirect(`/dashboard/expenses?error=${encodeURIComponent(error.message)}`);
+  if (error) return { error: error.message };
 
   revalidatePath("/dashboard/expenses");
-  revalidatePath("/dashboard/reports/reps");
+  revalidatePath("/dashboard/reports", "layout");
   revalidatePath("/dashboard/treasury");
   revalidatePath("/dashboard");
+  return { error: null };
 }

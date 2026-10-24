@@ -2,6 +2,7 @@ import { Navbar } from "./navbar";
 import { Hero } from "./hero";
 import { Stats } from "./stats";
 import { Features } from "./features";
+import { Roles } from "./roles";
 import { HowItWorks } from "./how-it-works";
 import { FinalCta } from "./final-cta";
 import { MarketingFooter } from "./footer";
@@ -10,20 +11,21 @@ import { ScrollProgress } from "./scroll-progress";
 import { SmoothScroll } from "./smooth-scroll";
 import { MotionProvider } from "../motion-provider";
 
-export function LandingPage() {
+export function LandingPage({ signedIn = false }: { signedIn?: boolean }) {
   return (
     <SmoothScroll>
       <MotionProvider>
       <div className="min-h-screen bg-ivory text-charcoal" dir="rtl">
         <ScrollProgress />
-        <Navbar />
-        <Hero />
+        <Navbar signedIn={signedIn} />
+        <Hero signedIn={signedIn} />
         <Stats />
         <SignalSurface />
         <Features />
+        <Roles />
         <HowItWorks />
-        <FinalCta />
-        <MarketingFooter />
+        <FinalCta signedIn={signedIn} />
+        <MarketingFooter signedIn={signedIn} />
       </div>
       </MotionProvider>
     </SmoothScroll>

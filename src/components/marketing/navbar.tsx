@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export function Navbar() {
+export function Navbar({ signedIn = false }: { signedIn?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -21,11 +21,18 @@ export function Navbar() {
         </Link>
         <nav className="hidden items-center gap-8 text-xs text-charcoal/55 md:flex">
           <a href="#features" className="transition-colors hover:text-charcoal">المميزات</a>
+          <a href="#roles" className="transition-colors hover:text-charcoal">الأدوار</a>
           <a href="#how" className="transition-colors hover:text-charcoal">كيف يعمل</a>
         </nav>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="hidden text-xs text-charcoal/60 transition-colors hover:text-charcoal sm:block">تسجيل الدخول</Link>
-          <Link href="/signup" className="bg-charcoal px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-sage">ابدأ الآن</Link>
+          {signedIn ? (
+            <Link href="/dashboard" className="bg-charcoal px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-sage">لوحة التحكم</Link>
+          ) : (
+            <>
+              <Link href="/login" className="hidden text-xs text-charcoal/60 transition-colors hover:text-charcoal sm:block">تسجيل الدخول</Link>
+              <Link href="/signup" className="bg-charcoal px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-sage">ابدأ الآن</Link>
+            </>
+          )}
         </div>
       </div>
     </header>

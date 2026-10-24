@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NoSettingsAccess } from "@/components/settings/no-settings-access";
-import { AuditFilters, ENTITY_OPTIONS } from "@/components/settings/audit-filters";
+import { AuditFilters } from "@/components/settings/audit-filters";
+import { ENTITY_OPTIONS } from "@/components/settings/audit-entities";
 import { AuditDetailButton } from "@/components/settings/audit-detail-button";
 import { DataTable } from "@/components/ui/data-table";
 

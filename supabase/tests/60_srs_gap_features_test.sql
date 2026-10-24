@@ -123,44 +123,17 @@ select t.throws(format('select create_stock_transfer(%L, %L, %L, %L, %L::jsonb, 
 select t.as_user('c6000000-0000-0000-0000-000000000001');
 
 -- ============================================================
--- Custom roles (§14)
+-- Roles are fixed (0043): owner / sales / warehouse. The custom-role builder is gone for good.
 -- ============================================================
-select create_custom_role(:'org_id', 'مشرف مبيعات', array['sales.create', 'view_dashboard']) as id \gset role_
-select t.eq((select count(*) from role_permissions where role_id = :'role_id'), 2, 'custom role gets exactly the chosen permissions');
-select t.ok((select organization_id = :'org_id'::uuid and is_system = false from roles where id = :'role_id'), 'custom role is org-scoped and non-system');
-select t.eq((select count(*) from audit_logs where entity = 'role' and organization_id = :'org_id'), 1, 'creating a role is audited');
-
-select t.throws(format('select create_custom_role(%L, %L, array[]::text[])', :'org_id', 'فارغ'), 'صلاحية واحدة', 'a role needs at least one permission');
-select t.throws(format('select create_custom_role(%L, %L, array[''not.a.permission''])', :'org_id', 'خطأ'), 'غير معروفة', 'unknown permission keys are rejected');
-select t.throws(format('select create_custom_role(%L, %L, array[''sales.create''])', :'org_id', '  '), 'اسم الدور', 'a blank name is rejected');
-
-select t.as_user('c6000000-0000-0000-0000-000000000002');
-select t.throws(format('select create_custom_role(%L, %L, array[''sales.create''])', :'org_id', 'س'), 'صلاحية', 'a role without manage_settings cannot create roles');
-select t.as_user('c6000000-0000-0000-0000-000000000001');
-
--- Assign the sales user to the custom role: gains exactly its permissions
+select t.eq((select count(*) from roles), 3, 'exactly three roles exist');
+select t.eq((select count(*) from roles where key in ('owner', 'sales', 'warehouse') and organization_id is null), 3, 'owner, sales and warehouse');
+select t.throws(format('select create_custom_role(%L, %L, array[''sales.create''])', :'org_id', 'x'), 'does not exist', 'the custom-role RPC no longer exists');
+select t.throws(format('insert into roles (organization_id, name, key) values (%L, ''x'', ''custom_1'')', :'org_id'), 'permission denied', 'nobody can insert a role through the API');
 select t.as_owner();
-update organization_users set role_id = :'role_id' where organization_id = :'org_id' and user_id = 'c6000000-0000-0000-0000-000000000002';
-select t.as_user('c6000000-0000-0000-0000-000000000002');
-select t.ok(has_permission(:'org_id', 'sales.create'), 'member on the custom role has its permission');
-select t.ok(not has_permission(:'org_id', 'sales.approve'), 'and lacks permissions the role does not grant');
+select t.throws(format('insert into roles (organization_id, name, key) values (%L, ''x'', ''custom_1'')', :'org_id'), 'roles_only_three', 'not even the table owner can add a fourth role (check constraint)');
 select t.as_user('c6000000-0000-0000-0000-000000000001');
-
-select t.throws(format('select delete_custom_role(%L, %L)', :'org_id', :'role_id'), 'مُسند', 'a role with members cannot be deleted');
-select update_custom_role(:'org_id', :'role_id', 'مشرف المبيعات', array['sales.create', 'sales.approve']);
-select t.eq((select count(*) from role_permissions where role_id = :'role_id'), 2, 'update replaces the permission set');
-select t.ok(exists (select 1 from role_permissions where role_id = :'role_id' and permission_key = 'sales.approve'), 'new permission present after update');
-
--- System roles are untouchable through these RPCs
-select t.throws(format('select update_custom_role(%L, %L, %L, array[''sales.create''])', :'org_id', (select id from roles where key = 'owner' and organization_id is null), 'x'), 'غير قابل', 'system roles cannot be edited');
-select t.throws(format('select delete_custom_role(%L, %L)', :'org_id', (select id from roles where key = 'owner' and organization_id is null)), 'غير قابل', 'system roles cannot be deleted');
-
--- Reassign, then deletion succeeds
-select t.as_owner();
-update organization_users set role_id = (select id from roles where key = 'sales' and organization_id is null) where organization_id = :'org_id' and user_id = 'c6000000-0000-0000-0000-000000000002';
-select t.as_user('c6000000-0000-0000-0000-000000000001');
-select delete_custom_role(:'org_id', :'role_id');
-select t.eq((select count(*) from roles where id = :'role_id'), 0, 'an unassigned custom role can be deleted');
+select t.throws(format('update roles set name = ''x'' where key = ''owner'''), 'permission denied', 'role names cannot be edited through the API');
+select t.throws('delete from role_permissions', 'permission denied', 'role permissions cannot be edited through the API');
 
 -- ============================================================
 -- Price tiers (§17)

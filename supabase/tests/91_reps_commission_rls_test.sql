@@ -80,8 +80,8 @@ select t.as_user('91000000-0000-0000-0000-000000000002');
 select t.eq((select count(*) from sales_invoices), 3, 'rep 1 sees only their 3 invoices');
 select t.eq((select count(*) from customers), 1, 'rep 1 sees only their customer');
 select t.eq((select count(*) from sales_invoice_items), 3, 'and only their invoice lines');
--- since 0031 a rep without customers.view_balance sees the customer row but a NULL balance
-select t.ok((select balance is null from customer_balances where customer_id = :'c1'), 'rep: their customer''s balance is hidden (NULL) without customers.view_balance');
+-- since 0043 the rep role holds customers.view_balance: he sees the balance of HIS customer (and only his)
+select t.ok((select balance is not null from customer_balances where customer_id = :'c1'), 'rep: their customer''s balance is visible (customers.view_balance)');
 select t.empty('select 1 from customer_balances where customer_id = ''' || :'c2' || '''', 'rep 1 cannot see customer 2''s debt');
 select t.empty('select 1 from purchase_invoices', 'rep cannot see purchases');
 select t.empty('select 1 from suppliers', 'rep cannot see suppliers');
@@ -101,10 +101,11 @@ select t.as_user('91000000-0000-0000-0000-000000000001');
 select t.eq((select balance from customer_balances where customer_id = :'c1'), 1100, 'notes changed no balance');
 select t.as_user('91000000-0000-0000-0000-000000000002');
 
--- a customer a rep creates is assigned to them and cannot be given away
-insert into customers (organization_id, name) values (:'org_id', 'عميل جديد');
-select t.eq((select count(*) from customers where name = 'عميل جديد' and sales_rep_id = :'r1'), 1, 'new customer auto-assigned to the rep');
-select t.eq((select count(*) from customers), 2, 'rep now sees 2 customers');
+-- customers are created and assigned by the OWNER only (0043): a rep can neither create one nor move his own
+select t.throws(format('insert into customers (organization_id, name) values (%L, ''عميل جديد'')', :'org_id'), 'من صلاحيات المالك', 'a rep cannot create a customer');
+update customers set sales_rep_id = null where id = :'c1';
+select t.eq((select count(*) from customers where id = :'c1' and sales_rep_id = :'r1'), 1, 'a rep cannot un-assign or re-assign his own customer');
+select t.eq((select count(*) from customers), 1, 'rep still sees exactly his one customer');
 
 select t.as_user('91000000-0000-0000-0000-000000000003');
 select t.eq((select count(*) from sales_invoices), 1, 'rep 2 sees only their invoice');

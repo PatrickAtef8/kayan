@@ -71,7 +71,13 @@ sidebar's "الإعدادات" link was dead (404). Both are now built:
   already has a Supabase account works immediately with no extra setup.
   Inviting a **brand-new** person requires a `SUPABASE_SERVICE_ROLE_KEY`
   in `.env.local` (see `.env.example`) — without it, that specific path
-  fails with a clear error while everything else keeps working. Custom
+  fails with a clear error while everything else keeps working.
+  **Invitation emails** are sent by Supabase Auth, so they need (1) a working
+  SMTP provider — Supabase's built-in sender only delivers to your own project
+  team and is heavily rate-limited, so set Custom SMTP under *Authentication →
+  Emails → SMTP Settings* — and (2) `NEXT_PUBLIC_SITE_URL` set to the public
+  address of the site (also added to *Authentication → URL Configuration*).
+  The link opens `/reset-password`, where the invited person chooses a password. Custom
   per-organization roles (beyond the 5 system templates) were not built
   here; that was never in the MVP scope (§68), just an example in §14.
 

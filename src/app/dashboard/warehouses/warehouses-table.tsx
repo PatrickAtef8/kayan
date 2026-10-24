@@ -6,7 +6,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updateWarehouse, deleteWarehouse } from "./actions";
 
 type Warehouse = { id: string; name: string; location: string | null };
@@ -57,17 +57,15 @@ export function WarehousesTable({ warehouses }: { warehouses: Warehouse[] }) {
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات المخزن">
         {editing && (
-          <form action={updateWarehouse.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updateWarehouse.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم المخزن">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
             <Field label="الموقع">
               <Input name="location" defaultValue={editing.location ?? ""} />
             </Field>
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 

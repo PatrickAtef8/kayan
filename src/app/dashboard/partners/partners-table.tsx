@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updatePartner, deletePartner, recordPartnerWithdrawal } from "./actions";
 import type { Partner } from "./page";
 
@@ -60,17 +61,15 @@ export function PartnersTable({ partners }: { partners: Partner[] }) {
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات الشريك">
         {editing && (
-          <form action={updatePartner.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updatePartner.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم الشريك">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
             <Field label="رقم الهاتف">
               <Input name="phone" dir="ltr" defaultValue={editing.phone ?? ""} />
             </Field>
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 

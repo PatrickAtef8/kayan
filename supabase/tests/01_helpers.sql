@@ -101,3 +101,54 @@ grant execute on all functions in schema t to authenticated, anon;
 create view t.stock_with_cost as
   select s.*, sc.avg_cost from inventory_stock s left join stock_costs sc on sc.stock_id = s.id;
 grant select on t.stock_with_cost to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Fulfilment (0044): stock moves when the storekeeper confirms. Almost every test in this suite is about
+-- prices, costs, profit, commission, reports and returns and wants the goods to be "on the shelf" the
+-- moment an invoice is posted. So, by default, a test-only trigger confirms every line of a new invoice
+-- at commit — through the very same *_core stock functions a real confirmation runs. The dedicated
+-- fulfilment test (101) switches it off and drives the real confirm_* RPCs instead.
+-- ---------------------------------------------------------------------------
+create function t.autoconfirm() returns trigger language plpgsql security definer set search_path = public as $$
+declare l record; v_kind text := case TG_TABLE_NAME when 'sales_invoices' then 'sales' else 'purchase' end;
+begin
+  for l in select * from invoice_stock_lines
+           where kind = v_kind and invoice_id = NEW.id and ordered_units > fulfilled_units + cancelled_units order by seq
+  loop
+    if v_kind = 'sales' then
+      perform _consume_stock_core(l.organization_id, l.product_id, l.warehouse_id, l.ordered_units - l.fulfilled_units - l.cancelled_units, NEW.id);
+    else
+      perform set_config('kayan.batch_expiry', coalesce(l.expiry_date::text, ''), true);
+      perform _receive_stock_core(l.organization_id, l.product_id, l.warehouse_id, l.ordered_units - l.fulfilled_units - l.cancelled_units, coalesce(l.unit_cost, 0), NEW.id);
+    end if;
+    update invoice_stock_lines set fulfilled_units = ordered_units - cancelled_units where id = l.id;
+  end loop;
+  perform _fulfil_refresh(v_kind, NEW.id);
+  return NEW;
+end $$;
+
+create function t.autoconfirm_on() returns void language plpgsql as $$
+begin
+  drop trigger if exists zz_autoconfirm on sales_invoices;
+  drop trigger if exists zz_autoconfirm on purchase_invoices;
+  create constraint trigger zz_autoconfirm after insert on sales_invoices deferrable initially deferred for each row execute function t.autoconfirm();
+  create constraint trigger zz_autoconfirm after insert on purchase_invoices deferrable initially deferred for each row execute function t.autoconfirm();
+end $$;
+create function t.autoconfirm_off() returns void language plpgsql as $$
+begin
+  drop trigger if exists zz_autoconfirm on sales_invoices;
+  drop trigger if exists zz_autoconfirm on purchase_invoices;
+end $$;
+select t.autoconfirm_on();
+
+-- A sales-role member only ever sees the customers assigned to HIM (0043). Tests that want "a rep who sees
+-- this company's sales" link the user to a rep record and hand that rep every customer and invoice.
+create function t.make_rep(p_org uuid, p_user uuid) returns uuid language plpgsql security definer set search_path = public as $$
+declare r uuid;
+begin
+  insert into organization_modules (organization_id, module_key, enabled) values (p_org, 'representatives', true) on conflict (organization_id, module_key) do update set enabled = true;
+  insert into sales_representatives (organization_id, name, user_id) values (p_org, 'rep ' || left(p_user::text, 4), p_user) returning id into r;
+  update customers set sales_rep_id = r where organization_id = p_org;
+  update sales_invoices set sales_rep_id = r where organization_id = p_org;
+  return r;
+end $$;

@@ -1,12 +1,13 @@
 "use client";
 
 import { m } from "framer-motion";
-import { Building2, LayoutGrid, Rocket, ArrowDownLeft } from "lucide-react";
+import { Building2, LayoutGrid, UsersRound, Rocket, ArrowDownLeft } from "lucide-react";
 
 const STEPS = [
   { index: "٠١", icon: Building2, title: "أنشئ شركتك", description: "اسم الشركة ونوع نشاطها — أقل من دقيقة." },
-  { index: "٠٢", icon: LayoutGrid, title: "اختر وحداتك", description: "فعّل المبيعات والمخزون والخزنة، أو أي جزء تحتاجه فقط." },
-  { index: "٠٣", icon: Rocket, title: "ابدأ فورًا", description: "أول فاتورة وأول رقم حقيقي — من نفس اليوم." },
+  { index: "٠٢", icon: LayoutGrid, title: "فعّل وحداتك", description: "اختر ما تحتاجه الآن من المبيعات والمخزون والخزنة وغيرها، وعدّله لاحقًا من الإعدادات." },
+  { index: "٠٣", icon: UsersRound, title: "أضف فريقك", description: "ادعُ المناديب وأمناء المخازن، وكل واحد يدخل بصلاحياته فقط." },
+  { index: "٠٤", icon: Rocket, title: "ابدأ وراقب", description: "سجّل أول فاتورة، وشاهد الأرباح والخزنة تتحدّث من الرئيسية." },
 ];
 
 export function HowItWorks() {
@@ -15,9 +16,9 @@ export function HowItWorks() {
       <div className="mx-auto max-w-6xl">
         <m.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-16 flex items-end justify-between gap-6">
           <h2 className="max-w-xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">من الفكرة إلى أول فاتورة.</h2>
-          <p className="hidden text-xs tracking-[0.16em] text-charcoal/40 sm:block" dir="ltr">٠٣ / كيف يعمل</p>
+          <p className="hidden text-xs tracking-[0.16em] text-charcoal/40 sm:block" dir="ltr">٠٥ / كيف يعمل</p>
         </m.div>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => {
             const Icon = step.icon;
             return (

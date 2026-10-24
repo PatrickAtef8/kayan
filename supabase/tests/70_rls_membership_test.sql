@@ -24,6 +24,8 @@ from (values (:'orga_id'::uuid), (:'orgb_id'::uuid)) v(o), roles r
 where r.key = 'sales' and r.organization_id is null;
 
 insert into customers (organization_id, name) values (:'orga_id', 'عميل أ'), (:'orgb_id', 'عميل ب');
+select t.make_rep(:'orga_id', 'e0000000-0000-0000-0000-00000000000c');   -- a sales member sees the customers assigned to him
+select t.make_rep(:'orgb_id', 'e0000000-0000-0000-0000-00000000000c');
 
 -- 1. The migration left no policy on the per-row function.
 select t.eq((select count(*) from pg_policies
@@ -58,6 +60,7 @@ select t.eq((select count(*) from customers where organization_id = :'orga_id'),
 -- 4. Writes are still tenant-checked by the rewritten WITH CHECK.
 select t.throws(format('insert into customers (organization_id, name) values (%L, %L)', :'orgb_id', 'تسلل'),
                 'row-level security', 'cannot insert into an organization where membership is disabled');
+select t.as_user('e0000000-0000-0000-0000-00000000000a');   -- the owner: customers are owner-only inserts since 0043
 select t.throws(format('insert into customers (organization_id, name) values (%L, %L)', :'orga_id'::uuid, null),
                 'null value', 'sanity: normal constraints still apply to a legitimate insert');
 

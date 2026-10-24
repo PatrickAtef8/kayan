@@ -2,26 +2,35 @@
 
 import { Suspense, useState } from "react";
 import { Sidebar } from "./sidebar";
-import { Topbar, type AppNotification } from "./topbar";
+import { Topbar } from "./topbar";
+import type { AppNotification } from "@/lib/notifications";
 import { NavigationProgress } from "./navigation-progress";
 
 export function DashboardShell({
   orgId,
+  userId,
   orgName,
   enabledKeys,
   userEmail,
   roleName,
-  notifications,
-  restrictedRep = false,
+  initialNotifications,
+  initialUnread,
+  role = "owner",
+  pendingOrders = 0,
+  shortageBadge = 0,
   children,
 }: {
   orgId: string;
+  userId: string;
   orgName?: string;
   enabledKeys: Set<string>;
   userEmail?: string;
   roleName?: string;
-  notifications: AppNotification[];
-  restrictedRep?: boolean;
+  initialNotifications: AppNotification[];
+  initialUnread: number;
+  role?: "owner" | "sales" | "warehouse";
+  pendingOrders?: number;
+  shortageBadge?: number;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,9 +39,9 @@ export function DashboardShell({
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>
-      <Sidebar orgName={orgName} enabledKeys={enabledKeys} restrictedRep={restrictedRep} open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <Sidebar orgName={orgName} enabledKeys={enabledKeys} role={role} pendingOrders={pendingOrders} shortageBadge={shortageBadge} open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className="min-w-0 flex-1 md:pl-2">
-        <Topbar orgId={orgId} userEmail={userEmail} orgName={orgName} roleName={roleName} notifications={notifications} onMenuClick={() => setMobileOpen(true)} />
+        <Topbar orgId={orgId} userId={userId} userEmail={userEmail} orgName={orgName} roleName={roleName} initialNotifications={initialNotifications} initialUnread={initialUnread} onMenuClick={() => setMobileOpen(true)} />
         <main data-page-content className="mx-auto w-full max-w-[92rem] px-4 pb-8 sm:px-7 lg:px-10">{children}</main>
       </div>
     </div>

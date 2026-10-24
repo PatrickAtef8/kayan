@@ -3,7 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
+import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
+
+// Customers are created, assigned to reps and deleted by the OWNER only. The database enforces this
+// (policies + triggers); the check here gives a clear message before the request is even sent.
+async function ownerOnly(supabase: Awaited<ReturnType<typeof createClient>>, orgId: string): Promise<string | null> {
+  const { data } = await supabase.rpc("my_role_key", { target_org: orgId });
+  return data === "owner" ? null : "إنشاء العملاء وتعيينهم للمناديب من صلاحيات المالك فقط";
+}
 
 // Server Action: runs with the caller's own session (cookies), so the
 // insert is still governed by RLS — this isn't a privileged bypass.
@@ -12,7 +20,7 @@ export async function createCustomer(formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: AUTH_ERROR };
 
   const { data: membership } = await supabase
     .from("organization_users")
@@ -22,12 +30,14 @@ export async function createCustomer(formData: FormData) {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (!membership) return;
+  if (!membership) return { error: AUTH_ERROR };
+  const denied = await ownerOnly(supabase, membership.organization_id);
+  if (denied) return { error: denied };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
-  const { data: created } = await supabase
+  const { data: created, error } = await supabase
     .from("customers")
     .insert({
     organization_id: membership.organization_id,
@@ -41,13 +51,17 @@ export async function createCustomer(formData: FormData) {
     .select("id")
     .single();
 
+  if (error || !created) return { error: translateDbError(error, "customers") };
+
   // opening balance lives in its own protected table (0032); the database decides who may write it
   const opening = Number(formData.get("opening_balance") || 0);
   if (created && formData.has("opening_balance") && opening !== 0) {
-    await setOpeningBalance(supabase, "customer", created.id, opening);
+    const ob = await setOpeningBalance(supabase, "customer", created.id, opening);
+    if (ob.error) return { error: `أُضيف العميل لكن تعذّر حفظ الرصيد الافتتاحي: ${ob.error}` };
   }
 
   revalidatePath("/dashboard/customers");
+  return { error: null };
 }
 
 export async function updateCustomer(id: string, formData: FormData) {
@@ -55,12 +69,12 @@ export async function updateCustomer(id: string, formData: FormData) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { error: AUTH_ERROR };
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return;
+  if (!name) return { error: NAME_REQUIRED };
 
-  await supabase
+  const { error } = await supabase
     .from("customers")
     .update({
       name,
@@ -70,12 +84,15 @@ export async function updateCustomer(id: string, formData: FormData) {
       ...(formData.has("sales_rep_id") ? { sales_rep_id: String(formData.get("sales_rep_id") || "") || null } : {}),
     })
     .eq("id", id);
+  if (error) return { error: translateDbError(error, "customers") };
 
   if (formData.has("opening_balance")) {
-    await setOpeningBalance(supabase, "customer", id, Number(formData.get("opening_balance") || 0));
+    const ob = await setOpeningBalance(supabase, "customer", id, Number(formData.get("opening_balance") || 0));
+    if (ob.error) return { error: ob.error };
   }
 
   revalidatePath("/dashboard/customers");
+  return { error: null };
 }
 
 export async function deleteCustomer(id: string) {
@@ -164,6 +181,8 @@ export async function importCustomersCsv(rows: CustomerImportRow[]) {
     .maybeSingle();
   if (!membership) return { created: 0, skipped: [], error: "غير مصرح" };
   const orgId = membership.organization_id;
+  const denied = await ownerOnly(supabase, orgId);
+  if (denied) return { created: 0, skipped: [], error: denied };
 
   if (rows.length > 2000) return { created: 0, skipped: [], error: "الحد الأقصى 2000 صف في الملف الواحد" };
 

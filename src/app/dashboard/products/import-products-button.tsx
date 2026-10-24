@@ -9,7 +9,7 @@ import { parseCsv } from "@/lib/csv-parse";
 import { downloadCsv } from "@/lib/csv";
 import { importProductsCsv, type ProductImportRow, type ProductImportResult } from "./actions";
 
-const EXPECTED_HEADERS = ["الاسم", "الكود", "الوحدة", "التكلفة", "سعر البيع", "الفئة"];
+const EXPECTED_HEADERS = ["الاسم", "الكود", "الوحدة", "التكلفة", "سعر البيع", "الفئة", "الباركود", "حد الطلب", "وحدات/كرتونة"];
 
 function rowsFromCsv(text: string): { rows: ProductImportRow[]; error: string | null } {
   const table = parseCsv(text);
@@ -23,6 +23,9 @@ function rowsFromCsv(text: string): { rows: ProductImportRow[]; error: string | 
     cost: Number(cells[3] || 0),
     selling_price: Number(cells[4] || 0),
     category: cells[5] ?? "",
+    barcode: cells[6] ?? "",
+    reorder_level: Number(cells[7] || 0),
+    units_per_carton: Number(cells[8] || 0),
   }));
 
   return { rows, error: null };
@@ -63,7 +66,7 @@ export function ImportProductsButton() {
   }
 
   function downloadTemplate() {
-    downloadCsv("قالب-استيراد-المنتجات", EXPECTED_HEADERS, [["منتج تجريبي", "SKU-001", "قطعة", 10, 15, "فئة تجريبية"]]);
+    downloadCsv("قالب-استيراد-المنتجات", EXPECTED_HEADERS, [["منتج تجريبي", "SKU-001", "قطعة", 10, 15, "فئة تجريبية", "6221000000011", 20, 12]]);
   }
 
   return (

@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { ModernSelect } from "@/components/ui/select";
 import { updateCustomer, deleteCustomer, recordCustomerCollection } from "./actions";
 import type { CustomerBalance } from "./page";
@@ -35,7 +36,7 @@ function money(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
 }
 
-export function CustomersTable({ customers, balances, reps, canViewBalance, canAssignRep }: { customers: Customer[]; balances: CustomerBalance[]; reps: { id: string; name: string }[]; canViewBalance: boolean; canAssignRep: boolean }) {
+export function CustomersTable({ customers, balances, reps, canViewBalance, canAssignRep, canCollect }: { customers: Customer[]; balances: CustomerBalance[]; reps: { id: string; name: string }[]; canViewBalance: boolean; canAssignRep: boolean; canCollect: boolean }) {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -96,9 +97,11 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
             header: "",
             render: (c) => (
               <div className="flex items-center justify-end gap-1">
-                <button onClick={() => setCollectingFor(c)} className="cursor-pointer rounded-card p-1.5 text-ink/40 hover:bg-sageSoft/40 hover:text-sage" aria-label="تسجيل تحصيل">
-                  <Wallet size={15} strokeWidth={2} />
-                </button>
+                {canCollect && (
+                  <button onClick={() => setCollectingFor(c)} className="cursor-pointer rounded-card p-1.5 text-ink/40 hover:bg-sageSoft/40 hover:text-sage" aria-label="تسجيل تحصيل">
+                    <Wallet size={15} strokeWidth={2} />
+                  </button>
+                )}
                 <button onClick={() => setEditing(c)} className="cursor-pointer rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="تعديل">
                   <Pencil size={15} strokeWidth={2} />
                 </button>
@@ -113,7 +116,7 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="تعديل بيانات العميل">
         {editing && (
-          <form action={updateCustomer.bind(null, editing.id)} onSubmit={() => setEditing(null)} className="space-y-4">
+          <ActionForm action={updateCustomer.bind(null, editing.id)} onSuccess={() => setEditing(null)} resetOnSuccess={false} className="space-y-4">
             <Field label="اسم العميل">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
@@ -126,9 +129,10 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
             <Field label="مستوى السعر">
               <ModernSelect name="price_tier" defaultValue={editing.price_tier} allowClear={false} options={PRICE_TIER_OPTIONS} />
             </Field>
-            {canAssignRep && reps.length > 0 && (
+            {canAssignRep && (
               <Field label="المندوب المسؤول">
                 <ModernSelect name="sales_rep_id" defaultValue={editing.sales_rep_id ?? ""} placeholder="بدون مندوب" clearLabel="بدون مندوب" options={reps.map((r) => ({ value: r.id, label: r.name }))} />
+                {reps.length === 0 && <p className="mt-1.5 text-xs text-rose">لا يوجد مناديب بعد — أضف مندوبًا من صفحة المندوبين أو اربط مستخدمًا من الإعدادات ← الفريق.</p>}
               </Field>
             )}
             {canViewBalance && (
@@ -136,10 +140,8 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
                 <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={editing.opening_balance} />
               </Field>
             )}
-            <Button type="submit" className="w-full">
-              حفظ التعديلات
-            </Button>
-          </form>
+            <SubmitButton pendingText="جارٍ حفظ التعديلات..." className="w-full">حفظ التعديلات</SubmitButton>
+          </ActionForm>
         )}
       </Modal>
 
