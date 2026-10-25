@@ -1,10 +1,12 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useEffect, useRef, useState } from "react";
 import { previewPricing, type PricingPreview, type PricingPreviewInput } from "@/app/dashboard/pricing-actions";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 // Live totals straight from the database pricing engine (debounced).
@@ -66,13 +68,13 @@ export function PricingSummary({
           .map(([label, v]) => (
             <div key={label} className="flex items-center justify-between text-charcoal/70">
               <span>{label}</span>
-              <span dir="ltr">{v < 0 ? "− " : ""}{money(Math.abs(v))} ج.م</span>
+              <span dir="ltr">{v < 0 ? "− " : ""}<Money value={Math.abs(v)} /></span>
             </div>
           ))}
         {preview.tax > 0 && (
           <div className="flex items-center justify-between text-charcoal/70">
             <span>{taxLabel}</span>
-            <span dir="ltr">+ {money(preview.tax)} ج.م</span>
+            <span dir="ltr">+ <Money value={preview.tax} /></span>
           </div>
         )}
         {cashDiscountPctEntered > 0 && preview.cash_discount === 0 && (
@@ -92,7 +94,7 @@ export function PricingSummary({
       </div>
       <div className="mt-3 flex items-center justify-between border-t border-borderSoft pt-3">
         <span className="text-charcoal/70">الإجمالي المطلوب</span>
-        <span className="text-lg font-semibold text-charcoal" dir="ltr">{money(preview.total)} ج.م</span>
+        <span className="text-lg font-semibold text-charcoal" dir="ltr"><Money value={preview.total} /></span>
       </div>
     </div>
   );

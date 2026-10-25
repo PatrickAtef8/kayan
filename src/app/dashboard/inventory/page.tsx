@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { getSupabase, getMembership, NO_ORG_ID } from "@/lib/org-context";
 import { canViewCost } from "@/lib/costs";
 import Link from "next/link";
@@ -19,7 +21,7 @@ type StockRow = {
 };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export default async function InventoryPage() {
@@ -86,8 +88,8 @@ export default async function InventoryPage() {
           { header: "في الطريق (لم تُستلم)", render: (r) => { const v = resvByKey.get(`${r.product_id}:${r.warehouse_id}`)?.incoming ?? 0; return <span dir="ltr" className={v > 0 ? "text-sage" : "text-charcoal/30"}>{v > 0 ? v : "—"}</span>; } },
           ...(viewCost
             ? [
-                { header: "متوسط التكلفة", render: (r: StockRow) => <span dir="ltr">{money(r.avg_cost)} ج.م</span> },
-                { header: "القيمة", render: (r: StockRow) => <span dir="ltr">{money(r.quantity * r.avg_cost)} ج.م</span> },
+                { header: "متوسط التكلفة", render: (r: StockRow) => <span dir="ltr"><Money value={r.avg_cost} /></span> },
+                { header: "القيمة", render: (r: StockRow) => <span dir="ltr"><Money value={r.quantity * r.avg_cost} /></span> },
               ]
             : []),
         ]}

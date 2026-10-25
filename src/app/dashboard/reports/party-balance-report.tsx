@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -5,7 +7,7 @@ import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { ExportButtons } from "@/components/ui/export-buttons";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 type BalanceRow = { party_id: string; name: string; phone: string | null; total: number; settled: number; balance: number };
@@ -61,7 +63,7 @@ export async function PartyBalanceReport({
           <Card className="flex-1 p-5 sm:p-6">
             <p className="text-sm text-charcoal/50">{selected.name}</p>
             <p className="mt-1 text-2xl font-semibold tracking-tight text-charcoal" dir="ltr">
-              {money(selected.balance)} ج.م
+              <Money value={selected.balance} />
             </p>
           </Card>
           {canExport && (
@@ -82,9 +84,9 @@ export async function PartyBalanceReport({
             { header: "التاريخ", render: (r) => <span dir="ltr">{r.entry_date}</span> },
             { header: "النوع", render: (r) => ENTRY_LABEL[r.entry_type] ?? r.entry_type },
             { header: "المرجع", render: (r) => r.reference || "—" },
-            { header: "مدين", render: (r) => (r.increase > 0 ? <span dir="ltr">{money(r.increase)}</span> : "—") },
-            { header: "دائن", render: (r) => (r.decrease > 0 ? <span dir="ltr">{money(r.decrease)}</span> : "—") },
-            { header: "الرصيد", render: (r) => <span dir="ltr">{money(r.balance)}</span> },
+            { header: "مدين", render: (r) => (r.increase > 0 ? <Money value={r.increase} suffix="" /> : "—") },
+            { header: "دائن", render: (r) => (r.decrease > 0 ? <Money value={r.decrease} suffix="" /> : "—") },
+            { header: "الرصيد", render: (r) => <Money value={r.balance} suffix="" /> },
           ]}
         />
       </div>
@@ -116,13 +118,13 @@ export async function PartyBalanceReport({
             ),
           },
           { header: "الهاتف", render: (r) => <span dir="ltr">{r.phone ?? "—"}</span> },
-          { header: totalLabel, render: (r) => <span dir="ltr">{money(r.total)} ج.م</span> },
-          { header: settledLabel, render: (r) => <span dir="ltr">{money(r.settled)} ج.م</span> },
+          { header: totalLabel, render: (r) => <span dir="ltr"><Money value={r.total} /></span> },
+          { header: settledLabel, render: (r) => <span dir="ltr"><Money value={r.settled} /></span> },
           {
             header: "الرصيد",
             render: (r) => (
               <span dir="ltr" className={r.balance > 0 ? "text-rose" : "text-sage"}>
-                {money(r.balance)} ج.م
+                <Money value={r.balance} />
               </span>
             ),
           },

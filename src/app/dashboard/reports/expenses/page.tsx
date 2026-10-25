@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
@@ -52,8 +53,8 @@ export default async function ExpensesReportPage(props: { searchParams: Promise<
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Stat label="إجمالي ما صُرف" value={`${money(total.all)} ج.م`} />
-        <Stat label="منها مصروفات تشغيلية (في الأرباح والخسائر)" value={`${money(total.pl)} ج.م`} />
+        <Stat label="إجمالي ما صُرف" value={<Money value={total.all} />} />
+        <Stat label="منها مصروفات تشغيلية (في الأرباح والخسائر)" value={<Money value={total.pl} />} />
         <Stat label="عدد المصروفات" value={total.n} />
       </div>
 
@@ -63,7 +64,7 @@ export default async function ExpensesReportPage(props: { searchParams: Promise<
         rows={rows.map((r) => [
           r.group_label,
           <span dir="ltr" key="n">{r.expense_count}</span>,
-          <span dir="ltr" key="t" className="font-medium">{money(r.total)}</span>,
+          <Money value={r.total} suffix="" key="t" className="font-medium" />,
           <span dir="ltr" key="s">{share(r.total)}</span>,
           <span dir="ltr" key="p" className={r.in_profit_loss === 0 && r.total > 0 ? "text-charcoal/40" : ""}>{money(r.in_profit_loss)}</span>,
         ])}

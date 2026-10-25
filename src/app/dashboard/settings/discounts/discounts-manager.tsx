@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import { Trash2, Power } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -11,7 +13,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { addTier, deleteTier, toggleTier } from "./actions";
 import type { Tier } from "./page";
 
-const money = (n: number) => n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+const money = (n: number) => formatMoney(n);
 const SIDE_OPTIONS = [
   { value: "sales", label: "المبيعات" },
   { value: "purchases", label: "المشتريات" },
@@ -70,7 +72,7 @@ export function DiscountsManager({ tiers }: { tiers: Tier[] }) {
           emptyLabel="لا توجد شرائح — أضف أول شريحة أعلاه"
           columns={[
             { header: "النوع", render: (t) => SIDE_LABEL[t.applies_to] },
-            { header: "لو الفاتورة ≥", render: (t) => <span dir="ltr">{money(t.min_amount)} ج.م</span> },
+            { header: "لو الفاتورة ≥", render: (t) => <span dir="ltr"><Money value={t.min_amount} /></span> },
             { header: "الخصم", render: (t) => <span dir="ltr">{t.discount_pct}%</span> },
             { header: "الحالة", render: (t) => (t.is_active ? "مفعّلة" : <span className="text-charcoal/40">موقوفة</span>) },
             {

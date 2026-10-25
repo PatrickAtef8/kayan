@@ -80,33 +80,60 @@ export function OrderCard({ order, kind, canConfirm }: { order: Order; kind: "sa
         <FulfilmentBadge kind={kind} status={order.status} at={order.completed_at} />
       </div>
 
-      <div className="overflow-x-auto">
+      {/* phones: one card per item */}
+      <ul className="space-y-3 md:hidden">
+        {order.lines.map((l) => (
+          <li key={l.line_id} className="rounded-xl border border-borderSoft/70 bg-paper/40 p-3">
+            <p className="text-sm font-medium text-charcoal">
+              {l.product_name} <span className="text-xs font-normal text-charcoal/40">{l.unit}</span>
+            </p>
+            {l.expiry_date && <p className="mt-0.5 text-[0.6875rem] text-charcoal/40">صلاحية <span dir="ltr" className="num">{l.expiry_date}</span></p>}
+            <dl className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="rounded-lg bg-white px-2 py-1.5"><dt className="text-charcoal/45">المطلوب</dt><dd className="mt-0.5 text-sm font-medium"><span className="num">{l.ordered}</span></dd></div>
+              <div className="rounded-lg bg-white px-2 py-1.5"><dt className="text-charcoal/45">{kind === "sales" ? "تم صرفه" : "تم استلامه"}</dt><dd className="mt-0.5 text-sm font-medium"><span className="num">{l.fulfilled}</span></dd></div>
+              <div className="rounded-lg bg-white px-2 py-1.5"><dt className="text-charcoal/45">المتبقي</dt><dd className="mt-0.5 text-sm font-semibold"><span className="num">{l.open}</span></dd></div>
+            </dl>
+            {l.released > 0 && <p className="mt-2 text-[0.6875rem] text-charcoal/45">أُلغي بمرتجع: <span className="num">{l.released}</span></p>}
+            {isOpen && canConfirm && l.open > 0 && (
+              <label className="mt-3 block text-xs text-charcoal/55">
+                {kind === "sales" ? "الكمية المصروفة الآن" : "الكمية المستلمة الآن"}
+                <div className="mt-1">
+                  <Input type="number" min="0" max={l.open} step="0.001" dir="ltr" value={qty[l.line_id] ?? ""} onChange={(e) => setQty((p) => ({ ...p, [l.line_id]: e.target.value }))} />
+                </div>
+              </label>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {/* larger screens: the table, numbers aligned under their headings */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-borderSoft text-xs text-charcoal/45">
-              <th className="py-2 text-right font-medium">الصنف</th>
-              <th className="py-2 text-right font-medium">المطلوب</th>
-              <th className="py-2 text-right font-medium">{kind === "sales" ? "تم صرفه" : "تم استلامه"}</th>
-              {order.lines.some((l) => l.released > 0) && <th className="py-2 text-right font-medium">أُلغي بمرتجع</th>}
-              <th className="py-2 text-right font-medium">المتبقي</th>
-              {isOpen && canConfirm && <th className="py-2 text-right font-medium">{kind === "sales" ? "الكمية المصروفة الآن" : "الكمية المستلمة الآن"}</th>}
+              <th className="whitespace-nowrap px-3 py-2 text-start font-medium">الصنف</th>
+              <th className="whitespace-nowrap px-3 py-2 text-start font-medium">المطلوب</th>
+              <th className="whitespace-nowrap px-3 py-2 text-start font-medium">{kind === "sales" ? "تم صرفه" : "تم استلامه"}</th>
+              {order.lines.some((l) => l.released > 0) && <th className="whitespace-nowrap px-3 py-2 text-start font-medium">أُلغي بمرتجع</th>}
+              <th className="whitespace-nowrap px-3 py-2 text-start font-medium">المتبقي</th>
+              {isOpen && canConfirm && <th className="whitespace-nowrap px-3 py-2 text-start font-medium">{kind === "sales" ? "الكمية المصروفة الآن" : "الكمية المستلمة الآن"}</th>}
             </tr>
           </thead>
           <tbody>
             {order.lines.map((l) => (
               <tr key={l.line_id} className="border-b border-borderSoft/60 last:border-0">
-                <td className="py-2">
+                <td className="px-3 py-2">
                   {l.product_name} <span className="text-xs text-charcoal/35">{l.unit}</span>
-                  {l.expiry_date && <span className="mr-2 text-[0.6875rem] text-charcoal/35" dir="ltr">صلاحية {l.expiry_date}</span>}
+                  {l.expiry_date && <span className="mr-2 text-[0.6875rem] text-charcoal/35">صلاحية <span dir="ltr" className="num">{l.expiry_date}</span></span>}
                 </td>
-                <td className="py-2" dir="ltr">{l.ordered}</td>
-                <td className="py-2" dir="ltr">{l.fulfilled}</td>
-                {order.lines.some((x) => x.released > 0) && <td className="py-2" dir="ltr">{l.released || "—"}</td>}
-                <td className="py-2 font-medium" dir="ltr">{l.open}</td>
+                <td className="px-3 py-2"><span className="num">{l.ordered}</span></td>
+                <td className="px-3 py-2"><span className="num">{l.fulfilled}</span></td>
+                {order.lines.some((x) => x.released > 0) && <td className="px-3 py-2"><span className="num">{l.released || "—"}</span></td>}
+                <td className="px-3 py-2 font-medium"><span className="num">{l.open}</span></td>
                 {isOpen && canConfirm && (
-                  <td className="w-36 py-1.5">
+                  <td className="w-40 px-3 py-1.5">
                     {l.open > 0 ? (
-                      <Input type="number" min="0" max={l.open} step="0.001" dir="ltr" value={qty[l.line_id] ?? ""} onChange={(e) => setQty((p) => ({ ...p, [l.line_id]: e.target.value }))} />
+                      <Input type="number" min="0" max={l.open} step="0.001" dir="ltr" className="py-2" value={qty[l.line_id] ?? ""} onChange={(e) => setQty((p) => ({ ...p, [l.line_id]: e.target.value }))} />
                     ) : (
                       <span className="text-charcoal/30">—</span>
                     )}
@@ -119,11 +146,11 @@ export function OrderCard({ order, kind, canConfirm }: { order: Order; kind: "sa
       </div>
 
       {isOpen && canConfirm && (
-        <div className="mt-3 flex flex-wrap items-end gap-3">
-          <div className="min-w-[12rem] flex-1">
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
             <Input placeholder="ملاحظة (اختياري) — مثلًا: نقص من المورد" value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
-          <Button type="button" disabled={pending} onClick={submit}>{pending ? "جارٍ التسجيل..." : `تأكيد ${verb}`}</Button>
+          <Button type="button" disabled={pending} onClick={submit} className="w-full sm:w-auto">{pending ? "جارٍ التسجيل..." : `تأكيد ${verb}`}</Button>
         </div>
       )}
       {error && <p className="mt-2 text-xs text-rose">{error}</p>}

@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import type { PeriodSel } from "@/lib/report-period";
 import { SalesTrendChart, type TrendPoint } from "./sales-trend-chart";
 
@@ -20,7 +22,7 @@ export type DashboardAnalyticsData = {
 };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { maximumFractionDigits: 0 });
+  return formatMoney(n, 0);
 }
 
 // §42: sales/profit chart, top products, top customers, rep performance.
@@ -63,7 +65,7 @@ function RankCard({ title, rows, canViewFinancial }: { title: string; rows: Brea
               <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                 <span className="min-w-0 truncate text-charcoal">{r.group_label}</span>
                 <span className="num shrink-0 text-charcoal/55" dir="ltr">
-                  {money(Number(r.net_sales))} ج.م
+                  <Money value={Number(r.net_sales)} />
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-paper">
@@ -71,7 +73,7 @@ function RankCard({ title, rows, canViewFinancial }: { title: string; rows: Brea
               </div>
               {canViewFinancial && r.gross_profit != null && (
                 <p className="mt-1 break-words text-[0.6875rem] text-charcoal/40">
-                  <span dir="ltr" className="num">ربح {money(Number(r.gross_profit))} ج.م</span> · <span className="num" dir="ltr">{r.invoices}</span> فاتورة
+                  <span dir="ltr" className="num">ربح <Money value={Number(r.gross_profit)} /></span> · <span className="num" dir="ltr">{r.invoices}</span> فاتورة
                 </p>
               )}
             </div>

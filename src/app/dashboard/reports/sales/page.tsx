@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { getReportContext } from "@/lib/report-context";
 import { getRoleKey } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
@@ -8,7 +10,7 @@ import { periodQuery, resolvePeriod } from "@/lib/report-period";
 
 function money(n: number | null) {
   if (n === null || n === undefined) return "—";
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 type BreakdownRow = {
@@ -72,16 +74,16 @@ export default async function SalesReportPage(props: { searchParams: Promise<{ p
       </div>
 
       <div className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <SummaryCard label="إجمالي المبيعات" value={money(s?.sales?.gross_sales ?? null)} />
-        <SummaryCard label="الخصومات" value={money(s?.sales?.discounts ?? null)} />
-        <SummaryCard label="صافي المبيعات" value={money(s?.sales?.net_sales ?? null)} />
+        <SummaryCard label="إجمالي المبيعات" value={<Money value={s?.sales?.gross_sales ?? null} />} />
+        <SummaryCard label="الخصومات" value={<Money value={s?.sales?.discounts ?? null} />} />
+        <SummaryCard label="صافي المبيعات" value={<Money value={s?.sales?.net_sales ?? null} />} />
         {canViewFinancial && (
           <>
-            <SummaryCard label="تكلفة البضاعة المباعة" value={money((s?.financial?.cogs as number) ?? null)} />
-            <SummaryCard label="إجمالي الربح" value={money((s?.financial?.gross_profit as number) ?? null)} highlight />
-            <SummaryCard label="المصروفات التشغيلية" value={money((s?.financial?.operating_expenses as number) ?? null)} />
-            <SummaryCard label="العمولات" value={money((s?.financial?.commissions as number) ?? null)} />
-            <SummaryCard label="صافي الربح" value={money((s?.financial?.net_profit as number) ?? null)} highlight />
+            <SummaryCard label="تكلفة البضاعة المباعة" value={<Money value={(s?.financial?.cogs as number) ?? null} />} />
+            <SummaryCard label="إجمالي الربح" value={<Money value={(s?.financial?.gross_profit as number) ?? null} />} highlight />
+            <SummaryCard label="المصروفات التشغيلية" value={<Money value={(s?.financial?.operating_expenses as number) ?? null} />} />
+            <SummaryCard label="العمولات" value={<Money value={(s?.financial?.commissions as number) ?? null} />} />
+            <SummaryCard label="صافي الربح" value={<Money value={(s?.financial?.net_profit as number) ?? null} />} highlight />
           </>
         )}
       </div>
@@ -97,14 +99,14 @@ export default async function SalesReportPage(props: { searchParams: Promise<{ p
           ...(group === "invoice" ? [{ header: "العميل", render: (r: BreakdownRow) => r.party ?? "—" }] : []),
           { header: "عدد الفواتير", render: (r) => <span dir="ltr">{r.invoices}</span> },
           { header: "الكمية", render: (r) => <span dir="ltr">{r.quantity}</span> },
-          { header: "صافي المبيعات", render: (r) => <span dir="ltr">{money(r.net_sales)} ج.م</span> },
+          { header: "صافي المبيعات", render: (r) => <span dir="ltr"><Money value={r.net_sales} /></span> },
           ...(canViewFinancial
             ? [
                 {
                   header: "الربح",
                   render: (r: BreakdownRow) => (
                     <span dir="ltr" className={(r.gross_profit ?? 0) >= 0 ? "text-sage" : "text-rose"}>
-                      {money(r.gross_profit)} ج.م
+                      <Money value={r.gross_profit} />
                     </span>
                   ),
                 },
@@ -120,12 +122,12 @@ export default async function SalesReportPage(props: { searchParams: Promise<{ p
   );
 }
 
-function SummaryCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function SummaryCard({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
   return (
     <Card className="p-4">
       <p className="text-[0.6875rem] text-charcoal/45">{label}</p>
       <p className={`mt-1.5 text-xl font-semibold tracking-tight ${highlight ? "text-sage" : "text-charcoal"}`} dir="ltr">
-        {value} ج.م
+        {value}
       </p>
     </Card>
   );

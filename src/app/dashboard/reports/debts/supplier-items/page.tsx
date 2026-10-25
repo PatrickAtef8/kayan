@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { DataTable } from "@/components/ui/data-table";
@@ -53,7 +54,7 @@ export default async function SupplierItemsPage(props: { searchParams: Promise<{
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat label="صافي الكمية المستلمة" value={qty(t.received)} />
-        <Stat label="صافي قيمة المشتريات" value={`${money(t.value)} ج.م`} />
+        <Stat label="صافي قيمة المشتريات" value={<Money value={t.value} />} />
       </div>
 
       <DataTable<Row>
@@ -68,7 +69,7 @@ export default async function SupplierItemsPage(props: { searchParams: Promise<{
           { header: "بونص", render: (r) => <span dir="ltr">{r.free_qty > 0 ? qty(r.free_qty) : "—"}</span> },
           { header: "المرتجع", render: (r) => <span dir="ltr" className={r.returned_qty > 0 ? "text-rose" : ""}>{r.returned_qty > 0 ? qty(r.returned_qty) : "—"}</span> },
           { header: "صافي المستلم", render: (r) => <span dir="ltr" className="font-medium">{qty(r.received_qty)}</span> },
-          { header: "صافي القيمة", render: (r) => <span dir="ltr">{money(r.net_value)} ج.م</span> },
+          { header: "صافي القيمة", render: (r) => <span dir="ltr"><Money value={r.net_value} /></span> },
           { header: "آخر شراء", render: (r) => dateText(r.last_purchase_date) },
         ]}
       />

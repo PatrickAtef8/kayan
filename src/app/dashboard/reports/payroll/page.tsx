@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import { getReportContext } from "@/lib/report-context";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { Card } from "@/components/ui/card";
@@ -73,10 +74,10 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="الأساسي + بدل الانتقال (الشروط الحالية)" value={`${money(t.base)} ج.م`} />
-        <Stat label="عمولات مستحقة عن الشهر" value={`${money(t.earned)} ج.م`} />
-        <Stat label="مدفوع فعليًا (رواتب + عمولات)" value={`${money(t.paid)} ج.م`} />
-        <Stat label="محصّل بواسطة المناديب" value={`${money(t.collected)} ج.م`} tone="sage" />
+        <Stat label="الأساسي + بدل الانتقال (الشروط الحالية)" value={<Money value={t.base} />} />
+        <Stat label="عمولات مستحقة عن الشهر" value={<Money value={t.earned} />} />
+        <Stat label="مدفوع فعليًا (رواتب + عمولات)" value={<Money value={t.paid} />} />
+        <Stat label="محصّل بواسطة المناديب" value={<Money value={t.collected} />} tone="sage" />
       </div>
 
       <Section title="المستحقات">
@@ -85,12 +86,12 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
           head={["المندوب", "الأساسي", "بدل الانتقال", "أساس العمولة", "عمولة البيع", "عمولة التحصيل", "إجمالي العمولة", "الهدف"]}
           rows={rows.map((r) => [
             r.rep_name,
-            <span dir="ltr" key="f">{money(r.fixed_salary)}</span>,
-            <span dir="ltr" key="t">{money(r.transportation_allowance)}</span>,
+            <Money value={r.fixed_salary} suffix="" key="f" />,
+            <Money value={r.transportation_allowance} suffix="" key="t" />,
             <span key="b" className="text-xs">{BASIS[r.commission_basis] ?? r.commission_basis} × {r.commission_rate}٪</span>,
             <span dir="ltr" key="s">{r.sales_commission > 0 ? money(r.sales_commission) : "—"}</span>,
             <span dir="ltr" key="c">{r.collection_commission > 0 ? money(r.collection_commission) : "—"}</span>,
-            <span dir="ltr" key="e" className="font-medium">{money(r.earned_commission)}</span>,
+            <Money value={r.earned_commission} suffix="" key="e" className="font-medium" />,
             r.commission_eligible ? <span key="g" className="rounded-md bg-sageSoft px-2 py-0.5 text-xs text-sage">محقق</span> : <span key="g" className="rounded-md bg-rose/10 px-2 py-0.5 text-xs text-rose">لم يتحقق — لا عمولة</span>,
           ])}
         />
@@ -105,7 +106,7 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
             <span dir="ltr" key="a">{r.salary_paid > 0 ? money(r.salary_paid) : "—"}</span>,
             <span dir="ltr" key="b">{r.commission_paid > 0 ? money(r.commission_paid) : "—"}</span>,
             <span dir="ltr" key="c">{r.rep_expenses_paid > 0 ? money(r.rep_expenses_paid) : "—"}</span>,
-            <span dir="ltr" key="d" className={`font-medium ${r.commission_payable > 0 ? "text-rose" : ""}`}>{money(r.commission_payable)}</span>,
+            <Money value={r.commission_payable} suffix="" key="d" className={`font-medium ${r.commission_payable > 0 ? "text-rose" : ""}`} />,
           ])}
         />
       </Section>
@@ -114,7 +115,7 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
         <SimpleTable
           empty="لا توجد تحصيلات"
           head={["المندوب", "عدد التحصيلات", "المبلغ المحصّل", "أول تحصيل", "آخر تحصيل"]}
-          rows={rows.map((r) => [r.rep_name, <span dir="ltr" key="n">{r.collections_count}</span>, <span dir="ltr" key="a">{money(r.collected_amount)}</span>, dateText(r.first_collection_date), dateText(r.last_collection_date)])}
+          rows={rows.map((r) => [r.rep_name, <span dir="ltr" key="n">{r.collections_count}</span>, <Money value={r.collected_amount} suffix="" key="a" />, dateText(r.first_collection_date), dateText(r.last_collection_date)])}
         />
         {collections.length > 0 && (
           <Card className="mt-4 p-0">
@@ -125,7 +126,7 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
                 dateText(c.collection_date),
                 c.rep_name,
                 c.customer_name,
-                <span dir="ltr" key="a" className="font-medium">{money(c.amount)}</span>,
+                <Money value={c.amount} suffix="" key="a" className="font-medium" />,
                 c.payment_method ?? "—",
                 c.invoice_number ? <span dir="ltr" key="i">{c.invoice_number}</span> : <span key="i" className="text-charcoal/50">على الحساب</span>,
                 c.counts_for_commission ? <span key="k" className="text-sage">نعم</span> : <span key="k" className="text-charcoal/40">لا</span>,

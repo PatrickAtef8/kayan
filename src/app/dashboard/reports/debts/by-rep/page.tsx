@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { ExportButtons } from "@/components/ui/export-buttons";
@@ -35,9 +36,9 @@ export default async function ReceivablesByRepPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="إجمالي المديونية (المستحق لنا)" value={`${money(total?.receivable)} ج.م`} tone="rose" />
-        <Stat label="دفعات مقدمة من عملاء" value={`${money(total?.advances)} ج.م`} tone="sage" />
-        <Stat label="الصافي" value={`${money(total?.net_balance)} ج.م`} />
+        <Stat label="إجمالي المديونية (المستحق لنا)" value={<Money value={total?.receivable} />} tone="rose" />
+        <Stat label="دفعات مقدمة من عملاء" value={<Money value={total?.advances} />} tone="sage" />
+        <Stat label="الصافي" value={<Money value={total?.net_balance} />} />
         <Stat label="عملاء عليهم مديونية" value={`${total?.customers_with_debt ?? 0} من ${total?.customers ?? 0}`} />
       </div>
 
@@ -48,13 +49,13 @@ export default async function ReceivablesByRepPage() {
           <span key="l" className={r.is_total ? "font-semibold" : ""}>{r.group_label}</span>,
           <span dir="ltr" key="c">{r.customers}</span>,
           <span dir="ltr" key="d">{r.customers_with_debt}</span>,
-          <span dir="ltr" key="o">{money(r.opening)}</span>,
-          <span dir="ltr" key="s">{money(r.sales)}</span>,
-          <span dir="ltr" key="p">{money(r.collected)}</span>,
-          <span dir="ltr" key="rt">{money(r.returns_net)}</span>,
-          <span dir="ltr" key="rc" className="font-semibold text-rose">{money(r.receivable)}</span>,
+          <Money value={r.opening} suffix="" key="o" />,
+          <Money value={r.sales} suffix="" key="s" />,
+          <Money value={r.collected} suffix="" key="p" />,
+          <Money value={r.returns_net} suffix="" key="rt" />,
+          <Money value={r.receivable} suffix="" key="rc" className="font-semibold text-rose" />,
           <span dir="ltr" key="a">{r.advances > 0 ? money(r.advances) : "—"}</span>,
-          <span dir="ltr" key="n" className="font-medium">{money(r.net_balance)}</span>,
+          <Money value={r.net_balance} suffix="" key="n" className="font-medium" />,
           !r.is_total && r.group_id !== "none" ? <Link key="k" href={`/dashboard/reports/debts?type=customer&rep=${r.group_id}`} className="text-xs text-sage hover:underline">العملاء</Link> : "",
         ])}
       />

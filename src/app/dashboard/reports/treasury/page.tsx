@@ -2,6 +2,7 @@ import { Money } from "@/components/ui/money";
 import { formatMoney } from "@/lib/money";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { PeriodSelect } from "@/components/reports/period-select";
@@ -56,6 +57,14 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
   const checks = ((recon as { check_key: string; check_label: string; treasury_amount: number; source_amount: number; difference: number }[]) ?? []).map((c) => ({ ...c, treasury_amount: Number(c.treasury_amount), source_amount: Number(c.source_amount), difference: Number(c.difference) }));
   const inCats = (s?.by_category ?? []).filter((c) => c.direction === "in");
   const outCats = (s?.by_category ?? []).filter((c) => c.direction === "out");
+  const RECON_LABEL: Record<string, string> = {
+    customer_receipts: "تحصيلات العملاء",
+    supplier_payments: "مدفوعات الموردين",
+    expenses: "المصروفات (تشمل المرتبات والعمولات المدفوعة)",
+    partner_withdrawals: "مسحوبات الشركاء",
+    customer_refunds: "مبالغ أُعيدت نقدًا للعملاء",
+    supplier_refunds: "مبالغ استُردّت نقدًا من الموردين",
+  };
   const mismatched = checks.filter((c) => Math.abs(c.difference) > 0.005);
   const rows = (movements as MovementRow[]) ?? [];
 
@@ -72,11 +81,11 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
         </Card>
         <Card className="p-4">
           <p className="text-[0.6875rem] text-charcoal/45">إجمالي الوارد</p>
-          <p className="mt-1.5 text-xl font-semibold text-sage" dir="ltr">{money(s?.total_in ?? 0)} ج.م</p>
+          <p className="mt-1.5 text-xl font-semibold text-sage" dir="ltr"><Money value={s?.total_in ?? 0} /></p>
         </Card>
         <Card className="p-4">
           <p className="text-[0.6875rem] text-charcoal/45">إجمالي المنصرف</p>
-          <p className="mt-1.5 text-xl font-semibold text-rose" dir="ltr">{money(s?.total_out ?? 0)} ج.م</p>
+          <p className="mt-1.5 text-xl font-semibold text-rose" dir="ltr"><Money value={s?.total_out ?? 0} /></p>
         </Card>
         <Card className="p-4">
           <p className="text-[0.6875rem] text-charcoal/45">الرصيد الختامي</p>
@@ -87,9 +96,9 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
       <Card className="mb-7 p-5">
         <p className="mb-3 text-xs font-medium text-charcoal/40">المقبوضات من المبيعات مقابل المصروفات المسجلة</p>
         <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-          <div className="flex items-center justify-between"><span className="text-charcoal/60">مقبوضات المبيعات</span><span className="text-sage" dir="ltr">{money(s?.sales_collections ?? 0)} ج.م</span></div>
+          <div className="flex items-center justify-between"><span className="text-charcoal/60">مقبوضات المبيعات</span><span className="text-sage" dir="ltr"><Money value={s?.sales_collections ?? 0} /></span></div>
           {(s?.expenses_by_type ?? []).map((e) => (
-            <div key={e.type} className="flex items-center justify-between"><span className="text-charcoal/60">− {EXPENSE_TYPE[e.type] ?? e.type}</span><span className="text-rose" dir="ltr">{money(e.total)} ج.م</span></div>
+            <div key={e.type} className="flex items-center justify-between"><span className="text-charcoal/60">− {EXPENSE_TYPE[e.type] ?? e.type}</span><span className="text-rose" dir="ltr"><Money value={e.total} /></span></div>
           ))}
           <div className="flex items-center justify-between border-t border-borderSoft pt-2 font-semibold sm:col-span-2"><span className="text-charcoal">المقبوضات بعد المصروفات</span><Money value={s?.collections_minus_expenses ?? 0} /></div>
         </div>
@@ -113,10 +122,10 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
               {inCats.map((c) => (
                 <li key={c.category} className="flex items-center justify-between text-sm">
                   <span className="text-charcoal/80">{CATEGORY_LABEL[c.category] ?? c.category}</span>
-                  <span dir="ltr" className="font-medium text-sage">{money(Number(c.total))} ج.م</span>
+                  <span dir="ltr" className="font-medium text-sage"><Money value={Number(c.total)} /></span>
                 </li>
               ))}
-              <li className="flex items-center justify-between border-t border-borderSoft pt-2 text-sm font-semibold"><span>الإجمالي</span><span dir="ltr">{money(s?.total_in ?? 0)} ج.م</span></li>
+              <li className="flex items-center justify-between border-t border-borderSoft pt-2 text-sm font-semibold"><span>الإجمالي</span><span dir="ltr"><Money value={s?.total_in ?? 0} /></span></li>
             </ul>
           )}
         </Card>
@@ -127,10 +136,10 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
               {outCats.map((c) => (
                 <li key={c.category} className="flex items-center justify-between text-sm">
                   <span className="text-charcoal/80">{CATEGORY_LABEL[c.category] ?? c.category}</span>
-                  <span dir="ltr" className="font-medium text-rose">{money(Number(c.total))} ج.م</span>
+                  <span dir="ltr" className="font-medium text-rose"><Money value={Number(c.total)} /></span>
                 </li>
               ))}
-              <li className="flex items-center justify-between border-t border-borderSoft pt-2 text-sm font-semibold"><span>الإجمالي</span><span dir="ltr">{money(s?.total_out ?? 0)} ج.م</span></li>
+              <li className="flex items-center justify-between border-t border-borderSoft pt-2 text-sm font-semibold"><span>الإجمالي</span><span dir="ltr"><Money value={s?.total_out ?? 0} /></span></li>
             </ul>
           )}
         </Card>
@@ -140,23 +149,49 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
         <Link href="/dashboard/reports/profit-loss" className="text-sage hover:underline">تقرير الأرباح والخسائر</Link>.
       </p>
 
-      <Card className="mb-7 p-5">
-        <p className="mb-1 text-sm font-medium text-charcoal">مطابقة الخزنة مع المستندات</p>
-        <p className="mb-3 text-xs text-charcoal/45">كل تحصيل أو دفعة أو مصروف يُسجَّل في الخزنة بدوال النظام؛ هنا يُقارن إجمالي حركات الخزنة بإجمالي المستندات المنشئة لها في نفس الفترة.</p>
-        <ul className="space-y-1.5">
-          {checks.map((c) => (
-            <li key={c.check_key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="text-charcoal/80">{c.check_label}</span>
-              <span className="flex items-center gap-3">
-                <span dir="ltr" className="text-xs text-charcoal/50">خزنة {formatMoney(c.treasury_amount)} / مستندات {formatMoney(c.source_amount)}</span>
-                {Math.abs(c.difference) > 0.005
-                  ? <span className="rounded-md bg-rose/10 px-2 py-0.5 text-xs font-medium text-rose">فرق {money(c.difference)}</span>
-                  : <span className="rounded-md bg-sageSoft px-2 py-0.5 text-xs font-medium text-sage">مطابق</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {mismatched.length > 0 && <p className="mt-3 text-xs text-rose">يوجد فرق: حركة خزنة بلا مستند مطابق أو العكس. الحركات اليدوية (إيراد/مصروف آخر) لا تدخل في هذه المقارنة.</p>}
+      {/* Integrity check, written for a person who has never heard of it: it only needs attention when it turns red. */}
+      <Card className={`mb-7 p-4 sm:p-5 ${mismatched.length > 0 ? "border-rose/30 bg-rose/5" : ""}`}>
+        {mismatched.length === 0 ? (
+          <div className="flex items-start gap-3">
+            <CheckCircle2 size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-sage" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-charcoal">أرصدة الخزنة سليمة</p>
+              <p className="mt-1 text-xs leading-6 text-charcoal/50">كل مبلغ دخل الخزنة أو خرج منها في هذه الفترة له عملية مسجلة في النظام (تحصيل، دفعة، مصروف…) بنفس القيمة، فلا يوجد مبلغ ظهر أو اختفى من الخزنة بدون سبب.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-rose" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-rose">يوجد فرق يحتاج مراجعة</p>
+              <p className="mt-1 text-xs leading-6 text-charcoal/60">مبلغ في الخزنة لا يطابق العمليات المسجلة في النظام. هذا لا يحدث في الاستخدام العادي، وغالبًا يعني أن حركة أو رصيدًا تم تعديله خارج النظام. أرسل لنا هذه الصفحة لنراجعها معك.</p>
+              <ul className="mt-3 space-y-2">
+                {mismatched.map((c) => (
+                  <li key={c.check_key} className="rounded-lg bg-white/70 px-3 py-2 text-xs text-charcoal/70">
+                    <p className="mb-1 text-sm text-charcoal">{RECON_LABEL[c.check_key] ?? c.check_label}</p>
+                    <p>
+                      في الخزنة: <span dir="ltr" className="num">{formatMoney(c.treasury_amount)}</span> · في العمليات المسجلة: <span dir="ltr" className="num">{formatMoney(c.source_amount)}</span> · الفرق: <span dir="ltr" className="num font-medium text-rose">{formatMoney(c.difference)}</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+        <details className="group mt-3 border-t border-borderSoft/60 pt-3">
+          <summary className="cursor-pointer list-none text-xs text-sage hover:underline">عرض التفاصيل</summary>
+          <ul className="mt-3 space-y-2">
+            {checks.map((c) => (
+              <li key={c.check_key} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-charcoal/60">
+                <span className="text-sm text-charcoal/80">{RECON_LABEL[c.check_key] ?? c.check_label}</span>
+                <span>
+                  في الخزنة <span dir="ltr" className="num">{formatMoney(c.treasury_amount)}</span> · في العمليات <span dir="ltr" className="num">{formatMoney(c.source_amount)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[0.6875rem] leading-5 text-charcoal/40">المقارنة تخص العمليات التي يسجلها النظام نفسه. الحركات التي تضيفها يدويًا من «تسجيل حركة أخرى» لا تدخل فيها.</p>
+        </details>
       </Card>
 
       <DataTable<MovementRow>
@@ -171,7 +206,7 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
             header: "المبلغ",
             render: (r) => (
               <span dir="ltr" className={r.direction === "in" ? "text-sage" : "text-rose"}>
-                {r.direction === "in" ? "+" : "−"} {money(r.amount)} ج.م
+                {r.direction === "in" ? "+" : "−"} <Money value={r.amount} />
               </span>
             ),
           },

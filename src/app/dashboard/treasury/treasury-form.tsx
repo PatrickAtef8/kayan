@@ -31,6 +31,7 @@ export function TreasuryForm() {
   return (
     <Card className="p-5 sm:p-6">
       <div className="mb-1 text-xs font-medium text-charcoal/45">تسجيل حركة أخرى (دخل أو مصروف غير مرتبط بفاتورة)</div>
+      <p className="text-xs leading-6 text-charcoal/40">للأموال التي دخلت أو خرجت فعلًا من الخزنة. الأصول غير النقدية والالتزامات (سيارة، قرض...) تُسجَّل في تقرير المركز المالي.</p>
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="النوع">
           <ModernSelect

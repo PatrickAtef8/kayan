@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
@@ -31,12 +32,12 @@ export default async function RepAnalysisPage(
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="عدد الفواتير" value={p.invoices} />
-        <Stat label="إجمالي المبيعات" value={money(p.gross_sales)} />
-        <Stat label="المرتجعات" value={money(p.returns)} />
-        <Stat label="صافي المبيعات" value={money(p.net_sales)} />
-        <Stat label="التحصيلات" value={money(p.collected)} tone="sage" />
+        <Stat label="إجمالي المبيعات" value={<Money value={p.gross_sales} suffix="" />} />
+        <Stat label="المرتجعات" value={<Money value={p.returns} suffix="" />} />
+        <Stat label="صافي المبيعات" value={<Money value={p.net_sales} suffix="" />} />
+        <Stat label="التحصيلات" value={<Money value={p.collected} suffix="" />} tone="sage" />
         <Stat label="العملاء المسؤول عنهم" value={data.customers.length} />
-        <Stat label="مديونيات عملائه" value={`${money(data.customers_debt)} ج.م`} tone="rose" />
+        <Stat label="مديونيات عملائه" value={<Money value={data.customers_debt} />} tone="rose" />
         <Stat label="Target الشهري" value={p.target > 0 ? `${money(p.target)} (${p.target_pct}%)` : "غير محدد"} />
       </div>
 
@@ -57,29 +58,29 @@ export default async function RepAnalysisPage(
         <SimpleTable empty="لا يوجد عملاء مرتبطون بهذا المندوب" head={["العميل", "المبيعات", "المدفوع", "المرتجعات", "المديونية"]}
           rows={data.customers.map((c: { id: string; name: string; total_sales: number; paid: number; returned: number; debt: number }) => [
             <Link key="n" href={`/dashboard/reports/customers/${c.id}`} className="text-sage hover:underline">{c.name}</Link>,
-            <span dir="ltr" key="a">{money(c.total_sales)}</span>, <span dir="ltr" key="b">{money(c.paid)}</span>, <span dir="ltr" key="c">{money(c.returned)}</span>, <span dir="ltr" key="d" className="font-medium text-rose">{money(c.debt)}</span>,
+            <Money value={c.total_sales} suffix="" key="a" />, <Money value={c.paid} suffix="" key="b" />, <Money value={c.returned} suffix="" key="c" />, <Money value={c.debt} suffix="" key="d" className="font-medium text-rose" />,
           ])} />
       </Section>
 
       <Section title="فواتير الشهر">
         <SimpleTable empty="لا توجد فواتير في هذا الشهر" head={["التاريخ", "رقم الفاتورة", "العميل", "الإجمالي", "المدفوع", "خصومات", "Bonus"]}
           rows={data.invoices.map((i: { id: string; invoice_date: string; invoice_number: string | null; customer: string; total: number; amount_paid: number; discount_total: number; bonus_units: number }) => [
-            <span dir="ltr" key="d">{i.invoice_date}</span>, i.invoice_number ?? "—", i.customer, <span dir="ltr" key="t">{money(i.total)}</span>, <span dir="ltr" key="p">{money(i.amount_paid)}</span>, money(i.discount_total), i.bonus_units || "—",
+            <span dir="ltr" key="d">{i.invoice_date}</span>, i.invoice_number ?? "—", i.customer, <Money value={i.total} suffix="" key="t" />, <Money value={i.amount_paid} suffix="" key="p" />, money(i.discount_total), i.bonus_units || "—",
           ])} />
       </Section>
 
       <Section title="آخر 12 شهرًا">
         <SimpleTable empty="لا توجد بيانات" head={["الشهر", "الفواتير", "صافي المبيعات", "المرتجعات", "التحصيل", "الحد الأدنى", "العمولة المستحقة"]}
           rows={data.months.map((m: { month: string; invoices: number; net_sales: number; returns: number; collected: number; eligible: boolean; earned_commission: number }) => [
-            <span dir="ltr" key="m">{String(m.month).slice(0, 7)}</span>, m.invoices, <span dir="ltr" key="n">{money(m.net_sales)}</span>, <span dir="ltr" key="r">{money(m.returns)}</span>, <span dir="ltr" key="c">{money(m.collected)}</span>,
-            m.eligible ? "✓" : "✗", <span dir="ltr" key="e">{money(m.earned_commission)}</span>,
+            <span dir="ltr" key="m">{String(m.month).slice(0, 7)}</span>, m.invoices, <Money value={m.net_sales} suffix="" key="n" />, <Money value={m.returns} suffix="" key="r" />, <Money value={m.collected} suffix="" key="c" />,
+            m.eligible ? "✓" : "✗", <Money value={m.earned_commission} suffix="" key="e" />,
           ])} />
       </Section>
 
       {!restricted && (
       <Section title="مصاريف / مرتبات / صرف عمولة">
         <SimpleTable empty="لا توجد مصروفات مسجلة" head={["التاريخ", "النوع", "المبلغ", "الوصف"]}
-          rows={data.expenses.map((e: { date: string; type: string; amount: number; description: string | null }) => [<span dir="ltr" key="d">{e.date}</span>, TYPE[e.type] ?? e.type, <span dir="ltr" key="a">{money(e.amount)}</span>, e.description ?? "—"])} />
+          rows={data.expenses.map((e: { date: string; type: string; amount: number; description: string | null }) => [<span dir="ltr" key="d">{e.date}</span>, TYPE[e.type] ?? e.type, <Money value={e.amount} suffix="" key="a" />, e.description ?? "—"])} />
       </Section>
       )}
     </div>

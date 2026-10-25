@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { ModernSelect } from "@/components/ui/select";
 import { getReportContext } from "@/lib/report-context";
@@ -78,7 +79,7 @@ export default async function DebtsPage(
       </Card>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label={type === "customer" ? "إجمالي مديونيات العملاء (حسب الفلتر)" : "إجمالي ما علينا للموردين (حسب الفلتر)"} value={`${money(grand)} ج.م`} tone="rose" />
+        <Stat label={type === "customer" ? "إجمالي مديونيات العملاء (حسب الفلتر)" : "إجمالي ما علينا للموردين (حسب الفلتر)"} value={<Money value={grand} />} tone="rose" />
         <Stat label={type === "customer" ? "عدد العملاء" : "عدد الموردين"} value={count} />
       </div>
 
@@ -89,10 +90,10 @@ export default async function DebtsPage(
           rows={(rows as CustRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/customers/${r.customer_id}`} className="text-sage hover:underline">{r.customer_name}</Link>,
             r.rep_name ?? "—",
-            <span dir="ltr" key="s">{money(r.total_sales)}</span>,
-            <span dir="ltr" key="p">{money(r.total_paid)}</span>,
-            <span dir="ltr" key="r">{money(r.total_returned)}</span>,
-            <span dir="ltr" key="o" className="font-semibold text-rose">{money(r.outstanding)}</span>,
+            <Money value={r.total_sales} suffix="" key="s" />,
+            <Money value={r.total_paid} suffix="" key="p" />,
+            <Money value={r.total_returned} suffix="" key="r" />,
+            <Money value={r.outstanding} suffix="" key="o" className="font-semibold text-rose" />,
             <span dir="ltr" key="la">{r.last_payment_amount != null ? money(r.last_payment_amount) : "—"}</span>,
             <span dir="ltr" key="ld">{r.last_payment_date ?? "—"}</span>,
             <Link key="st" href={`/dashboard/reports/debts/statement/customer/${r.customer_id}`} className="text-xs text-sage hover:underline">كشف حساب</Link>,
@@ -104,10 +105,10 @@ export default async function DebtsPage(
           head={["المورد", "إجمالي المشتريات", "المدفوع", "المرتجعات", "المستحق له", "آخر دفعة", "تاريخها", ""]}
           rows={(rows as SupRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/suppliers/${r.supplier_id}`} className="text-sage hover:underline">{r.supplier_name}</Link>,
-            <span dir="ltr" key="s">{money(r.total_purchases)}</span>,
-            <span dir="ltr" key="p">{money(r.total_paid)}</span>,
-            <span dir="ltr" key="r">{money(r.total_returned)}</span>,
-            <span dir="ltr" key="o" className="font-semibold text-rose">{money(r.outstanding)}</span>,
+            <Money value={r.total_purchases} suffix="" key="s" />,
+            <Money value={r.total_paid} suffix="" key="p" />,
+            <Money value={r.total_returned} suffix="" key="r" />,
+            <Money value={r.outstanding} suffix="" key="o" className="font-semibold text-rose" />,
             <span dir="ltr" key="la">{r.last_payment_amount != null ? money(r.last_payment_amount) : "—"}</span>,
             <span dir="ltr" key="ld">{r.last_payment_date ?? "—"}</span>,
             <Link key="st" href={`/dashboard/reports/debts/statement/supplier/${r.supplier_id}`} className="text-xs text-sage hover:underline">كشف حساب</Link>,

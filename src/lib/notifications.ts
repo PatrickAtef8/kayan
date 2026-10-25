@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/money";
 // Notifications (migration 0046).  Pure helpers only — no React, no Supabase — so they can be unit tested
 // (`npm run test:notifications`) and shared by the server layout and the client bell.
 //
@@ -54,7 +55,7 @@ export const MAX_ROWS_SHOWN = 3;
 export function money(n: unknown): string {
   const v = Number(n);
   if (!Number.isFinite(v)) return "";
-  return `${v.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ج.م`;
+  return `${formatMoney(v)} ج.م`;
 }
 
 export function qty(n: unknown): string {

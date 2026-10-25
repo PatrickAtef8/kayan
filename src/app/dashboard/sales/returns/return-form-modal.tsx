@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useEffect, useState, useTransition } from "react";
 import { ModernSelect } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
@@ -8,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { getReturnableItems, createSalesReturn, type ReturnableItem, type ReturnReason } from "./actions";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 type LineState = { quantity: string; condition: "resalable" | "damaged"; reason: "" | "damaged" | "expired" | "slow_moving" | "other" };
@@ -194,7 +196,7 @@ export function ReturnFormModal({
           <div className="flex items-center justify-between border-t border-borderSoft pt-3 text-sm">
             <span className="text-charcoal/50">إجمالي قيمة المرتجع (تقريبي{previewTax > 0 ? " — شامل الضريبة" : ""})</span>
             <span className="font-medium text-charcoal" dir="ltr">
-              {money(previewTotal)} ج.م
+              <Money value={previewTotal} />
             </span>
           </div>
 

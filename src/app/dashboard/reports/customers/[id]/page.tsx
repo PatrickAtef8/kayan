@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import { getReportContext } from "@/lib/report-context";
 import { BackLink, InvoiceList, PaymentsReturnsNotes, Section, Stat, money, type AnalysisInvoice } from "../../party-analysis";
 
@@ -22,13 +23,13 @@ export default async function CustomerAnalysisPage(props: { params: Promise<{ id
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="عدد الفواتير" value={t.invoices} />
-        <Stat label="إجمالي المبيعات (قبل الخصم)" value={money(t.gross_sales)} />
-        <Stat label="صافي المبيعات" value={money(t.net_sales)} />
-        <Stat label="إجمالي الخصومات" value={money(t.discounts)} />
+        <Stat label="إجمالي المبيعات (قبل الخصم)" value={<Money value={t.gross_sales} suffix="" />} />
+        <Stat label="صافي المبيعات" value={<Money value={t.net_sales} suffix="" />} />
+        <Stat label="إجمالي الخصومات" value={<Money value={t.discounts} suffix="" />} />
         <Stat label="إجمالي الـBonus (قطعة)" value={t.bonus_units} />
-        <Stat label="إجمالي المدفوعات" value={money(t.payments)} tone="sage" />
-        <Stat label="إجمالي المرتجعات" value={money(t.returns)} />
-        <Stat label="المديونية الحالية" value={`${money(t.debt)} ج.م`} tone={t.debt > 0 ? "rose" : undefined} />
+        <Stat label="إجمالي المدفوعات" value={<Money value={t.payments} suffix="" />} tone="sage" />
+        <Stat label="إجمالي المرتجعات" value={<Money value={t.returns} suffix="" />} />
+        <Stat label="المديونية الحالية" value={<Money value={t.debt} />} tone={t.debt > 0 ? "rose" : undefined} />
       </div>
       <p className="mt-2 text-xs text-charcoal/45">
         المديونية = رصيد افتتاحي ({money(c.opening_balance)}) + قيمة الفواتير ({money(t.billed)}) − المدفوعات − المرتجعات. خصومات: أصناف {money(t.line_discounts)} · فاتورة {money(t.invoice_discounts)} · شرائح {money(t.tier_discounts)} · نقدي {money(t.cash_discounts)}.

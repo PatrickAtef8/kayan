@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
@@ -52,11 +53,11 @@ export default async function SupplierDuesPage(props: { searchParams: Promise<{ 
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Stat label="إجمالي ما علينا" value={`${money(t.balance)} ج.م`} />
-        <Stat label="متأخر السداد" value={`${money(t.overdue)} ج.م`} tone="rose" />
-        <Stat label="لم يحن موعده" value={`${money(t.notDue)} ج.م`} />
-        <Stat label="بدون موعد سداد" value={`${money(t.undated)} ج.م`} />
-        <Stat label="دفعات مقدمة لموردين" value={`${money(t.advance)} ج.م`} tone="sage" />
+        <Stat label="إجمالي ما علينا" value={<Money value={t.balance} />} />
+        <Stat label="متأخر السداد" value={<Money value={t.overdue} />} tone="rose" />
+        <Stat label="لم يحن موعده" value={<Money value={t.notDue} />} />
+        <Stat label="بدون موعد سداد" value={<Money value={t.undated} />} />
+        <Stat label="دفعات مقدمة لموردين" value={<Money value={t.advance} />} tone="sage" />
       </div>
 
       <SimpleTable
@@ -65,7 +66,7 @@ export default async function SupplierDuesPage(props: { searchParams: Promise<{ 
         rows={rows.map((r) => [
           <Link key="n" href={`/dashboard/reports/debts/statement/supplier/${r.supplier_id}`} className="text-sage hover:underline">{r.supplier_name}</Link>,
           <span dir="ltr" key="t">{r.payment_terms_days === null ? "—" : `${r.payment_terms_days} يوم`}</span>,
-          <span dir="ltr" key="b" className="font-medium">{money(r.balance)}</span>,
+          <Money value={r.balance} suffix="" key="b" className="font-medium" />,
           <span dir="ltr" key="o" className={r.overdue > 0 ? "font-semibold text-rose" : ""}>{r.overdue > 0 ? money(r.overdue) : "—"}</span>,
           r.overdue > 0 ? <span key="od" className="text-xs text-rose">{r.overdue_invoices} فاتورة — {r.max_days_overdue} يوم</span> : "—",
           <span dir="ltr" key="nd">{r.not_due > 0 ? money(r.not_due) : "—"}</span>,

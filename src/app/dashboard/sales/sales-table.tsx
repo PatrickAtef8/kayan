@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState } from "react";
 import { Eye, HandCoins, Undo2 } from "lucide-react";
 import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
@@ -22,7 +24,7 @@ const STATUS_CLASS: Record<SalesInvoiceRow["payment_status"], string> = {
 };
 
 function money(n: number | null | undefined) {
-  return Number(n ?? 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoices: SalesInvoiceRow[]; canViewFinancial: boolean; canCollect: boolean }) {
@@ -45,24 +47,24 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
           { header: "العميل", render: (inv) => inv.customers?.name ?? "—" },
           { header: "المندوب", render: (inv) => inv.sales_representatives?.name ?? "—" },
           { header: "المخزن", render: (inv) => inv.warehouses?.name ?? "—" },
-          { header: "الإجمالي", render: (inv) => <span dir="ltr">{money(inv.total)} ج.م</span> },
+          { header: "الإجمالي", render: (inv) => <span dir="ltr"><Money value={inv.total} /></span> },
           ...(canViewFinancial
             ? [
                 {
                   header: "الربح",
                   render: (inv: SalesInvoiceRow) => (
                     <span dir="ltr" className={inv.profit_total >= 0 ? "text-sage" : "text-rose"}>
-                      {money(inv.profit_total)} ج.م
+                      <Money value={inv.profit_total} />
                     </span>
                   ),
                 },
               ]
             : []),
-          { header: "المدفوع", render: (inv) => <span dir="ltr">{money(inv.amount_paid)} ج.م</span> },
+          { header: "المدفوع", render: (inv) => <span dir="ltr"><Money value={inv.amount_paid} /></span> },
           {
             header: "المتبقي",
             render: (inv) => (
-              <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}>{money(inv.remaining)} ج.م</span>
+              <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}><Money value={inv.remaining} /></span>
             ),
           },
           { header: "الصرف", render: (inv) => <FulfilmentBadge kind="sales" status={inv.dispatch_status} at={inv.dispatched_at} /> },
@@ -134,14 +136,14 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                     <span className="text-charcoal/45" dir="ltr">
                       {item.quantity}{item.bonus_quantity > 0 ? ` + ${item.bonus_quantity} Bonus` : ""} × {money(item.unit_price)}
                     </span>
-                    <span className="font-medium text-charcoal" dir="ltr">{money(item.net_total)}</span>
+                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="" /></span>
                   </div>
                   <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">
-                    السعر الصافي للقطعة: {money(item.effective_unit_price)} ج.م
+                    السعر الصافي للقطعة: <Money value={item.effective_unit_price} />
                   </div>
                   {canViewFinancial && (
                     <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">
-                      تكلفة: {money(item.cost_total)} — ربح: {money(item.profit)}
+                      تكلفة: <Money value={item.cost_total} suffix="" /> — ربح: <Money value={item.profit} suffix="" />
                     </div>
                   )}
                 </div>
@@ -150,7 +152,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
             <div className="space-y-1.5 border-t border-borderSoft pt-3 text-sm">
               <div className="flex items-center justify-between text-charcoal/50">
                 <span>إجمالي المبيعات</span>
-                <span dir="ltr">{money(viewing.subtotal)} ج.م</span>
+                <span dir="ltr"><Money value={viewing.subtotal} /></span>
               </div>
               {([
                 ["خصم الأصناف", viewing.line_discount_total],
@@ -162,7 +164,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                 .map(([label, v]) => (
                   <div key={label} className="flex items-center justify-between text-charcoal/50">
                     <span>{label}</span>
-                    <span dir="ltr">− {money(v)} ج.م</span>
+                    <span dir="ltr">− <Money value={v} /></span>
                   </div>
                 ))}
               {viewing.bonus_units > 0 && (
@@ -180,23 +182,23 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
               {viewing.tax_total > 0 && (
                 <div className="flex items-center justify-between text-charcoal/50">
                   <span>الضريبة</span>
-                  <span dir="ltr">+ {money(viewing.tax_total)} ج.م</span>
+                  <span dir="ltr">+ <Money value={viewing.tax_total} /></span>
                 </div>
               )}
               <div className="flex items-center justify-between font-semibold text-charcoal">
                 <span>الإجمالي</span>
-                <span dir="ltr">{money(viewing.total)} ج.م</span>
+                <span dir="ltr"><Money value={viewing.total} /></span>
               </div>
               {canViewFinancial && (
                 <>
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>التكلفة (COGS)</span>
-                    <span dir="ltr">{money(viewing.cogs_total)} ج.م</span>
+                    <span dir="ltr"><Money value={viewing.cogs_total} /></span>
                   </div>
                   <div className="flex items-center justify-between font-semibold">
                     <span className="text-charcoal">الربح</span>
                     <span dir="ltr" className={viewing.profit_total >= 0 ? "text-sage" : "text-rose"}>
-                      {money(viewing.profit_total)} ج.م
+                      <Money value={viewing.profit_total} />
                       {viewing.subtotal - viewing.discount_total > 0 && (
                         <span className="mr-1 text-[0.6875rem] font-normal text-charcoal/40">
                           ({((viewing.profit_total / (viewing.subtotal - viewing.discount_total)) * 100).toFixed(1)}%)
@@ -212,7 +214,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                     عمولة {viewing.sales_representatives.name}
                     {viewing.commission_basis_snapshot && ` (${COMMISSION_BASIS_LABELS[viewing.commission_basis_snapshot] ?? viewing.commission_basis_snapshot})`}
                   </span>
-                  <span dir="ltr">{money(viewing.commission_amount)} ج.م</span>
+                  <span dir="ltr"><Money value={viewing.commission_amount} /></span>
                 </div>
               )}
             </div>
@@ -230,7 +232,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                     <div key={p.id} className="px-3 py-2 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-charcoal/60" dir="ltr">{p.collection_date}</span>
-                        <span className="font-medium text-charcoal" dir="ltr">{money(p.amount)} ج.م</span>
+                        <span className="font-medium text-charcoal" dir="ltr"><Money value={p.amount} /></span>
                       </div>
                       {(p.payment_method || p.notes) && (
                         <div className="mt-0.5 text-[0.6875rem] text-charcoal/40">{[p.payment_method, p.notes].filter(Boolean).join(" — ")}</div>
@@ -242,23 +244,23 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
               <div className="space-y-1.5 pt-1 text-sm">
                 <div className="flex items-center justify-between text-charcoal/50">
                   <span>إجمالي الفاتورة</span>
-                  <span dir="ltr">{money(viewing.total)} ج.م</span>
+                  <span dir="ltr"><Money value={viewing.total} /></span>
                 </div>
                 {viewing.returns_total > 0 && (
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>مرتجعات</span>
-                    <span dir="ltr">− {money(viewing.returns_total)} ج.م</span>
+                    <span dir="ltr">− <Money value={viewing.returns_total} /></span>
                   </div>
                 )}
                 {viewing.cash_refunded > 0 && (
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>مبالغ استُرجعت نقدًا للعميل</span>
-                    <span dir="ltr">+ {money(viewing.cash_refunded)} ج.م</span>
+                    <span dir="ltr">+ <Money value={viewing.cash_refunded} /></span>
                   </div>
                 )}
                 <div className="flex items-center justify-between text-charcoal/50">
                   <span>إجمالي المدفوع</span>
-                  <span dir="ltr" className="text-sage">{money(viewing.amount_paid)} ج.م</span>
+                  <span dir="ltr" className="text-sage"><Money value={viewing.amount_paid} /></span>
                 </div>
                 <div className="flex items-center justify-between font-semibold">
                   <span className="text-charcoal">المتبقي</span>

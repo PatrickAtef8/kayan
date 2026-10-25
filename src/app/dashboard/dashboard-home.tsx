@@ -1,5 +1,6 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
 import { useState } from "react";
 import Link from "next/link";
 import { m, AnimatePresence } from "framer-motion";
@@ -199,7 +200,7 @@ function DashboardHomeContent({
                   <div className="shrink-0 text-left">
                     <p className={`num text-sm font-medium ${sign > 0 ? "text-sage" : "text-rose"}`} dir="ltr">
                       {sign > 0 ? "+" : "-"}
-                      {money(row.amount)} ج.م
+                      <Money value={row.amount} />
                     </p>
                     <p className="text-[0.6875rem] text-charcoal/35">{timeAgo(row.occurred_at)}</p>
                   </div>

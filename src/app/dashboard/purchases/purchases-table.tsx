@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState } from "react";
 import { Eye, HandCoins } from "lucide-react";
 import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
@@ -20,7 +22,7 @@ const STATUS_CLASS: Record<PurchaseInvoiceRow["payment_status"], string> = {
 };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: PurchaseInvoiceRow[]; canPay: boolean; showPayments: boolean }) {
@@ -41,14 +43,14 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
           { header: "رقم الفاتورة", render: (inv) => <span dir="ltr">{inv.invoice_number ?? "—"}</span> },
           { header: "المورد", render: (inv) => inv.suppliers?.name ?? "—" },
           { header: "المخزن", render: (inv) => inv.warehouses?.name ?? "—" },
-          { header: "الإجمالي", render: (inv) => <span dir="ltr">{money(inv.total)} ج.م</span> },
-          { header: "المدفوع", render: (inv) => <span dir="ltr">{money(inv.amount_paid)} ج.م</span> },
+          { header: "الإجمالي", render: (inv) => <span dir="ltr"><Money value={inv.total} /></span> },
+          { header: "المدفوع", render: (inv) => <span dir="ltr"><Money value={inv.amount_paid} /></span> },
           ...(showPayments
             ? [
                 {
                   header: "المتبقي",
                   render: (inv: PurchaseInvoiceRow) => (
-                    <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}>{money(inv.remaining)} ج.م</span>
+                    <span dir="ltr" className={inv.remaining > 0 ? "text-rose" : "text-charcoal/40"}><Money value={inv.remaining} /></span>
                   ),
                 },
               ]
@@ -110,14 +112,14 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                     <span className="text-charcoal/45" dir="ltr">
                       {item.quantity}{item.bonus_quantity > 0 ? ` + ${item.bonus_quantity} Bonus` : ""} × {money(item.unit_cost)}
                     </span>
-                    <span className="font-medium text-charcoal" dir="ltr">{money(item.net_total)}</span>
+                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="" /></span>
                   </div>
-                  <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">التكلفة الصافية للقطعة: {money(item.effective_unit_cost)} ج.م</div>
+                  <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">التكلفة الصافية للقطعة: <Money value={item.effective_unit_cost} /></div>
                 </div>
               ))}
             </div>
             <div className="space-y-1.5 text-sm text-charcoal/50">
-              <div className="flex items-center justify-between"><span>إجمالي قبل الخصم</span><span dir="ltr">{money(viewing.subtotal)} ج.م</span></div>
+              <div className="flex items-center justify-between"><span>إجمالي قبل الخصم</span><span dir="ltr"><Money value={viewing.subtotal} /></span></div>
               {([
                 ["خصم الأصناف", viewing.line_discount_total],
                 ["خصم على إجمالي الفاتورة", viewing.invoice_discount],
@@ -126,14 +128,14 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
               ] as [string, number][])
                 .filter(([, v]) => v > 0)
                 .map(([label, v]) => (
-                  <div key={label} className="flex items-center justify-between"><span>{label}</span><span dir="ltr">− {money(v)} ج.م</span></div>
+                  <div key={label} className="flex items-center justify-between"><span>{label}</span><span dir="ltr">− <Money value={v} /></span></div>
                 ))}
               {viewing.bonus_units > 0 && <div className="flex items-center justify-between text-sage"><span>Bonus (قطع مجانية)</span><span dir="ltr">{viewing.bonus_units}</span></div>}
               {viewing.payment_method && <div className="flex items-center justify-between"><span>طريقة الدفع</span><span>{viewing.payment_method}</span></div>}
             </div>
             <div className="flex items-center justify-between border-t border-borderSoft pt-3 text-sm">
               <span className="text-charcoal/50">الإجمالي</span>
-              <span className="font-semibold text-charcoal" dir="ltr">{money(viewing.total)} ج.م</span>
+              <span className="font-semibold text-charcoal" dir="ltr"><Money value={viewing.total} /></span>
             </div>
 
             {showPayments && (
@@ -150,7 +152,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                       <div key={p.id} className="px-3 py-2 text-sm">
                         <div className="flex items-center justify-between">
                           <span className="text-charcoal/60" dir="ltr">{p.payment_date}</span>
-                          <span className="font-medium text-charcoal" dir="ltr">{money(p.amount)} ج.م</span>
+                          <span className="font-medium text-charcoal" dir="ltr"><Money value={p.amount} /></span>
                         </div>
                         {(p.payment_method || p.notes) && (
                           <div className="mt-0.5 text-[0.6875rem] text-charcoal/40">{[p.payment_method, p.notes].filter(Boolean).join(" — ")}</div>
@@ -162,23 +164,23 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                 <div className="space-y-1.5 pt-1 text-sm">
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>إجمالي الفاتورة</span>
-                    <span dir="ltr">{money(viewing.total)} ج.م</span>
+                    <span dir="ltr"><Money value={viewing.total} /></span>
                   </div>
                   {viewing.returns_total > 0 && (
                     <div className="flex items-center justify-between text-charcoal/50">
                       <span>مرتجعات للمورد</span>
-                      <span dir="ltr">− {money(viewing.returns_total)} ج.م</span>
+                      <span dir="ltr">− <Money value={viewing.returns_total} /></span>
                     </div>
                   )}
                   {viewing.cash_refunded > 0 && (
                     <div className="flex items-center justify-between text-charcoal/50">
                       <span>مبالغ استردها المورد نقدًا</span>
-                      <span dir="ltr">+ {money(viewing.cash_refunded)} ج.م</span>
+                      <span dir="ltr">+ <Money value={viewing.cash_refunded} /></span>
                     </div>
                   )}
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>إجمالي المدفوع</span>
-                    <span dir="ltr" className="text-sage">{money(viewing.amount_paid)} ج.م</span>
+                    <span dir="ltr" className="text-sage"><Money value={viewing.amount_paid} /></span>
                   </div>
                   <div className="flex items-center justify-between font-semibold">
                     <span className="text-charcoal">المتبقي</span>

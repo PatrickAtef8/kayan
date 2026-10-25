@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -39,7 +41,7 @@ export type SheetSummary = {
 
 const NO_EXPIRY = "لا يوجد تاريخ صلاحية مسجل";
 const num = (n: number) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
-const money = (n: number) => Number(n).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n: number) => formatMoney(n);
 const dateText = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" }) : NO_EXPIRY);
 
 function parse(v: string | undefined): number | null {
@@ -239,7 +241,7 @@ export function StocktakeSheet({ stocktakeId, summary, lines, products, canCount
               ),
           },
           ...(summary.costs_visible
-            ? [{ header: "الأثر المالي (تقدير)", render: (l: (typeof view)[number]) => (l.impact === null ? <span className="text-charcoal/35">{l.variance ? "تكلفة غير معروفة" : "—"}</span> : <span dir="ltr" className={l.impact < 0 ? "text-rose" : ""}>{money(l.impact)} ج.م</span>) }]
+            ? [{ header: "الأثر المالي (تقدير)", render: (l: (typeof view)[number]) => (l.impact === null ? <span className="text-charcoal/35">{l.variance ? "تكلفة غير معروفة" : "—"}</span> : <span dir="ltr" className={l.impact < 0 ? "text-rose" : ""}><Money value={l.impact} /></span>) }]
             : []),
           ...(editable
             ? [{ header: "", render: (l: (typeof view)[number]) => (l.is_found ? <button type="button" className="cursor-pointer text-xs text-rose hover:underline" onClick={() => run(async () => { const f = await flush(); return f.error ? f : removeStocktakeFound({ stocktake_id: stocktakeId, line_id: l.line_id }); })}>حذف</button> : null) }]
@@ -310,7 +312,7 @@ export function StocktakeSheet({ stocktakeId, summary, lines, products, canCount
             <li>أسطر تم جردها: {sum.counted} من {view.length}</li>
             <li>العجز: {num(sum.shortQty)}{summary.costs_visible ? ` (≈ ${money(sum.shortVal)} ج.م)` : ""} — يُخصم من الدفعة المحددة نفسها</li>
             <li>الزيادة: {num(sum.surQty)}{summary.costs_visible ? ` (≈ ${money(sum.surVal)} ج.م)` : ""}</li>
-            {summary.costs_visible && <li>الأثر المالي الصافي (تقدير بمتوسط التكلفة الحالي): ≈ {money(sum.surVal - sum.shortVal)} ج.م</li>}
+            {summary.costs_visible && <li>الأثر المالي الصافي (تقدير بمتوسط التكلفة الحالي): ≈ <Money value={sum.surVal - sum.shortVal} /></li>}
           </ul>
           {sum.uncounted > 0 && (
             <p className="rounded-lg bg-amber-50 p-3 text-amber-800">

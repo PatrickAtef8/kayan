@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState } from "react";
 import { Paperclip } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
@@ -16,7 +18,7 @@ const AttachmentsPanel = dynamic(() => import("@/components/attachments/attachme
 });
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseRow[]; organizationId: string }) {
@@ -43,7 +45,7 @@ export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseR
           { header: "التصنيف (للتقارير)", render: (e) => e.expense_categories?.name ?? <span className="text-charcoal/30">بدون تصنيف</span> },
           { header: "ملاحظة", render: (e) => e.description ?? "—" },
           { header: "طريقة الدفع", render: (e) => e.payment_method ?? "—" },
-          { header: "المبلغ", render: (e) => <span dir="ltr" className="font-medium text-rose">− {money(e.amount)} ج.م</span> },
+          { header: "المبلغ", render: (e) => <span dir="ltr" className="font-medium text-rose">− <Money value={e.amount} /></span> },
           {
             header: "المرفقات",
             render: (e) => (

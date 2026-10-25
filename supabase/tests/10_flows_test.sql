@@ -189,13 +189,14 @@ select t.eq((:'pos_j'::jsonb ->> 'cash')::numeric, 13150, 'position: cash 13,150
 select t.eq((:'pos_j'::jsonb ->> 'payables')::numeric, 15000, 'position: payables 15,000');
 select t.eq((:'pos_j'::jsonb ->> 'other_liabilities')::numeric, 2000, 'position: other liabilities 2,000');
 select t.eq((:'pos_j'::jsonb ->> 'other_assets')::numeric, 500, 'position: other assets 500');
-select t.eq((:'pos_j'::jsonb ->> 'general_capital')::numeric, 17550, 'رأس المال العام = 18,700 + 2,700 + 13,150 − 15,000 − 2,000 = 17,550 (§41)');
-select t.eq((:'pos_j'::jsonb ->> 'net_position')::numeric, 18050, 'net business position adds other assets: 18,050 (§40)');
+select t.eq((:'pos_j'::jsonb ->> 'general_capital')::numeric, 18050 - (:'pos_j'::jsonb ->> 'commissions_payable')::numeric, 'رأس المال العام = 18,700 + 2,700 + 13,150 + 500 (أصول أخرى) − 15,000 − 2,000 − العمولات المستحقة (migrations 0057/0058)');
+select t.eq((:'pos_j'::jsonb ->> 'commissions_payable')::numeric, (select coalesce(sum(greatest(payable, 0)), 0) from rep_commission_balances where organization_id = :'org_id'), 'position: commissions payable = unpaid earned commission of the reps');
+select t.eq((:'pos_j'::jsonb ->> 'net_position')::numeric, 18050 - (:'pos_j'::jsonb ->> 'commissions_payable')::numeric, 'net_position is the same figure as رأس المال العام (§40)');
 
 -- Deactivating an other-balance removes it from the totals but keeps the row (§47)
 select deactivate_other_balance(:'org_id', :'ob_liab_id');
 select report_financial_position(:'org_id') as j \gset pos2_
-select t.eq((:'pos2_j'::jsonb ->> 'general_capital')::numeric, 19550, 'position: deactivated liability no longer counts');
+select t.eq((:'pos2_j'::jsonb ->> 'general_capital')::numeric, 20050 - (:'pos_j'::jsonb ->> 'commissions_payable')::numeric, 'position: deactivated liability no longer counts');
 select t.eq((select count(*) from other_balances where id = :'ob_liab_id' and not is_active), 1, 'deactivated item is kept, not deleted');
 
 -- Recent activity feed
@@ -221,7 +222,7 @@ select t.empty('select * from other_balances', 'salesman cannot read other_balan
 
 -- The second owner does have view_financial
 select t.as_user('a0000000-0000-0000-0000-000000000002');
-select t.eq((report_financial_position(:'org_id') ->> 'general_capital')::numeric, 19550, 'second owner can read the financial position');
+select t.eq((report_financial_position(:'org_id') ->> 'general_capital')::numeric, 20050 - (:'pos_j'::jsonb ->> 'commissions_payable')::numeric, 'second owner can read the financial position');
 
 -- Anonymous callers get nothing
 select t.as_anon();

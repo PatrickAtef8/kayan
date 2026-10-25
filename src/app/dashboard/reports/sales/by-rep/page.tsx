@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
@@ -44,7 +45,7 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="صافي الإيراد" value={`${money(total.revenue)} ج.م`} />
+        <Stat label="صافي الإيراد" value={<Money value={total.revenue} />} />
         <Stat label="الكراتين" value={cartonsText(total.cartons)} />
         <Stat label="القطع المباعة" value={qty(total.units)} />
         <Stat label="الفواتير" value={String(total.invoices)} />
@@ -61,7 +62,7 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
           { header: "عدد الأصناف", render: (r) => <span dir="ltr">{r.products}</span> },
           { header: "الكراتين", render: (r) => <span dir="ltr">{cartonsText(r.cartons)}</span> },
           { header: "القطع المباعة", render: (r) => <span dir="ltr">{qty(r.net_qty)}</span> },
-          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium">{money(r.net_revenue)} ج.م</span> },
+          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium"><Money value={r.net_revenue} /></span> },
           { header: "", render: (r) => (r.group_id !== "none" ? <Link href={withParams(sp, { rep: r.group_id })} scroll={false} className="text-xs text-sage hover:underline">تفصيل</Link> : null) },
         ]}
       />
@@ -79,7 +80,7 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
                 { header: "الصنف", render: (r) => r.group_label },
                 { header: "القطع", render: (r) => <span dir="ltr">{qty(r.net_qty)}</span> },
                 { header: "الكراتين", render: (r) => <span dir="ltr">{productCartons(r)}</span> },
-                { header: "صافي الإيراد", render: (r) => <span dir="ltr">{money(r.net_revenue)} ج.م</span> },
+                { header: "صافي الإيراد", render: (r) => <span dir="ltr"><Money value={r.net_revenue} /></span> },
               ]}
             />
           </div>
@@ -93,7 +94,7 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
                 { header: "العميل", render: (r) => r.group_label },
                 { header: "الفواتير", render: (r) => <span dir="ltr">{r.invoices}</span> },
                 { header: "القطع", render: (r) => <span dir="ltr">{qty(r.net_qty)}</span> },
-                { header: "صافي الإيراد", render: (r) => <span dir="ltr">{money(r.net_revenue)} ج.م</span> },
+                { header: "صافي الإيراد", render: (r) => <span dir="ltr"><Money value={r.net_revenue} /></span> },
               ]}
             />
           </div>
@@ -103,7 +104,7 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <Card className="p-4">
       <p className="text-[0.6875rem] text-charcoal/45">{label}</p>

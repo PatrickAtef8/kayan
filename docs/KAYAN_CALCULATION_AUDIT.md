@@ -139,7 +139,7 @@ Fix: `revenue = round(line_total × returned_qty / original_qty, 2)`, and give t
 - Customer/supplier balance formulas including opening balances and returns; ledger running balances.
 - Treasury balance = opening + in − out; treasury summary opening/closing.
 - Stock transfers carry source cost; inventory value = Σ qty × avg_cost.
-- رأس المال العام matches the SRS §41 formula.
+- رأس المال العام matches the SRS §41 formula, completed in migration 0057 to include أصول أخرى (assets − liabilities); `net_position` is the same figure. Migration 0058 also subtracts earned-but-unpaid rep commissions.
 - `report_summary` chain (gross → discounts → returns → net → COGS → profit → expenses → commissions → net profit).
 - Dashboard rollups equal `report_sales_breakdown`.
 

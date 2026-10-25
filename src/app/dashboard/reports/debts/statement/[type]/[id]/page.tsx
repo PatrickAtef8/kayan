@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import { notFound } from "next/navigation";
 import { getReportContext } from "@/lib/report-context";
 import { ExportButtons } from "@/components/ui/export-buttons";
@@ -75,11 +76,11 @@ export default async function StatementPage(props: { params: Promise<{ type: str
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Stat label="رصيد افتتاحي" value={money(opening)} />
-        <Stat label="إجمالي الفواتير" value={money(invoiced)} />
-        <Stat label={isCustomer ? "إجمالي المحصّل" : "إجمالي المدفوع"} value={money(paidTotal)} tone="sage" />
-        <Stat label="المرتجعات (بعد المسترد نقدًا)" value={money(returnsNet)} />
-        <Stat label={isCustomer ? "المتبقي على العميل" : "المتبقي للمورد"} value={`${money(balance)} ج.م`} tone={balance > 0 ? "rose" : undefined} />
+        <Stat label="رصيد افتتاحي" value={<Money value={opening} suffix="" />} />
+        <Stat label="إجمالي الفواتير" value={<Money value={invoiced} suffix="" />} />
+        <Stat label={isCustomer ? "إجمالي المحصّل" : "إجمالي المدفوع"} value={<Money value={paidTotal} suffix="" />} tone="sage" />
+        <Stat label="المرتجعات (بعد المسترد نقدًا)" value={<Money value={returnsNet} suffix="" />} />
+        <Stat label={isCustomer ? "المتبقي على العميل" : "المتبقي للمورد"} value={<Money value={balance} />} tone={balance > 0 ? "rose" : undefined} />
       </div>
       <p className={`mt-2 text-xs ${reconciled ? "text-charcoal/45" : "font-medium text-rose"}`}>
         {reconciled ? "✓ " : "⚠ لا يتطابق: "}الرصيد = رصيد افتتاحي ({money(opening)}) + الفواتير ({money(invoiced)}) − {isCustomer ? "المحصّل" : "المدفوع"} ({money(paidTotal)}) − المرتجعات ({money(returnsNet)}) = {money(expected)}
@@ -98,7 +99,7 @@ export default async function StatementPage(props: { params: Promise<{ type: str
             <span dir="ltr" key="lp">{r.linked_paid > 0 ? money(r.linked_paid) : "—"}</span>,
             <span dir="ltr" key="rn">{r.returns_net > 0 ? money(r.returns_net) : "—"}</span>,
             <span dir="ltr" key="oa">{r.on_account_applied > 0 ? money(r.on_account_applied) : "—"}</span>,
-            <span dir="ltr" key="rm" className={`font-medium ${r.remaining > 0 ? "text-rose" : ""}`}>{money(r.remaining)}</span>,
+            <Money value={r.remaining} suffix="" key="rm" className={`font-medium ${r.remaining > 0 ? "text-rose" : ""}`} />,
             <span key="s" className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status] ?? ""}`}>
               {STATUS_LABEL[r.status] ?? r.status}{r.days_overdue ? ` ${r.days_overdue} يوم` : ""}
             </span>,
@@ -112,7 +113,7 @@ export default async function StatementPage(props: { params: Promise<{ type: str
           head={["التاريخ", "المبلغ", "طريقة الدفع", "المرجع", "سُدِّد به", "ملاحظات"]}
           rows={payments.map((x) => [
             dateText(x.payment_date),
-            <span dir="ltr" key="a" className="font-medium">{money(x.amount)}</span>,
+            <Money value={x.amount} suffix="" key="a" className="font-medium" />,
             x.payment_method ?? "—",
             <span dir="ltr" key="r">{x.reference ?? "—"}</span>,
             x.doc_number ? <span dir="ltr" key="d">فاتورة {x.doc_number}</span> : <span key="d" className="text-charcoal/50">على الحساب</span>,
@@ -132,7 +133,7 @@ export default async function StatementPage(props: { params: Promise<{ type: str
               <span dir="ltr" key="r">{l.reference || "—"}</span>,
               <span dir="ltr" key="i">{Number(l.increase) > 0 ? money(l.increase) : "—"}</span>,
               <span dir="ltr" key="d">{Number(l.decrease) > 0 ? money(l.decrease) : "—"}</span>,
-              <span dir="ltr" key="b" className="font-medium">{money(l.balance)}</span>,
+              <Money value={l.balance} suffix="" key="b" className="font-medium" />,
             ])}
           />
         </Section>

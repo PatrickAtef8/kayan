@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
@@ -6,6 +7,7 @@ import { ExportButtons } from "@/components/ui/export-buttons";
 import { Card } from "@/components/ui/card";
 import { Stat, SimpleTable } from "../party-analysis";
 import { money } from "@/lib/party-reports";
+import { formatMoney } from "@/lib/money";
 import { parseFilters, withParams, type SalesSearchParams } from "@/lib/sales-report";
 
 type Row = {
@@ -67,10 +69,10 @@ export default async function ProfitLossPage(props: { searchParams: Promise<Sale
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="صافي المبيعات" value={`${money(total?.net_sales)} ج.م`} />
-        <Stat label="مجمل الربح" value={`${money(total?.gross_profit)} ج.م`} />
-        <Stat label="صافي الربح / (الخسارة)" value={`${money(total?.net_profit)} ج.م`} tone={(total?.net_profit ?? 0) < 0 ? "rose" : "sage"} />
-        <Stat label="هامش صافي الربح" value={`${margin.toLocaleString("ar-EG", { maximumFractionDigits: 1 })}٪`} />
+        <Stat label="صافي المبيعات" value={<Money value={total?.net_sales} />} />
+        <Stat label="مجمل الربح" value={<Money value={total?.gross_profit} />} />
+        <Stat label="صافي الربح / (الخسارة)" value={<Money value={total?.net_profit} />} tone={(total?.net_profit ?? 0) < 0 ? "rose" : "sage"} />
+        <Stat label="هامش صافي الربح" value={<span dir="ltr" className={`num ${margin < 0 ? "!text-rose" : ""}`}>{formatMoney(margin, 1)}٪</span>} />
       </div>
 
       <SimpleTable
@@ -80,7 +82,7 @@ export default async function ProfitLossPage(props: { searchParams: Promise<Sale
           <span key="l" className={l.strong ? "font-semibold" : "pr-3 text-charcoal/75"}>{l.minus ? "− " : ""}{l.label}</span>,
           ...cols.map((c, i) => {
             const v = Number(c[l.key] ?? 0);
-            return <span key={i} dir="ltr" className={`${l.strong ? "font-semibold" : ""} ${l.key === "net_profit" && v < 0 ? "text-rose" : ""}`}>{money(v)}</span>;
+            return <Money key={i} value={v} suffix="" className={l.strong ? "font-semibold" : ""} />;
           }),
         ])}
       />
@@ -92,7 +94,7 @@ export default async function ProfitLossPage(props: { searchParams: Promise<Sale
             {expenses.map((e) => (
               <li key={e.group_id} className="flex items-center justify-between text-sm">
                 <span className="text-charcoal/80">{e.group_label}</span>
-                <span dir="ltr" className="font-medium">{money(e.in_profit_loss)} ج.م</span>
+                <span dir="ltr" className="font-medium"><Money value={e.in_profit_loss} /></span>
               </li>
             ))}
           </ul>

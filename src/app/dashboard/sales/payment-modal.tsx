@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import { ModernSelect } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
@@ -9,7 +11,7 @@ import { DEFAULT_PAYMENT_METHOD, PAYMENT_METHODS } from "@/lib/payment-methods";
 import { recordInvoicePayment } from "./actions";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 // "تسجيل دفعة": adds one payment (amount + date) to an invoice. The component is mounted
@@ -60,15 +62,15 @@ export function PaymentModal({
         <div className="grid grid-cols-1 gap-2 rounded-xl border border-borderSoft p-3 text-center text-xs text-charcoal/50 min-[420px]:grid-cols-3">
           <div>
             <div>إجمالي الفاتورة</div>
-            <div className="mt-1 break-all text-sm font-medium text-charcoal" dir="ltr">{money(total)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-charcoal"><Money value={total} suffix="" /></div>
           </div>
           <div>
             <div>المدفوع</div>
-            <div className="mt-1 break-all text-sm font-medium text-sage" dir="ltr">{money(paid)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-sage"><Money value={paid} suffix="" /></div>
           </div>
           <div>
             <div>المتبقي</div>
-            <div className="mt-1 break-all text-sm font-medium text-rose" dir="ltr">{money(remaining)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-rose"><Money value={remaining} suffix="" /></div>
           </div>
         </div>
 
@@ -90,7 +92,7 @@ export function PaymentModal({
 
         {valid && (
           <p className="text-xs text-charcoal/50">
-            {after === 0 ? "بعد هذه الدفعة تصبح الفاتورة مدفوعة بالكامل." : <>بعد هذه الدفعة يتبقى <span dir="ltr">{money(after)} ج.م</span> وتظل الفاتورة مدفوعة جزئيًا.</>}
+            {after === 0 ? "بعد هذه الدفعة تصبح الفاتورة مدفوعة بالكامل." : <>بعد هذه الدفعة يتبقى <span dir="ltr"><Money value={after} /></span> وتظل الفاتورة مدفوعة جزئيًا.</>}
           </p>
         )}
         {error && <p className="text-sm text-rose">{error}</p>}

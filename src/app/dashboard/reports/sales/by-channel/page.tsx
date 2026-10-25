@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
@@ -38,7 +39,7 @@ export default async function SalesByChannelPage(props: { searchParams: Promise<
         {rows.map((r) => (
           <Card key={r.group_id} className="p-4">
             <p className="text-[0.6875rem] text-charcoal/45">{r.group_label}</p>
-            <p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr">{money(r.net_revenue)} ج.م</p>
+            <p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr"><Money value={r.net_revenue} /></p>
             <p className="mt-1 text-[0.6875rem] text-charcoal/40">{share(r).toLocaleString("ar-EG", { maximumFractionDigits: 1 })}٪ من الإجمالي</p>
           </Card>
         ))}
@@ -54,7 +55,7 @@ export default async function SalesByChannelPage(props: { searchParams: Promise<
           { header: "العملاء", render: (r) => <span dir="ltr">{r.customers}</span> },
           { header: "الكراتين", render: (r) => <span dir="ltr">{cartonsText(r.cartons)}</span> },
           { header: "القطع المباعة", render: (r) => <span dir="ltr">{qty(r.net_qty)}</span> },
-          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium">{money(r.net_revenue)} ج.م</span> },
+          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium"><Money value={r.net_revenue} /></span> },
           { header: "النسبة", render: (r) => <span dir="ltr">{share(r).toLocaleString("ar-EG", { maximumFractionDigits: 1 })}٪</span> },
         ]}
       />

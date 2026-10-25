@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/money";
 // Shared by the three sales report pages (by rep / channel / product): URL params → RPC arguments,
 // plus the display helpers that must stay identical across them.
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -86,7 +87,7 @@ export async function loadSalesRows(supabase: SupabaseClient, orgId: string, gro
   }));
 }
 
-export const money = (n: number) => Number(n).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const money = (n: number) => formatMoney(n);
 export const qty = (n: number) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: 3 });
 export const cartonsText = (n: number) => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: 2 });
 

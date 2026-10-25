@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
@@ -57,7 +58,7 @@ export default async function ReturnsReportPage(props: { searchParams: Promise<S
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Stat label="قيمة المرتجعات" value={`${money(t.v)} ج.م`} tone="rose" />
+        <Stat label="قيمة المرتجعات" value={<Money value={t.v} />} tone="rose" />
         <Stat label="الوحدات المرتجعة" value={qty(t.u)} />
         <Stat label="عدد المرتجعات" value={t.n} />
       </div>
@@ -71,7 +72,7 @@ export default async function ReturnsReportPage(props: { searchParams: Promise<S
           <span dir="ltr" key="u" className="font-medium">{qty(r.units)}</span>,
           <span dir="ltr" key="ru">{qty(r.resalable_units)}</span>,
           <span dir="ltr" key="du" className={r.damaged_units > 0 ? "text-rose" : ""}>{qty(r.damaged_units)}</span>,
-          <span dir="ltr" key="v" className="font-medium">{money(r.value)} ج.م</span>,
+          <span dir="ltr" key="v" className="font-medium"><Money value={r.value} /></span>,
           <span dir="ltr" key="s">{r.share_pct.toLocaleString("ar-EG", { maximumFractionDigits: 1 })}٪</span>,
         ])}
       />

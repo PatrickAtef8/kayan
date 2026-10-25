@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -5,7 +7,7 @@ import { ExportButtons } from "@/components/ui/export-buttons";
 
 function money(n: number | null) {
   if (n === null || n === undefined) return "—";
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 type StockRow = {
@@ -62,7 +64,7 @@ export default async function InventoryReportPage() {
           <div>
             <p className="text-xs text-charcoal/45">قيمة المخزون الحالية (بمتوسط التكلفة المرجح)</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">
-              {money(totalValue)} ج.م
+              <Money value={totalValue} />
             </p>
           </div>
         </Card>
@@ -88,8 +90,8 @@ export default async function InventoryReportPage() {
           { header: "الكمية", render: (r) => <span dir="ltr">{r.quantity} {r.unit}</span> },
           ...(canViewFinancial
             ? [
-                { header: "متوسط التكلفة", render: (r: StockRow) => <span dir="ltr">{money(r.avg_cost)} ج.م</span> },
-                { header: "القيمة", render: (r: StockRow) => <span dir="ltr">{money(r.stock_value)} ج.م</span> },
+                { header: "متوسط التكلفة", render: (r: StockRow) => <span dir="ltr"><Money value={r.avg_cost} /></span> },
+                { header: "القيمة", render: (r: StockRow) => <span dir="ltr"><Money value={r.stock_value} /></span> },
               ]
             : []),
         ]}
@@ -114,7 +116,7 @@ export default async function InventoryReportPage() {
               </span>
             ),
           },
-          ...(canViewFinancial ? [{ header: "تكلفة الوحدة", render: (r: MovementRow) => <span dir="ltr">{money(r.unit_cost)}</span> }] : []),
+          ...(canViewFinancial ? [{ header: "تكلفة الوحدة", render: (r: MovementRow) => <Money value={r.unit_cost} suffix="" /> }] : []),
           { header: "ملاحظة", render: (r) => r.note ?? "—" },
         ]}
       />

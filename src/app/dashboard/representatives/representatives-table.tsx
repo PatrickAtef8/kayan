@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Pencil, Trash2, Power } from "lucide-react";
@@ -15,7 +17,7 @@ import { COMMISSION_BASIS_LABELS, COMMISSION_BASIS_OPTIONS } from "./commission-
 import type { Representative, MemberOption } from "./page";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function RepresentativesTable({ representatives, members, membersNote }: { representatives: Representative[]; members: MemberOption[]; membersNote?: string | null }) {
@@ -47,9 +49,9 @@ export function RepresentativesTable({ representatives, members, membersNote }: 
         columns={[
           { header: "الاسم", render: (r) => <Link href={`/dashboard/reports/reps/${r.id}`} className={r.is_active ? "text-sage hover:underline" : "text-charcoal/35"}>{r.name}{r.is_active ? "" : " (موقوف)"}</Link> },
           { header: "الهاتف", render: (r) => <span dir="ltr">{r.phone ?? "—"}</span> },
-          { header: "الراتب", render: (r) => <span dir="ltr">{money(r.fixed_salary)} ج.م</span> },
-          { header: "بدل المواصلات", render: (r) => <span dir="ltr">{money(r.transportation_allowance)} ج.م</span> },
-          { header: "Target شهري", render: (r) => <span dir="ltr">{money(r.monthly_target)} ج.م</span> },
+          { header: "الراتب", render: (r) => <span dir="ltr"><Money value={r.fixed_salary} /></span> },
+          { header: "بدل المواصلات", render: (r) => <span dir="ltr"><Money value={r.transportation_allowance} /></span> },
+          { header: "Target شهري", render: (r) => <span dir="ltr"><Money value={r.monthly_target} /></span> },
           { header: "حد العمولة", render: (r) => <span dir="ltr">{r.min_target_for_commission > 0 ? `${money(r.min_target_for_commission)} ج.م` : "بدون حد"}</span> },
           { header: "العمولة", render: (r) => `${r.commission_rate}% من ${COMMISSION_BASIS_LABELS[r.commission_basis] ?? r.commission_basis}` },
           {

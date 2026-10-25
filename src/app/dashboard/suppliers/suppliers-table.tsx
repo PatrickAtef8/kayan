@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import { Pencil, Trash2, Wallet } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
@@ -14,7 +16,7 @@ import type { SupplierBalance } from "./page";
 type Supplier = { id: string; name: string; phone: string | null; payment_terms_days: number | null; opening_balance: number };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppliers: Supplier[]; balances: SupplierBalance[]; canViewBalance: boolean }) {
@@ -57,7 +59,7 @@ export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppli
                     const bal = balanceOf(s.id);
                     return (
                       <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
-                        {money(bal)} ج.م
+                        <Money value={bal} />
                       </span>
                     );
                   },

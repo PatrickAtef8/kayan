@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
@@ -37,7 +38,7 @@ export default async function SalesByProductPage(props: { searchParams: Promise<
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Card className="p-4"><p className="text-[0.6875rem] text-charcoal/45">صافي الإيراد</p><p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr">{money(total.revenue)} ج.م</p></Card>
+        <Card className="p-4"><p className="text-[0.6875rem] text-charcoal/45">صافي الإيراد</p><p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr"><Money value={total.revenue} /></p></Card>
         <Card className="p-4"><p className="text-[0.6875rem] text-charcoal/45">القطع المباعة (صافي)</p><p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr">{qty(total.units)}</p></Card>
         <Card className="p-4"><p className="text-[0.6875rem] text-charcoal/45">الكراتين</p><p className="mt-1.5 text-xl font-semibold text-charcoal" dir="ltr">{cartonsText(total.cartons)}</p></Card>
       </div>
@@ -53,7 +54,7 @@ export default async function SalesByProductPage(props: { searchParams: Promise<
           { header: "مرتجع", render: (r) => <span dir="ltr" className={r.returned_qty > 0 ? "text-rose" : ""}>{r.returned_qty > 0 ? qty(r.returned_qty) : "—"}</span> },
           { header: "الصافي (قطع)", render: (r) => <span dir="ltr" className="font-medium">{qty(r.net_qty)}</span> },
           { header: "بالكرتونة", render: (r) => <span dir="ltr">{productCartons(r)}</span> },
-          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium">{money(r.net_revenue)} ج.م</span> },
+          { header: "صافي الإيراد", render: (r) => <span dir="ltr" className="font-medium"><Money value={r.net_revenue} /></span> },
         ]}
       />
       {truncated && <p className="mt-3 text-xs text-amber-700">يعرض أعلى {rows.length} صنفًا من {rows[0]?.total_count} — ضيّق الفترة أو أضف فلترًا.</p>}

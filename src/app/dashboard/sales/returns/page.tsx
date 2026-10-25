@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { getSupabase, getMembership, NO_ORG_ID } from "@/lib/org-context";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable } from "@/components/ui/data-table";
@@ -5,7 +7,7 @@ import { SalesTabs } from "@/components/sales/sales-tabs";
 import { NewReturnButton } from "./new-return-button";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 type ReturnRow = {
@@ -68,20 +70,20 @@ export default async function SalesReturnsPage() {
               </span>
             ),
           },
-          { header: "قيمة المرتجع", render: (r) => <span dir="ltr">{money(r.total)} ج.م</span> },
+          { header: "قيمة المرتجع", render: (r) => <span dir="ltr"><Money value={r.total} /></span> },
           ...(canViewFinancial
             ? [
                 {
                   header: "أثر الربح",
                   render: (r: ReturnRow) => (
                     <span dir="ltr" className="text-rose">
-                      − {money(r.profit_reversed)} ج.م
+                      − <Money value={r.profit_reversed} />
                     </span>
                   ),
                 },
               ]
             : []),
-          { header: "استرجاع نقدي", render: (r) => (r.cash_refunded > 0 ? <span dir="ltr">{money(r.cash_refunded)} ج.م</span> : "—") },
+          { header: "استرجاع نقدي", render: (r) => (r.cash_refunded > 0 ? <span dir="ltr"><Money value={r.cash_refunded} /></span> : "—") },
         ]}
       />
     </div>

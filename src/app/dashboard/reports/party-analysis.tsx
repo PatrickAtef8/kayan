@@ -1,8 +1,10 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { NoteForm } from "./note-form";
 
-export const money = (n: number | null | undefined) => Number(n ?? 0).toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+export const money = (n: number | null | undefined) => formatMoney(n);
 
 const STATUS: Record<string, string> = { paid: "مدفوعة", partial: "مدفوعة جزئيًا", unpaid: "آجلة" };
 
@@ -75,7 +77,7 @@ export function InvoiceList({ invoices, kind, notes = [], partyId }: { invoices:
               <span>{STATUS[inv.payment_status] ?? inv.payment_status}</span>
               {inv.discount_total > 0 && <span>خصومات: {money(inv.discount_total)}</span>}
               {inv.bonus_units > 0 && <span>Bonus: {inv.bonus_units}</span>}
-              <span className="text-sm font-semibold text-charcoal" dir="ltr">{money(inv.total)} ج.م</span>
+              <span className="text-sm font-semibold text-charcoal" dir="ltr"><Money value={inv.total} /></span>
             </span>
           </summary>
           <div className="border-t border-borderSoft/60 px-5 py-4">
@@ -121,11 +123,11 @@ export function PaymentsReturnsNotes({ payments, returns, notes, party }: { paym
     <>
       <Section title={`المدفوعات (${payments.length})`}>
         <SimpleTable empty="لا توجد مدفوعات" head={["التاريخ", "المبلغ", "الطريقة", "الفاتورة", "مرجع", "ملاحظات"]}
-          rows={payments.map((p) => [<span dir="ltr" key="d">{p.date}</span>, <span dir="ltr" key="a">{money(p.amount)}</span>, p.payment_method ?? "—", p.invoice_number ?? "—", p.reference ?? "—", p.notes ?? "—"])} />
+          rows={payments.map((p) => [<span dir="ltr" key="d">{p.date}</span>, <Money value={p.amount} suffix="" key="a" />, p.payment_method ?? "—", p.invoice_number ?? "—", p.reference ?? "—", p.notes ?? "—"])} />
       </Section>
       <Section title={`المرتجعات (${returns.length})`}>
         <SimpleTable empty="لا توجد مرتجعات" head={["التاريخ", "الفاتورة", "الأصناف", "القيمة", "استرجاع نقدي"]}
-          rows={returns.map((r) => [<span dir="ltr" key="d">{r.date}</span>, r.invoice_number ?? "—", r.items.map((i) => `${i.quantity} × ${i.product}`).join("، "), <span dir="ltr" key="t">{money(r.total)}</span>, <span dir="ltr" key="c">{money(r.cash_refunded)}</span>])} />
+          rows={returns.map((r) => [<span dir="ltr" key="d">{r.date}</span>, r.invoice_number ?? "—", r.items.map((i) => `${i.quantity} × ${i.product}`).join("، "), <Money value={r.total} suffix="" key="t" />, <Money value={r.cash_refunded} suffix="" key="c" />])} />
       </Section>
       <Section title={`الملاحظات (${notes.length}) — للتوثيق فقط ولا تدخل في أي حسابات`}>
         <NoteForm partyType={party.type} partyId={party.id} />

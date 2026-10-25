@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Pencil, Trash2, Wallet, BarChart3 } from "lucide-react";
@@ -33,7 +35,7 @@ type Customer = {
 };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function CustomersTable({ customers, balances, reps, canViewBalance, canAssignRep, canCollect }: { customers: Customer[]; balances: CustomerBalance[]; reps: { id: string; name: string }[]; canViewBalance: boolean; canAssignRep: boolean; canCollect: boolean }) {
@@ -86,7 +88,7 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
                     const bal = balanceOf(c.id);
                     return (
                       <span dir="ltr" className={bal > 0 ? "font-medium text-rose" : "text-charcoal/50"}>
-                        {money(bal)} ج.م
+                        <Money value={bal} />
                       </span>
                     );
                   },

@@ -1,3 +1,5 @@
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,7 +12,7 @@ import { resolvePeriod, type PeriodSel } from "@/lib/report-period";
 // (row-level security) already limits it to his assigned customers and his own invoices. It deliberately
 // shows no company figure: no profit, treasury, suppliers, stock value or company-wide totals.
 
-const money = (n: number | null | undefined) => Number(n ?? 0).toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n: number | null | undefined) => formatMoney(n);
 
 type Rollup = { kind: string; group_label: string; invoices: number; net_sales: number };
 type Perf = { net_sales: number; collected: number; monthly_target: number | null; min_target_for_commission: number | null; commission_eligible: boolean; earned_commission: number; potential_commission: number };
@@ -99,7 +101,7 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
               {topCustomers.map((r) => (
                 <li key={r.group_label} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <span className="min-w-0 break-words text-charcoal">{r.group_label}</span>
-                  <span className="num shrink-0 text-charcoal/70" dir="ltr">{money(r.net_sales)} ج.م</span>
+                  <span className="num shrink-0 text-charcoal/70" dir="ltr"><Money value={r.net_sales} /></span>
                 </li>
               ))}
             </ul>
@@ -112,7 +114,7 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
               {topDebtors.map((r) => (
                 <li key={r.name} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <span className="min-w-0 break-words text-charcoal">{r.name}</span>
-                  <span className="num shrink-0 text-rose" dir="ltr">{money(r.balance)} ج.م</span>
+                  <span className="num shrink-0 text-rose" dir="ltr"><Money value={r.balance} /></span>
                 </li>
               ))}
             </ul>
@@ -133,7 +135,7 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
                   <p className="text-charcoal">{nameOf.get(i.customer_id) ?? "—"}</p>
                   <p className="text-xs text-charcoal/40"><span dir="ltr">{i.invoice_number ? `#${i.invoice_number} · ` : ""}{i.invoice_date}</span></p>
                 </div>
-                <span className="num shrink-0 text-charcoal/70" dir="ltr">{money(i.total)} ج.م</span>
+                <span className="num shrink-0 text-charcoal/70" dir="ltr"><Money value={i.total} /></span>
               </li>
             ))}
           </ul>

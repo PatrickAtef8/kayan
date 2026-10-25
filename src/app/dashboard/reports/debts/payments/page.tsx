@@ -1,3 +1,4 @@
+import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { DataTable } from "@/components/ui/data-table";
@@ -79,7 +80,7 @@ export default async function PaymentsRegisterPage(props: { searchParams: Promis
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label={type === "supplier" ? "إجمالي المدفوع للموردين" : "إجمالي المحصّل من العملاء"} value={`${money(totalAmount)} ج.م`} tone={type === "supplier" ? undefined : "sage"} />
+        <Stat label={type === "supplier" ? "إجمالي المدفوع للموردين" : "إجمالي المحصّل من العملاء"} value={<Money value={totalAmount} />} tone={type === "supplier" ? undefined : "sage"} />
         <Stat label="عدد الدفعات" value={total} />
       </div>
 
@@ -91,7 +92,7 @@ export default async function PaymentsRegisterPage(props: { searchParams: Promis
           { header: "التاريخ", render: (r) => dateText(r.payment_date) },
           { header: type === "supplier" ? "المورد" : "العميل", render: (r) => <Link href={`/dashboard/reports/debts/statement/${type}/${r.party_id}`} className="text-sage hover:underline">{r.party_name}</Link> },
           ...(type === "customer" ? [{ header: "المندوب", render: (r: Row) => r.rep_name ?? "—" }] : []),
-          { header: "المبلغ", render: (r) => <span dir="ltr" className="font-medium">{money(r.amount)} ج.م</span> },
+          { header: "المبلغ", render: (r) => <span dir="ltr" className="font-medium"><Money value={r.amount} /></span> },
           { header: "طريقة الدفع", render: (r) => r.payment_method ?? "—" },
           { header: "المرجع", render: (r) => <span dir="ltr">{r.reference ?? "—"}</span> },
           { header: "سُدِّد به", render: (r) => (r.doc_number ? <span dir="ltr">فاتورة {r.doc_number}</span> : <span className="text-charcoal/50">على الحساب</span>) },

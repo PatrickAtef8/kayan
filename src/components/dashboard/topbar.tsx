@@ -34,7 +34,7 @@ export function Topbar({
         <Menu size={20} />
       </button>
       <GlobalSearch organizationId={orgId} />
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="mr-auto flex shrink-0 items-center gap-2">
         <NotificationsMenu orgId={orgId} userId={userId} initialItems={initialNotifications} initialUnread={initialUnread} />
         <AccountMenu initial={initial} userEmail={userEmail} orgName={orgName} roleName={roleName} />
       </div>

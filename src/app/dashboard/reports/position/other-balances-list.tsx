@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { deactivateOtherBalance } from "./actions";
@@ -8,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 type Item = { id: string; kind: "asset" | "liability"; name: string; amount: number; notes: string | null };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function OtherBalancesList({ items }: { items: Item[] }) {
@@ -27,7 +29,7 @@ export function OtherBalancesList({ items }: { items: Item[] }) {
           </div>
           <div className="flex items-center gap-2.5">
             <span dir="ltr" className={item.kind === "asset" ? "text-sage" : "text-rose"}>
-              {money(item.amount)} ج.م
+              <Money value={item.amount} />
             </span>
             <button
               onClick={() => {

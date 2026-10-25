@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { useEffect, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
@@ -7,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getReturnablePurchaseItems, createPurchaseReturn, type ReturnablePurchaseItem } from "./actions";
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function ReturnFormModal({
@@ -165,7 +167,7 @@ export function ReturnFormModal({
           <div className="flex items-center justify-between border-t border-borderSoft pt-3 text-sm">
             <span className="text-charcoal/50">إجمالي قيمة المرتجع{previewTax > 0 ? " (شامل الضريبة)" : ""} (يخصم من مستحقات المورد)</span>
             <span className="font-medium text-charcoal" dir="ltr">
-              {money(previewTotal)} ج.م
+              <Money value={previewTotal} />
             </span>
           </div>
 

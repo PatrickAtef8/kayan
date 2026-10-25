@@ -1,5 +1,7 @@
 "use client";
 
+import { Money } from "@/components/ui/money";
+import { formatMoney } from "@/lib/money";
 import { DataTable } from "@/components/ui/data-table";
 import type { MovementRow } from "./page";
 
@@ -14,7 +16,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 function money(n: number) {
-  return n.toLocaleString("ar-EG", { minimumFractionDigits: 2 });
+  return formatMoney(n);
 }
 
 export function TreasuryTable({ movements }: { movements: MovementRow[] }) {
@@ -31,7 +33,7 @@ export function TreasuryTable({ movements }: { movements: MovementRow[] }) {
           header: "المبلغ",
           render: (m) => (
             <span dir="ltr" className={`font-medium ${m.direction === "in" ? "text-sage" : "text-rose"}`}>
-              {m.direction === "in" ? "+" : "−"} {money(m.amount)} ج.م
+              {m.direction === "in" ? "+" : "−"} <Money value={m.amount} />
             </span>
           ),
         },
