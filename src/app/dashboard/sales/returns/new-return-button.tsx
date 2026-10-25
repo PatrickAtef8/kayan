@@ -20,6 +20,7 @@ export function NewReturnButton() {
         <Plus size={15} strokeWidth={2.2} />
         تسجيل مرتجع
       </Button>
+      {!selected && <span className="text-xs text-charcoal/45">اختر فاتورة البيع أولًا</span>}
 
       {selected && <ReturnFormModal open={open} onClose={() => setOpen(false)} salesInvoiceId={selected.id} invoiceLabel={selected.label} />}
     </div>

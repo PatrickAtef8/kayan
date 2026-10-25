@@ -169,6 +169,7 @@ export function StockAdjustmentForm({ products, warehouses }: { products: { id: 
         <Button type="button" disabled={pending || !productId || !warehouseId} onClick={submit}>
           {pending ? "جارٍ الحفظ..." : "تسجيل التسوية"}
         </Button>
+        {(!productId || !warehouseId) && !pending && <span className="text-xs text-charcoal/45">اختر المنتج والمخزن أولًا</span>}
         {error && <span className="text-xs text-rose">{error}</span>}
         {success && <span className="text-xs text-sage">تم تسجيل التسوية</span>}
       </div>

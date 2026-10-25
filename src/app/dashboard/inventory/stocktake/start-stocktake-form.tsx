@@ -41,6 +41,7 @@ export function StartStocktakeForm({ warehouses }: { warehouses: { id: string; n
         <Button type="button" disabled={pending || !warehouse} onClick={submit}>
           {pending ? "جارٍ البدء..." : "ابدأ الجرد"}
         </Button>
+        {!warehouse && <span className="text-xs text-charcoal/45 sm:col-span-3">اختر المخزن أولًا</span>}
       </div>
       {error && <p className="mt-3 text-sm text-rose">{error}</p>}
     </Card>

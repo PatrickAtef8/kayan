@@ -24,7 +24,6 @@ type Customer = {
   id: string;
   name: string;
   phone: string | null;
-  customer_type: string | null;
   price_tier: string;
   opening_balance: number;
   credit_status: string;
@@ -58,7 +57,7 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
 
   let customersQuery = supabase
     .from("customers")
-    .select("id, name, phone, customer_type, price_tier, credit_status, sales_rep_id, sales_representatives(name)", { count: "exact" })
+    .select("id, name, phone, price_tier, credit_status, sales_rep_id, sales_representatives(name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) customersQuery = customersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
@@ -100,9 +99,6 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
             <Input name="phone" dir="ltr" placeholder="01000000000" />
           </Field>
           <Field label="نوع العميل">
-            <Input name="customer_type" placeholder="تجزئة، جملة..." />
-          </Field>
-          <Field label="مستوى السعر">
             <ModernSelect name="price_tier" defaultValue="retail" allowClear={false} options={PRICE_TIER_OPTIONS} />
           </Field>
           {canAssignRep && (<Field label="المندوب المسؤول">

@@ -121,6 +121,7 @@ export function TeamList({ members, roles, linkedUserIds = [], freeReps = [] }: 
                     <>
                       <div className="w-40"><ModernSelect value={pickRep[m.user_id] ?? ""} onChange={(v) => setPickRep((p) => ({ ...p, [m.user_id]: v }))} placeholder="مندوب موجود..." clearLabel="مندوب موجود..." options={freeReps.map((r) => ({ value: r.id, label: r.name }))} /></div>
                       <button type="button" disabled={!pickRep[m.user_id] || pending} onClick={() => link(m, pickRep[m.user_id] || null)} className="cursor-pointer rounded-lg border border-borderSoft bg-white px-2.5 py-1.5 text-xs text-charcoal transition-colors hover:border-sage disabled:cursor-not-allowed disabled:opacity-40">ربط</button>
+                      {!pickRep[m.user_id] && <span className="text-[0.6875rem] text-charcoal/40">اختر مندوبًا من القائمة لربطه</span>}
                       <span className="text-[0.6875rem] text-charcoal/35">أو</span>
                     </>
                   )}

@@ -39,3 +39,27 @@
 ## Warehouse keeper screen (and topbar regression)
 - Topbar: the bell/avatar group is pushed to the far left again (`mr-auto`; my earlier `ml-auto` did nothing in RTL). This is why the notifications panel opened towards the sidebar and was cut off. The panel now sits fully inside the page area on desktop, tablet and phone.
 - Warehouse orders: each item is a card on phones (required / done / remaining + the quantity field); on larger screens the table has aligned headings and spacing; the confirm button is full width on phones.
+
+## Expiry report: windows in months and years
+- "قريب الانتهاء = خلال" is no longer limited to 30/60/90/180 days. Presets: شهر، ٣ أشهر، ٦ أشهر، سنة، سنتان، ٣ سنوات، ٥ سنوات, plus a custom field (number + يوم/شهر/سنة, up to 10 years — the limit the database already accepts, no migration needed). The URL still uses `?days=` so old links such as `?days=90` keep working.
+- Card title follows the window ("تنتهي خلال ٣ سنوات"). The "الأيام المتبقية" column is now "المدة المتبقية" in natural units ("٨ أشهر", "سنتان و٣ أشهر", "منتهي منذ ٤٥ يومًا"; exact days on hover); exports contain both the days and the readable duration.
+- New files: `src/lib/expiry-window.ts`, `src/components/reports/expiry-window-custom.tsx`.
+
+## Buttons must never be silent
+- تطبيق (expiry window): empty/invalid number → red message under the field and red border; valid → shows "جارٍ التطبيق..." and the top progress bar; a value over the 10-year limit is capped AND the page says so.
+- Buttons disabled only because something is missing now say what is missing next to them: new sales/purchase return ("اختر فاتورة ... أولًا"), start stocktake ("اختر المخزن أولًا"), stock adjustment ("اختر المنتج والمخزن أولًا"), link rep in team settings.
+- Programmatic navigations (audit entity filter, global search result) now trigger the progress bar like links do.
+- Rule for new code: a click either does something visible, shows a message why not, or the button visibly explains why it is unavailable.
+
+## Debts reports: filters that explain themselves (no apply button)
+- Cause of "search doesn't work": by default مديونيات العملاء/الموردين listed only people with a balance above zero, and the search ran inside that list, so searching a customer who owes nothing returned nothing. The checkbox "إظهار الأرصدة الصفرية" + تطبيق (a plain page-reload form) was the only way around it.
+- Now: search is live (like every other page) and ALWAYS searches everybody; a clear two-way choice replaces the checkbox — "العملاء الذين عليهم مديونية" / "كل العملاء" (suppliers: "الموردون الذين لهم مستحقات" / "كل الموردين"), with one sentence under it saying what the list contains; the rep filter applies on selection; the تطبيق button is gone.
+- Supplier dues report: same pattern — date applies when picked (new `ParamDate`), "الموردون الذين لهم رصيد" / "كل الموردين".
+- No database change.
+
+## Rep: "عملائي" report is no longer locked
+- /dashboard/reports/customers showed "هذا التقرير يحتوي على بيانات مالية…" to anyone without the financial permission (every sales rep), because it is a balances/ledger report. Now a user without that permission gets a normal list of their customers — name, phone, type, price level, with live search — and no balance, total or amount anywhere. Suppliers' report stays financial-only. Owners/financial roles see the same balances report as before.
+
+## Customers: one field, "نوع العميل"
+- There were two fields: "النوع" (free text, nothing in the system used it — display only) and "مستوى السعر" (تجزئة/جملة/موزع — decides which selling price an invoice uses). They are merged into one dropdown called "نوع العميل" (the price level), in the add form, edit form, customers table, the rep's customers list and the CSV import (template now has 4 columns; old 5-column files still import).
+- Nothing is deleted: the old free-text values stay in the database column `customers.customer_type` (no migration); they are just no longer shown or overwritten on edit.

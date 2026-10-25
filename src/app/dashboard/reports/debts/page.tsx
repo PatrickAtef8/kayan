@@ -1,6 +1,7 @@
 import { Money } from "@/components/ui/money";
 import Link from "next/link";
-import { ModernSelect } from "@/components/ui/select";
+import { SearchBox } from "@/components/ui/search-box";
+import { ParamSelect } from "@/components/reports/param-select";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
@@ -29,10 +30,12 @@ export default async function DebtsPage(
   const restricted = await isRestrictedRep();
   const type = searchParams.type === "supplier" && !restricted ? "supplier" : "customer";
   const q = searchParams.q?.trim() ?? "";
-  const onlyDebt = searchParams.all !== "1";
+  const showAll = searchParams.all === "1";
+  // Searching always looks at everybody: someone who owes nothing must still be findable by name.
+  const onlyDebt = !showAll && !q;
   const page = Math.max(1, Number(searchParams.page) || 1);
   const qs = (patch: Record<string, string | undefined>) => {
-    const p = new URLSearchParams({ type, ...(q ? { q } : {}), ...(searchParams.rep ? { rep: searchParams.rep } : {}), ...(onlyDebt ? {} : { all: "1" }), ...patch });
+    const p = new URLSearchParams({ type, ...(q ? { q } : {}), ...(searchParams.rep ? { rep: searchParams.rep } : {}), ...(showAll ? { all: "1" } : {}), ...patch });
     for (const [k, v] of [...p.entries()]) if (!v) p.delete(k);
     return `/dashboard/reports/debts?${p.toString()}`;
   };
@@ -59,23 +62,30 @@ export default async function DebtsPage(
       </div>
 
       <Card className="mb-5 p-4">
-        <form className="flex flex-wrap items-end gap-3" action="/dashboard/reports/debts">
-          <input type="hidden" name="type" value={type} />
-          <label className="text-xs text-charcoal/50">
-            بحث
-            <input name="q" defaultValue={q} placeholder="الاسم أو الهاتف" className="mt-1 block h-10 w-56 rounded-xl border border-borderSoft px-3 text-sm text-charcoal focus:border-sage focus:outline-none" />
-          </label>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full sm:w-72">
+            <SearchBox placeholder={type === "customer" ? "ابحث باسم العميل أو هاتفه" : "ابحث باسم المورد أو هاتفه"} />
+          </div>
           {type === "customer" && !restricted && (
-            <div className="text-xs text-charcoal/50">
-              المندوب
-              <div className="mt-1 w-56"><ModernSelect name="rep" defaultValue={searchParams.rep ?? ""} placeholder="كل المناديب" clearLabel="كل المناديب" options={(reps ?? []).map((r) => ({ value: r.id, label: r.name }))} /></div>
-            </div>
+            <ParamSelect param="rep" value={searchParams.rep ?? ""} placeholder="كل المناديب" clearLabel="كل المناديب" options={(reps ?? []).map((r) => ({ value: r.id, label: r.name }))} />
           )}
-          <label className="flex items-center gap-2 pb-2 text-xs text-charcoal/60">
-            <input type="checkbox" name="all" value="1" defaultChecked={!onlyDebt} /> إظهار الأرصدة الصفرية
-          </label>
-          <button className="h-10 rounded-xl bg-sage px-4 text-sm font-medium text-white">تطبيق</button>
-        </form>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-charcoal/40">أعرض:</span>
+          <Link href={qs({ all: undefined, page: undefined })} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${!showAll ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
+            {type === "customer" ? "العملاء الذين عليهم مديونية" : "الموردون الذين لهم مستحقات"}
+          </Link>
+          <Link href={qs({ all: "1", page: undefined })} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${showAll ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
+            {type === "customer" ? "كل العملاء" : "كل الموردين"}
+          </Link>
+        </div>
+        <p className="mt-2 text-xs leading-6 text-charcoal/45">
+          {q
+            ? `نتائج البحث تشمل الجميع، حتى من ليس عليه مديونية.`
+            : showAll
+              ? type === "customer" ? "تظهر القائمة كل العملاء، ومنهم من رصيده صفر أو سدّد كل ما عليه." : "تظهر القائمة كل الموردين، ومنهم من رصيده صفر."
+              : type === "customer" ? "تظهر القائمة العملاء الذين عليهم مبلغ غير مسدّد فقط." : "تظهر القائمة الموردين الذين لهم مبلغ علينا فقط."}
+        </p>
       </Card>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -85,7 +95,7 @@ export default async function DebtsPage(
 
       {type === "customer" ? (
         <SimpleTable
-          empty="لا توجد مديونيات مطابقة"
+          empty={q ? "لا توجد نتائج مطابقة للبحث" : showAll ? "لا يوجد عملاء مطابقون" : "لا توجد مديونيات مطابقة"}
           head={["العميل", "المندوب", "إجمالي المبيعات", "إجمالي المدفوعات", "المرتجعات", "المديونية الحالية", "آخر دفعة", "تاريخها", ""]}
           rows={(rows as CustRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/customers/${r.customer_id}`} className="text-sage hover:underline">{r.customer_name}</Link>,
@@ -101,7 +111,7 @@ export default async function DebtsPage(
         />
       ) : (
         <SimpleTable
-          empty="لا توجد مديونيات مطابقة"
+          empty={q ? "لا توجد نتائج مطابقة للبحث" : showAll ? "لا يوجد موردون مطابقون" : "لا توجد مديونيات مطابقة"}
           head={["المورد", "إجمالي المشتريات", "المدفوع", "المرتجعات", "المستحق له", "آخر دفعة", "تاريخها", ""]}
           rows={(rows as SupRow[]).map((r) => [
             <Link key="n" href={`/dashboard/reports/suppliers/${r.supplier_id}`} className="text-sage hover:underline">{r.supplier_name}</Link>,

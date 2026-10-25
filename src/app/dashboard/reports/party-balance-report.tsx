@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { ExportButtons } from "@/components/ui/export-buttons";
+import { SearchBox } from "@/components/ui/search-box";
 
 function money(n: number) {
   return formatMoney(n);
@@ -29,11 +30,16 @@ export async function PartyBalanceReport({
 }: {
   type: "customer" | "supplier";
   basePath: string;
-  searchParams: { party?: string };
+  searchParams: { party?: string; q?: string };
 }) {
   const { supabase, orgId, canViewFinancial, canExport } = await getReportContext();
   if (!orgId) return null;
-  if (!canViewFinancial) return <NoFinancialAccess />;
+  if (!canViewFinancial) {
+    // Not locked: a person without financial permission (a sales rep) still sees their customers — names and contact
+    // details only, never a balance, a total or any amount. Suppliers stay financial-only.
+    if (type === "customer") return <CustomersWithoutMoney supabase={supabase} q={searchParams.q?.trim() ?? ""} />;
+    return <NoFinancialAccess />;
+  }
 
   const { data: balances } = await supabase.rpc("report_party_balances", { org_id: orgId, p_type: type });
   const rows = (balances as BalanceRow[]) ?? [];
@@ -128,6 +134,37 @@ export async function PartyBalanceReport({
               </span>
             ),
           },
+        ]}
+      />
+    </div>
+  );
+}
+
+const TIER_LABEL: Record<string, string> = { retail: "تجزئة", wholesale: "جملة", distributor: "موزع" };
+
+// The customer list for someone who may not see money. The database already limits a rep to the customers assigned
+// to them, so this simply lists what they are allowed to read.
+async function CustomersWithoutMoney({ supabase, q }: { supabase: Awaited<ReturnType<typeof getReportContext>>["supabase"]; q: string }) {
+  let query = supabase.from("customers").select("id, name, phone, price_tier").order("name").limit(500);
+  if (q) query = query.or(`name.ilike.%${q.replace(/[\\%_,()]/g, "")}%,phone.ilike.%${q.replace(/[\\%_,()]/g, "")}%`);
+  const { data, error } = await query;
+  const rows = (data as { id: string; name: string; phone: string | null; price_tier: string }[] | null) ?? [];
+
+  return (
+    <div>
+      <p className="mb-4 text-xs leading-6 text-charcoal/50">العملاء المسندون إليك. هذه القائمة بدون أي أرصدة أو مبالغ.</p>
+      <div className="mb-4">
+        <SearchBox placeholder="ابحث باسم العميل أو هاتفه" />
+      </div>
+      {error && <p className="mb-3 text-sm text-rose">{error.message}</p>}
+      <DataTable<(typeof rows)[number]>
+        rows={rows}
+        getRowKey={(r) => r.id}
+        emptyLabel={q ? "لا توجد نتائج مطابقة للبحث" : "لا يوجد عملاء مسندون إليك بعد"}
+        columns={[
+          { header: "الاسم", render: (r) => r.name },
+          { header: "الهاتف", render: (r) => <span dir="ltr" className="num">{r.phone ?? "—"}</span> },
+          { header: "نوع العميل", render: (r) => TIER_LABEL[r.price_tier] ?? r.price_tier },
         ]}
       />
     </div>

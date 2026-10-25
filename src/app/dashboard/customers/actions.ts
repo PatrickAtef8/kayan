@@ -43,7 +43,6 @@ export async function createCustomer(formData: FormData) {
     organization_id: membership.organization_id,
     name,
     phone: String(formData.get("phone") || "") || null,
-    customer_type: String(formData.get("customer_type") || "") || null,
     price_tier: String(formData.get("price_tier") || "") || "retail",
     // a rep creating a customer gets them assigned by the database; admins choose
     ...(formData.has("sales_rep_id") ? { sales_rep_id: String(formData.get("sales_rep_id") || "") || null } : {}),
@@ -79,8 +78,7 @@ export async function updateCustomer(id: string, formData: FormData) {
     .update({
       name,
       phone: String(formData.get("phone") || "") || null,
-      customer_type: String(formData.get("customer_type") || "") || null,
-      price_tier: String(formData.get("price_tier") || "") || "retail",
+        price_tier: String(formData.get("price_tier") || "") || "retail",
       ...(formData.has("sales_rep_id") ? { sales_rep_id: String(formData.get("sales_rep_id") || "") || null } : {}),
     })
     .eq("id", id);
@@ -153,7 +151,7 @@ export async function recordCustomerCollection(input: {
   return { error: null };
 }
 
-export type CustomerImportRow = { name: string; phone: string; customer_type: string; price_tier: string; opening_balance: number };
+export type CustomerImportRow = { name: string; phone: string; price_tier: string; opening_balance: number };
 
 const TIER_ALIASES: Record<string, string> = {
   retail: "retail", "تجزئة": "retail",
@@ -217,7 +215,6 @@ export async function importCustomersCsv(rows: CustomerImportRow[]) {
         organization_id: orgId,
         name,
         phone: row.phone.trim() || null,
-        customer_type: row.customer_type.trim() || null,
         price_tier: TIER_ALIASES[row.price_tier.trim().toLowerCase()] ?? "retail",
       })
       .select("id")

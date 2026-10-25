@@ -1,5 +1,6 @@
 "use client";
 
+import { startNavigation } from "@/lib/navigation-state";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
@@ -73,7 +74,9 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
   function go(row: ResultRow) {
     setOpen(false);
     setQuery("");
-    router.push(hrefFor(row));
+    const href = hrefFor(row);
+    startNavigation(href);
+    router.push(href);
   }
 
   return (

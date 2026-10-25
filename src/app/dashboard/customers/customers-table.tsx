@@ -26,7 +26,6 @@ type Customer = {
   id: string;
   name: string;
   phone: string | null;
-  customer_type: string | null;
   price_tier: string;
   opening_balance: number;
   credit_status: string;
@@ -70,8 +69,7 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
           { header: "الاسم", render: (c) => <Link href={`/dashboard/reports/customers/${c.id}`} className="text-sage hover:underline">{c.name}</Link> },
           { header: "المندوب", render: (c) => c.sales_representatives?.name ?? "—" },
           { header: "الهاتف", render: (c) => <span dir="ltr">{c.phone ?? "—"}</span> },
-          { header: "النوع", render: (c) => c.customer_type ?? "—" },
-          { header: "مستوى السعر", render: (c) => PRICE_TIER_LABEL[c.price_tier] ?? c.price_tier },
+          { header: "نوع العميل", render: (c) => PRICE_TIER_LABEL[c.price_tier] ?? c.price_tier },
           {
             header: "الحالة الائتمانية",
             render: (c) => (
@@ -126,9 +124,6 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
               <Input name="phone" dir="ltr" defaultValue={editing.phone ?? ""} />
             </Field>
             <Field label="نوع العميل">
-              <Input name="customer_type" defaultValue={editing.customer_type ?? ""} />
-            </Field>
-            <Field label="مستوى السعر">
               <ModernSelect name="price_tier" defaultValue={editing.price_tier} allowClear={false} options={PRICE_TIER_OPTIONS} />
             </Field>
             {canAssignRep && (

@@ -5,6 +5,8 @@ import { DataTable } from "@/components/ui/data-table";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { Pagination } from "@/components/ui/pagination";
 import { ParamSelect } from "@/components/reports/param-select";
+import { ExpiryWindowCustom } from "@/components/reports/expiry-window-custom";
+import { MAX_WINDOW_DAYS, WINDOW_PRESETS, spanLabel, windowLabel } from "@/lib/expiry-window";
 import { DisposeBatchButton } from "./dispose-batch-button";
 
 type ExpiryRow = {
@@ -26,7 +28,6 @@ type Summary = Record<"expired" | "expiring" | "ok" | "no_expiry", { batches: nu
 
 const PAGE_SIZE = 100;
 const NO_EXPIRY_LABEL = "لا يوجد تاريخ صلاحية مسجل";
-const DAY_OPTIONS = [30, 60, 90, 180];
 const STATUS_LABEL: Record<string, string> = { expired: "منتهي", expiring: "قريب الانتهاء", ok: "سليم", no_expiry: NO_EXPIRY_LABEL };
 const STATUS_STYLE: Record<string, string> = {
   expired: "bg-rose/10 text-rose",
@@ -41,7 +42,9 @@ const dateText = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDa
 export default async function ExpiryReportPage(props: { searchParams: Promise<{ status?: string; days?: string; warehouse?: string; page?: string }> }) {
   const sp = await props.searchParams;
   const status = ["expired", "expiring", "ok", "no_expiry"].includes(sp.status ?? "") ? (sp.status as string) : "";
-  const days = DAY_OPTIONS.includes(Number(sp.days)) ? Number(sp.days) : 90;
+  // any window from 1 day to 10 years (links with ?days=90 keep working)
+  const rawDays = Math.round(Number(sp.days));
+  const days = Number.isFinite(rawDays) && rawDays >= 1 ? Math.min(rawDays, MAX_WINDOW_DAYS) : 90;
   const warehouse = sp.warehouse || null;
   const page = Math.max(1, Number(sp.page) || 1);
 
@@ -75,7 +78,7 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
 
   const cards: { key: keyof Summary; label: string; tone: string }[] = [
     { key: "expired", label: "منتهية الصلاحية", tone: "text-rose" },
-    { key: "expiring", label: `تنتهي خلال ${days} يومًا`, tone: "text-amber-700" },
+    { key: "expiring", label: `تنتهي خلال ${windowLabel(days)}`, tone: "text-amber-700" },
     { key: "ok", label: "سليمة", tone: "text-sage" },
     { key: "no_expiry", label: NO_EXPIRY_LABEL, tone: "text-charcoal/60" },
   ];
@@ -86,8 +89,8 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
         {canExport ? (
           <ExportButtons
             filename={`صلاحية-المنتجات-${new Date().toISOString().slice(0, 10)}`}
-            headers={["المنتج", "الكود", "الباركود", "المخزن", "تاريخ الصلاحية", "الكمية", "الأيام المتبقية", "الحالة"]}
-            rows={exportRows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.warehouse_name, r.expiry_date ?? NO_EXPIRY_LABEL, r.quantity, r.days_to_expiry ?? "", STATUS_LABEL[r.status]])}
+            headers={["المنتج", "الكود", "الباركود", "المخزن", "تاريخ الصلاحية", "الكمية", "الأيام المتبقية", "المدة المتبقية", "الحالة"]}
+            rows={exportRows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.warehouse_name, r.expiry_date ?? NO_EXPIRY_LABEL, r.quantity, r.days_to_expiry ?? "", r.days_to_expiry === null ? "" : (r.days_to_expiry < 0 ? "منتهي منذ " : "") + spanLabel(r.days_to_expiry), STATUS_LABEL[r.status]])}
           />
         ) : (
           <span />
@@ -107,18 +110,24 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
         ))}
       </div>
 
-      <div className="no-print mb-3 flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-charcoal/40">قريب الانتهاء = خلال</span>
-        {DAY_OPTIONS.map((d) => (
-          <Link key={d} href={qs({ days: String(d), page: "" })} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${d === days ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
-            {d} يومًا
-          </Link>
-        ))}
-        {status && (
-          <Link href={qs({ status: "", page: "" })} scroll={false} className="rounded-lg px-2.5 py-1.5 text-xs text-sage hover:bg-sageSoft/30">
-            إلغاء فلتر الحالة ({STATUS_LABEL[status]})
-          </Link>
-        )}
+      <div className="no-print mb-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-charcoal/40">قريب الانتهاء = خلال</span>
+          {WINDOW_PRESETS.map((o) => (
+            <Link key={o.days} href={qs({ days: String(o.days), page: "" })} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${o.days === days ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
+              {o.label}
+            </Link>
+          ))}
+          {!WINDOW_PRESETS.some((o) => o.days === days) && (
+            <span className="rounded-lg bg-charcoal px-2.5 py-1.5 text-xs font-medium text-ivory">{windowLabel(days)}</span>
+          )}
+          {status && (
+            <Link href={qs({ status: "", page: "" })} scroll={false} className="rounded-lg px-2.5 py-1.5 text-xs text-sage hover:bg-sageSoft/30">
+              إلغاء فلتر الحالة ({STATUS_LABEL[status]})
+            </Link>
+          )}
+        </div>
+        <ExpiryWindowCustom />
       </div>
 
       <DataTable<ExpiryRow>
@@ -130,7 +139,7 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
           { header: "الباركود", render: (r) => <span dir="ltr">{r.barcode ?? "—"}</span> },
           { header: "المخزن", render: (r) => r.warehouse_name },
           { header: "تاريخ الصلاحية", render: (r) => <span className={r.expiry_date ? "" : "text-charcoal/45"}>{dateText(r.expiry_date)}</span> },
-          { header: "الأيام المتبقية", render: (r) => (r.days_to_expiry === null ? "—" : <span dir="ltr" className={r.days_to_expiry < 0 ? "text-rose" : ""}>{r.days_to_expiry}</span>) },
+          { header: "المدة المتبقية", render: (r) => (r.days_to_expiry === null ? "—" : <span title={`${r.days_to_expiry} يومًا`} className={r.days_to_expiry < 0 ? "text-rose" : ""}>{r.days_to_expiry < 0 ? `منتهي منذ ${spanLabel(r.days_to_expiry)}` : spanLabel(r.days_to_expiry)}</span>) },
           { header: "الكمية", render: (r) => <span dir="ltr">{num(r.quantity)} {r.unit}</span> },
           { header: "الحالة", render: (r) => <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL[r.status]}</span> },
           ...(canAdjust

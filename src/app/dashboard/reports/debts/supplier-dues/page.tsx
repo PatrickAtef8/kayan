@@ -2,6 +2,7 @@ import { Money } from "@/components/ui/money";
 import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
+import { ParamDate } from "@/components/reports/param-date";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { Stat, SimpleTable } from "../../party-analysis";
 import { cairoToday, dateText, isoOrNull, money } from "@/lib/party-reports";
@@ -30,16 +31,21 @@ export default async function SupplierDuesPage(props: { searchParams: Promise<{ 
   return (
     <div>
       <Card className="mb-5 p-4">
-        <form className="flex flex-wrap items-end gap-3" action="/dashboard/reports/debts/supplier-dues">
-          <label className="text-xs text-charcoal/50">
-            كما في تاريخ
-            <input type="date" name="as_of" defaultValue={asOf} dir="ltr" className="mt-1 block h-10 rounded-xl border border-borderSoft bg-white px-3 text-sm text-charcoal focus:border-sage focus:outline-none" />
-          </label>
-          <label className="flex items-center gap-2 pb-2 text-xs text-charcoal/60">
-            <input type="checkbox" name="all" value="1" defaultChecked={showAll} /> إظهار الموردين برصيد صفري
-          </label>
-          <button className="h-10 rounded-xl bg-sage px-4 text-sm font-medium text-white">تطبيق</button>
-        </form>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-full sm:w-auto">
+            <ParamDate param="as_of" value={asOf} label="كما في تاريخ" />
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-charcoal/40">أعرض:</span>
+            <Link href={`/dashboard/reports/debts/supplier-dues?as_of=${asOf}`} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${!showAll ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
+              الموردون الذين لهم رصيد
+            </Link>
+            <Link href={`/dashboard/reports/debts/supplier-dues?as_of=${asOf}&all=1`} scroll={false} className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${showAll ? "bg-charcoal text-ivory" : "bg-paper text-charcoal/50 hover:text-charcoal"}`}>
+              كل الموردين
+            </Link>
+          </div>
+        </div>
+        <p className="mt-2 text-xs leading-6 text-charcoal/45">{showAll ? "تظهر القائمة كل الموردين، ومنهم من رصيده صفر." : "تظهر القائمة الموردين الذين لهم مبلغ علينا فقط."}</p>
       </Card>
 
       {canExport && (
