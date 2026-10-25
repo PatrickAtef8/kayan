@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ModernSelect } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,11 +82,7 @@ export function PaymentModal({
           <Input type="date" dir="ltr" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl" />
         </Field>
         <Field label="طريقة الدفع">
-          <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-xl border border-borderSoft bg-white px-3.5 py-3 text-base text-charcoal focus:border-sage focus:outline-none">
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          <ModernSelect value={method} onChange={setMethod} allowClear={false} placeholder="اختر طريقة الدفع" options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))} />
         </Field>
         <Field label="ملاحظات (اختياري)">
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-xl" />

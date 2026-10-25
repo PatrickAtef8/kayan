@@ -10,7 +10,7 @@ import { MIN_YEAR, MONTH_NAMES, cairoDate, monthTitle, yearText, yearTitle, type
 // every other param of the page it sits on (tab, group, warehouse…) and can be bookmarked or shared.
 //   month → ?period=month&m=2025-03     year → ?period=year&y=2025     all → ?period=all
 //   the current month is the default, so it needs no params at all.
-export function PeriodPicker({ sel }: { sel: PeriodSel }) {
+export function PeriodPicker({ sel, monthOnly = false }: { sel: PeriodSel; monthOnly?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,8 +49,18 @@ export function PeriodPicker({ sel }: { sel: PeriodSel }) {
   function toggle() {
     if (!open) {
       const r = ref.current?.getBoundingClientRect();
-      // The panel is ~19rem wide: open towards whichever side of the trigger has the room.
-      setAlign(r && window.innerWidth - r.left >= 312 ? "left" : "right");
+      // Open towards whichever side has room INSIDE the page content area (not the whole window: on desktop the
+      // sidebar covers the right edge, so a picker sitting at the right must open leftwards, never under the menu).
+      if (r) {
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const panelW = window.innerWidth >= 640 ? 19 * rem : Math.max(r.width, 17 * rem);
+        const c = document.querySelector("[data-page-content]")?.getBoundingClientRect();
+        const minLeft = Math.max(c?.left ?? 0, 0) + 8;
+        const maxRight = Math.min(c?.right ?? window.innerWidth, window.innerWidth) - 8;
+        const fitsLeftAligned = r.left >= minLeft && r.left + panelW <= maxRight; // panel grows rightwards from the trigger's left edge
+        const fitsRightAligned = r.right <= maxRight && r.right - panelW >= minLeft; // panel grows leftwards from the trigger's right edge
+        setAlign(fitsLeftAligned ? "left" : fitsRightAligned ? "right" : r.left - minLeft > maxRight - r.right ? "right" : "left");
+      }
       setViewYear(selYear);
       setView("months");
     }
@@ -59,7 +69,7 @@ export function PeriodPicker({ sel }: { sel: PeriodSel }) {
 
   function go(patch: Record<string, string>, title: string) {
     const p = new URLSearchParams(searchParams.toString());
-    for (const k of ["period", "m", "y", "page"]) p.delete(k);
+    for (const k of ["period", "m", "y", "month", "page"]) p.delete(k);
     for (const [k, v] of Object.entries(patch)) p.set(k, v);
     const q = p.toString();
     const href = q ? `${pathname}?${q}` : pathname;
@@ -160,12 +170,16 @@ export function PeriodPicker({ sel }: { sel: PeriodSel }) {
             <button type="button" className={chip(sel.kind === "month" && sel.isCurrent)} onClick={() => pickMonth(curMonth)}>
               هذا الشهر
             </button>
-            <button type="button" className={chip(sel.kind === "year" && sel.year === String(viewYear))} onClick={() => pickYear(viewYear)}>
-              {`كل ${yearTitle(viewYear)}`}
-            </button>
-            <button type="button" className={chip(sel.kind === "all")} onClick={() => go({ period: "all" }, "كل الوقت")}>
-              كل الوقت
-            </button>
+            {!monthOnly && (
+              <>
+                <button type="button" className={chip(sel.kind === "year" && sel.year === String(viewYear))} onClick={() => pickYear(viewYear)}>
+                  {`كل ${yearTitle(viewYear)}`}
+                </button>
+                <button type="button" className={chip(sel.kind === "all")} onClick={() => go({ period: "all" }, "كل الوقت")}>
+                  كل الوقت
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

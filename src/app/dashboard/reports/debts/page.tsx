@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ModernSelect } from "@/components/ui/select";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
 import { Card } from "@/components/ui/card";
@@ -64,15 +65,10 @@ export default async function DebtsPage(
             <input name="q" defaultValue={q} placeholder="الاسم أو الهاتف" className="mt-1 block h-10 w-56 rounded-xl border border-borderSoft px-3 text-sm text-charcoal focus:border-sage focus:outline-none" />
           </label>
           {type === "customer" && !restricted && (
-            <label className="text-xs text-charcoal/50">
+            <div className="text-xs text-charcoal/50">
               المندوب
-              <select name="rep" defaultValue={searchParams.rep ?? ""} className="mt-1 block h-10 rounded-xl border border-borderSoft bg-white px-3 text-sm text-charcoal">
-                <option value="">كل المناديب</option>
-                {(reps ?? []).map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-            </label>
+              <div className="mt-1 w-56"><ModernSelect name="rep" defaultValue={searchParams.rep ?? ""} placeholder="كل المناديب" clearLabel="كل المناديب" options={(reps ?? []).map((r) => ({ value: r.id, label: r.name }))} /></div>
+            </div>
           )}
           <label className="flex items-center gap-2 pb-2 text-xs text-charcoal/60">
             <input type="checkbox" name="all" value="1" defaultChecked={!onlyDebt} /> إظهار الأرصدة الصفرية

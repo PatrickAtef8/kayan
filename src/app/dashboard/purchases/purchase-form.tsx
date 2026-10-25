@@ -238,11 +238,7 @@ export function PurchaseForm({
           <Input type="number" step="0.01" min="0" dir="ltr" value={amountPaid} onChange={(e) => setAmountPaid(Number(e.target.value))} />
         </Field>
         <Field label="طريقة الدفع">
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="h-11 w-full rounded-xl border border-borderSoft bg-white px-3 text-sm text-charcoal focus:border-sage focus:outline-none">
-            {PAYMENT_METHODS.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
+          <ModernSelect value={paymentMethod} onChange={setPaymentMethod} allowClear={false} placeholder="اختر طريقة الدفع" options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))} />
         </Field>
       </div>
       <div className="mt-4">

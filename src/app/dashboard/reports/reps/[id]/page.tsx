@@ -2,17 +2,20 @@ import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { isRestrictedRep } from "@/lib/org-context";
 import { BackLink, Section, SimpleTable, Stat, money } from "../../party-analysis";
+import { PeriodSelect } from "@/components/reports/period-select";
+import { resolvePeriod } from "@/lib/report-period";
 
 const TYPE: Record<string, string> = { operating: "تشغيلي", rep_expense: "مصاريف مندوب", salary: "مرتب", commission_payout: "صرف عمولة" };
 
 export default async function RepAnalysisPage(
-  props: { params: Promise<{ id: string }>; searchParams: Promise<{ month?: string }> }
+  props: { params: Promise<{ id: string }>; searchParams: Promise<{ period?: string; m?: string; month?: string }> }
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
   const { supabase, orgId } = await getReportContext();
   if (!orgId) return null;
-  const month = /^\d{4}-\d{2}$/.test(searchParams.month ?? "") ? `${searchParams.month}-01` : new Date().toISOString().slice(0, 7) + "-01";
+  const sel = resolvePeriod({ period: "month", m: searchParams.m ?? searchParams.month });
+  const month = `${sel.month}-01`;
   const { data, error } = await supabase.rpc("report_rep_analysis", { org_id: orgId, p_rep_id: params.id, p_month: month });
   if (error || !data) return <p className="text-sm text-rose">{error?.message ?? "تعذّر تحميل التحليل"}</p>;
 
@@ -23,10 +26,7 @@ export default async function RepAnalysisPage(
       {!restricted && <BackLink href="/dashboard/reports/reps" label="كل المناديب" />}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <h2 className="text-xl font-semibold text-charcoal">{data.rep.name}</h2>
-        <form action={`/dashboard/reports/reps/${params.id}`} className="flex items-end gap-2">
-          <input type="month" name="month" defaultValue={month.slice(0, 7)} className="h-10 rounded-xl border border-borderSoft px-3 text-sm" dir="ltr" />
-          <button className="h-10 rounded-xl bg-sage px-4 text-sm font-medium text-white">عرض</button>
-        </form>
+        <PeriodSelect period={sel} monthOnly />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

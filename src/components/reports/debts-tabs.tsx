@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePendingPath } from "@/components/dashboard/navigation-progress";
 
 // Sub-navigation of the account reports. The new views need the balance permission, so a restricted rep
 // (who only gets the existing debts page) is not shown them.
@@ -15,12 +16,15 @@ const TABS = [
 
 export function DebtsTabs({ restrictedRep = false }: { restrictedRep?: boolean }) {
   const pathname = usePathname();
+  const pending = usePendingPath();
   const tabs = restrictedRep ? TABS.filter((t) => t.repOk) : TABS;
   if (tabs.length < 2) return null;
+  // the clicked tab lights up immediately, before its page has arrived
+  const current = pending && tabs.some((t) => t.href === pending) ? pending : pathname;
   return (
     <div className="no-print mb-6 flex flex-wrap gap-1.5">
       {tabs.map((tab) => {
-        const active = pathname === tab.href;
+        const active = current === tab.href;
         return (
           <Link
             key={tab.href}

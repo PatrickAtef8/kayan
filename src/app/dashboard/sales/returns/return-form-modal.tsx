@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { ModernSelect } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -163,28 +164,18 @@ export function ReturnFormModal({
                     value={lines[item.sales_invoice_item_id]?.quantity ?? ""}
                     onChange={(e) => updateLine(item.sales_invoice_item_id, { quantity: e.target.value })}
                   />
-                  <select
-                    value={lines[item.sales_invoice_item_id]?.condition ?? "resalable"}
-                    onChange={(e) => updateLine(item.sales_invoice_item_id, { condition: e.target.value as "resalable" | "damaged" })}
-                    className="rounded-lg border border-borderSoft bg-white px-2.5 text-sm text-charcoal focus:border-sage focus:outline-none"
-                  >
-                    <option value="resalable">صالح لإعادة البيع</option>
-                    <option value="damaged">تالف</option>
-                  </select>
-                  <select
+                  <ModernSelect value={lines[item.sales_invoice_item_id]?.condition ?? "resalable"} onChange={(v) => updateLine(item.sales_invoice_item_id, { condition: v as "resalable" | "damaged" })} allowClear={false} options={[{ value: "resalable", label: "صالح لإعادة البيع" }, { value: "damaged", label: "تالف" }]} />
+                  <ModernSelect
                     value={lines[item.sales_invoice_item_id]?.reason ?? ""}
-                    onChange={(e) => {
-                      const reason = e.target.value as LineState["reason"];
+                    placeholder="سبب الإرجاع…"
+                    clearLabel="بدون سبب"
+                    options={REASONS.map((r) => ({ value: r.value, label: r.label }))}
+                    onChange={(v) => {
+                      const reason = v as LineState["reason"];
                       // damaged / expired goods are normally not re-sold: suggest it (the user can still change the condition)
                       updateLine(item.sales_invoice_item_id, reason === "damaged" || reason === "expired" ? { reason, condition: "damaged" } : { reason });
                     }}
-                    className="rounded-lg border border-borderSoft bg-white px-2.5 text-sm text-charcoal focus:border-sage focus:outline-none"
-                  >
-                    <option value="">سبب الإرجاع…</option>
-                    {REASONS.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             ))}

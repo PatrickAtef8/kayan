@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { usePendingPath } from "@/components/dashboard/navigation-progress";
 
 // Sub-navigation of the sales reports. The filters live in the query string, so they follow the user
 // from one view to the next (the existing overview page has its own period filter and keeps its URL).
@@ -15,6 +16,8 @@ const TABS = [
 export function SalesReportTabs() {
   const pathname = usePathname();
   const sp = useSearchParams();
+  const pending = usePendingPath();
+  const current = pending && TABS.some((t) => t.href === pending) ? pending : pathname;
   const keep = new URLSearchParams();
   for (const k of ["from", "to", "all", "warehouse", "rep", "channel"]) {
     const v = sp.get(k);
@@ -24,7 +27,7 @@ export function SalesReportTabs() {
   return (
     <div className="no-print mb-6 flex flex-wrap gap-1.5">
       {TABS.map((tab) => {
-        const active = pathname === tab.href;
+        const active = current === tab.href;
         return (
           <Link
             key={tab.href}

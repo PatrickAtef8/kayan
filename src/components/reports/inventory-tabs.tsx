@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { usePendingPath } from "@/components/dashboard/navigation-progress";
 
 // Sub-navigation for the inventory reports. New inventory reports (expiry,
 // stocktake — later phases) are added here.
@@ -14,10 +15,12 @@ const TABS = [
 
 export function InventoryTabs() {
   const pathname = usePathname();
+  const pending = usePendingPath();
+  const current = pending && TABS.some((t) => t.href === pending) ? pending : pathname;
   return (
     <div className="no-print mb-6 flex flex-wrap gap-1.5">
       {TABS.map((tab) => {
-        const active = pathname === tab.href;
+        const active = current === tab.href;
         return (
           <Link
             key={tab.href}

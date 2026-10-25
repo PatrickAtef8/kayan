@@ -1,10 +1,11 @@
-import Link from "next/link";
 import { getReportContext } from "@/lib/report-context";
 import { NoFinancialAccess } from "@/components/reports/no-financial-access";
 import { Card } from "@/components/ui/card";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { Stat, SimpleTable, Section } from "../party-analysis";
-import { cairoToday, dateText, money } from "@/lib/party-reports";
+import { dateText, money } from "@/lib/party-reports";
+import { PeriodSelect } from "@/components/reports/period-select";
+import { resolvePeriod } from "@/lib/report-period";
 
 type Pay = {
   rep_id: string; rep_name: string; is_active: boolean;
@@ -24,9 +25,11 @@ const shiftMonth = (ym: string, delta: number) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-export default async function PayrollReportPage(props: { searchParams: Promise<{ month?: string }> }) {
+export default async function PayrollReportPage(props: { searchParams: Promise<{ period?: string; m?: string; month?: string }> }) {
   const sp = await props.searchParams;
-  const month = sp.month && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : cairoToday().slice(0, 7);
+  // payroll is monthly: always a single month (the old ?month= link still works)
+  const sel = resolvePeriod({ period: "month", m: sp.m ?? sp.month });
+  const month = sel.month as string;
   const start = `${month}-01`;
   const end = `${shiftMonth(month, 1)}-01`;
   const lastDay = new Date(new Date(end + "T00:00:00Z").getTime() - 86400000).toISOString().slice(0, 10);
@@ -54,13 +57,8 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
 
   return (
     <div>
-      <div className="no-print mb-5 flex flex-wrap items-center gap-2">
-        <Link href={`?month=${shiftMonth(month, -1)}`} className="rounded-lg bg-paper px-3 py-1.5 text-xs text-charcoal/60 hover:text-charcoal">← الشهر السابق</Link>
-        <form action="/dashboard/reports/payroll" className="flex items-center gap-2">
-          <input type="month" name="month" defaultValue={month} dir="ltr" className="h-10 rounded-xl border border-borderSoft bg-white px-3 text-sm text-charcoal focus:border-sage focus:outline-none" />
-          <button className="h-10 rounded-xl bg-sage px-4 text-sm font-medium text-white">عرض</button>
-        </form>
-        <Link href={`?month=${shiftMonth(month, 1)}`} className="rounded-lg bg-paper px-3 py-1.5 text-xs text-charcoal/60 hover:text-charcoal">الشهر التالي →</Link>
+      <div className="no-print mb-5">
+        <PeriodSelect period={sel} monthOnly />
       </div>
 
       <div className="mb-3 flex items-center justify-between">
