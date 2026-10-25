@@ -57,7 +57,7 @@ export function StockTransferForm({ products, warehouses }: { products: { id: st
         نقل مخزون بين المخازن
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="من مخزن">
           <ModernSelect value={fromWarehouseId} onChange={setFromWarehouseId} allowClear={false} options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
         </Field>

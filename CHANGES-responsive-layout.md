@@ -14,3 +14,4 @@
 - All native `<select>` boxes (payment method in sales/purchases forms and payment modals, return condition/reason, debts rep filter) replaced by `ModernSelect`, like Products.
 - Reports sub-tabs (sales: by rep / channel / product, debts, inventory): new `loading.tsx` per section so only the content area shows the skeleton and the tab bar stays; clicked tab highlights instantly.
 - Period picker now opens towards the side with room inside the page content area, so it never hides behind the sidebar.
+- Customers page: the add-customer form used col-span-4 inside a 1-column grid, which made hidden extra columns and squeezed the fields (labels stacked letter by letter on phones). Fixed; the other add forms now go 1 → 2 → 3/4 columns, and the expense form's wide row spans the full grid.

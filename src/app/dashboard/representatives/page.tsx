@@ -56,7 +56,7 @@ export default async function RepresentativesPage() {
       <PageHeader title="المندوبين" />
 
       <Card className="mb-7 p-5 sm:p-6">
-        <ActionForm action={createRepresentative} successText="تمت إضافة المندوب بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ActionForm action={createRepresentative} successText="تمت إضافة المندوب بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="اسم المندوب">
             <Input name="name" required placeholder="مثال: محمود علي" />
           </Field>

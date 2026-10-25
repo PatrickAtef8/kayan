@@ -122,7 +122,7 @@ export function ExpenseForm({ categories, reps }: { categories: { id: string; na
         {/* 3. details */}
         <section>
           <h3 className="mb-3 text-sm font-medium text-charcoal">٣. تفاصيل الدفع</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="المبلغ (ج.م)">
               <Input type="number" step="0.01" min="0" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
             </Field>
@@ -132,7 +132,7 @@ export function ExpenseForm({ categories, reps }: { categories: { id: string; na
             <Field label="طريقة الدفع">
               <ModernSelect value={method} onChange={setMethod} allowClear={false} options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))} />
             </Field>
-            <div className="sm:col-span-3">
+            <div className="col-span-full">
               <Field label="ملاحظة (اختياري)">
                 <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="مثال: إيجار شهر أكتوبر" />
               </Field>

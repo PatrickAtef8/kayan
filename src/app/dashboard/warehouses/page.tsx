@@ -20,7 +20,7 @@ export default async function WarehousesPage() {
       <PageHeader title="المخازن" />
 
       <Card className="mb-7 p-5 sm:p-6">
-        <ActionForm action={createWarehouse} successText="تمت إضافة المخزن بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
+        <ActionForm action={createWarehouse} successText="تمت إضافة المخزن بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:items-end">
           <Field label="اسم المخزن">
             <Input name="name" required placeholder="مثال: المخزن الرئيسي" />
           </Field>

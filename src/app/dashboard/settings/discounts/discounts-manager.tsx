@@ -48,7 +48,7 @@ export function DiscountsManager({ tiers }: { tiers: Tier[] }) {
           كل الخصومات بالنسبة المئوية. أما الـبونص فبقى يدوي بالكامل: بتدخل أصنافه وكمياته بنفسك داخل الفاتورة، ومفيش قواعد بونص تلقائية.
         </p>
         <Card className="mb-4 p-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:items-end">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
             <Field label="يطبَّق على">
               <ModernSelect value={tierSide} onChange={(v) => setTierSide(v as "sales" | "purchases")} allowClear={false} options={SIDE_OPTIONS} />
             </Field>

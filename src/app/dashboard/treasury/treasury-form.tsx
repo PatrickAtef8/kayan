@@ -31,7 +31,7 @@ export function TreasuryForm() {
   return (
     <Card className="p-5 sm:p-6">
       <div className="mb-1 text-xs font-medium text-charcoal/45">تسجيل حركة أخرى (دخل أو مصروف غير مرتبط بفاتورة)</div>
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="النوع">
           <ModernSelect
             value={direction}

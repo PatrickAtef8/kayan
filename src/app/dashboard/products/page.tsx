@@ -63,7 +63,7 @@ export default async function ProductsPage(props: { searchParams: Promise<{ q?: 
       <AutoFocusNewProduct />
 
       {isOwner && <Card className="mb-7 p-5 sm:p-6" id="add-product-form">
-        <ActionForm action={createProduct} successText="تمت إضافة المنتج بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ActionForm action={createProduct} successText="تمت إضافة المنتج بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="اسم المنتج">
             <Input id="product-name-input" name="name" required placeholder="مثال: زيت عباد الشمس 1 لتر" />
           </Field>

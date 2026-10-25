@@ -92,7 +92,7 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
       <PageHeader title="العملاء" action={isOwner ? <ImportCustomersButton /> : undefined} />
 
       {isOwner && <Card className="mb-7 p-5 sm:p-6">
-        <ActionForm action={createCustomer} successText="تمت إضافة العميل بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-4 sm:items-end">
+        <ActionForm action={createCustomer} successText="تمت إضافة العميل بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
           <Field label="اسم العميل">
             <Input name="name" required placeholder="مثال: محل الأمل" />
           </Field>
@@ -114,7 +114,7 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
               <Input name="opening_balance" type="number" step="0.01" dir="ltr" defaultValue={0} placeholder="مبلغ مستحق من قبل" />
             </Field>
           )}
-          <div className="col-span-4">
+          <div className="col-span-full [&>button]:w-full sm:[&>button]:w-auto">
             <SubmitButton pendingText="جارٍ إضافة العميل...">إضافة عميل</SubmitButton>
           </div>
         </ActionForm>
