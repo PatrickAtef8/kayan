@@ -8,8 +8,8 @@ export default async function ReportsLayout({ children }: { children: React.Reac
     <div>
       <PageHeader title={role === "sales" ? "تقاريري" : "التقارير"} />
       <ReportTabs role={role ?? "owner"} />
-      {role === "sales" && <p className="mb-5 rounded-card bg-paper px-3 py-2 text-xs text-charcoal/60">كل الأرقام في هذه التقارير تخص العملاء المسندين إليك وفواتيرك فقط — لا تظهر لك بيانات الشركة أو أرباحها.</p>}
-      {role === "warehouse" && <p className="mb-5 rounded-card bg-paper px-3 py-2 text-xs text-charcoal/60">تقارير المخزون بالكميات فقط — بدون أي أسعار أو قيم مالية.</p>}
+      {role === "sales" && <p className="mb-5 rounded-card bg-paper px-3 py-2 text-xs text-charcoal/60">كل الأرقام في هذه التقارير تخص العملاء المسندين إليك وفواتيرك.</p>}
+      {role === "warehouse" && <p className="mb-5 rounded-card bg-paper px-3 py-2 text-xs text-charcoal/60">تقارير المخزون بالكميات فقط.</p>}
       {children}
     </div>
   );

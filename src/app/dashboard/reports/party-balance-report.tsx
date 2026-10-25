@@ -152,7 +152,7 @@ async function CustomersWithoutMoney({ supabase, q }: { supabase: Awaited<Return
 
   return (
     <div>
-      <p className="mb-4 text-xs leading-6 text-charcoal/50">العملاء المسندون إليك. هذه القائمة بدون أي أرصدة أو مبالغ.</p>
+      <p className="mb-4 text-xs leading-6 text-charcoal/50">العملاء المسندون إليك.</p>
       <div className="mb-4">
         <SearchBox placeholder="ابحث باسم العميل أو هاتفه" />
       </div>
