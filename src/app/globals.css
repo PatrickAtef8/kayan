@@ -8,17 +8,86 @@
 
 html {
   scroll-behavior: smooth;
-  /* 125% base scale, per client request: every rem-based Tailwind class
-     (spacing, sizing, text, radius) scales together from this one value,
-     since Tailwind's default scale is entirely rem-based. Icon `size={}`
-     props are raw px (not rem) and were scaled individually — see the
-     note in DESIGN.md. */
-  font-size: 20px;
+  /* Responsive root scale. Every rem-based Tailwind class (spacing, sizing, text, radius) scales together from
+     this one value, so a phone gets a compact UI while a desktop keeps the 125% scale the client asked for
+     (20px). A flat 20px on a 360px phone made every card, table and number too wide for its container. */
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@media (min-width: 640px) {
+  html { font-size: 17.5px; }
+}
+@media (min-width: 1024px) {
+  html { font-size: 18.5px; }
+}
+@media (min-width: 1280px) {
+  html { font-size: 20px; }
 }
 
 body {
   background: #F7F6F2;
   color: #1C1C1A;
+  /* never let one wide child create a sideways-scrolling page; wide tables scroll inside their own box */
+  overflow-x: clip;
+  min-width: 0;
+}
+
+/* numbers: equal-width digits so columns and cards line up, and never split in the middle of an amount */
+table, .num {
+  font-variant-numeric: tabular-nums;
+}
+.num {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* every inline left-to-right run (an amount, a date, an invoice number) is one unbreakable, isolated unit, so a sign
+   or a currency never lands on its own line and the surrounding Arabic text cannot reorder it */
+span[dir="ltr"] {
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+
+/* label / value rows (flex + justify-between) get a minimum gap, so a long label never touches its amount.
+   :where() keeps specificity at zero, so any explicit gap-* class on the element still wins. */
+:where(.justify-between) {
+  column-gap: 0.75rem;
+}
+
+/* form controls must never be wider than their container (date inputs are the usual offender on phones) */
+input, select, textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+input[type="date"], input[type="month"], input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+/* iOS zooms the page when a focused field is under 16px; keep fields at 16px on touch screens */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* long unbroken strings (emails, invoice numbers, names) wrap instead of pushing the layout */
+h1, h2, h3, p, td, th, label, li {
+  overflow-wrap: anywhere;
+}
+td, th {
+  overflow-wrap: normal;
+}
+
+/* tables inside a scroll box get a thin, visible scrollbar so people can tell they scroll */
+.table-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28,28,26,0.2) transparent;
 }
 
 button {

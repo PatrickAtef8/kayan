@@ -152,7 +152,7 @@ export function ReturnFormModal({
                     {item.bonus_quantity > 0 ? ` (شامل ${item.bonus_quantity} Bonus)` : ""} · {money(item.unit_price)} ج.م/قطعة
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
                   <Input
                     type="number"
                     min="0"

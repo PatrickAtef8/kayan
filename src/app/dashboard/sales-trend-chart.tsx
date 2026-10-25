@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMoney, isNegativeMoney } from "@/lib/money";
+import { StatValue } from "@/components/ui/stat-value";
 
 // One bucket of the home-page chart. Comes from dashboard_sales_trend (0055), which uses the SAME rules as the
 // KPI cards, so the bars add up to صافي المبيعات and the profit line adds up to صافي الربح.
@@ -106,16 +107,16 @@ export function SalesTrendChart({ points, bucket, canViewFinancial }: { points: 
   return (
     <div>
       {/* Period totals — the same two numbers as the cards above, so the chart can be checked at a glance */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="صافي المبيعات" value={`${formatMoney(totalSales)} ج.م`} />
-        {canViewFinancial && <Stat label="صافي الربح" value={`${formatMoney(totalProfit)} ج.م`} negative={isNegativeMoney(totalProfit)} />}
-        {canViewFinancial && margin != null && <Stat label="هامش صافي الربح" value={`${pct.format(margin)}٪`} negative={margin < 0} className="col-span-2 sm:col-span-1" />}
+      <div className="mb-5 grid grid-cols-1 gap-2.5 min-[440px]:grid-cols-2 sm:grid-cols-3 sm:gap-3">
+        <Stat label="صافي المبيعات" value={formatMoney(totalSales)} unit="ج.م" />
+        {canViewFinancial && <Stat label="صافي الربح" value={formatMoney(totalProfit)} unit="ج.م" negative={isNegativeMoney(totalProfit)} />}
+        {canViewFinancial && margin != null && <Stat label="هامش صافي الربح" value={`${pct.format(margin)}٪`} negative={margin < 0} className="min-[440px]:col-span-2 sm:col-span-1" />}
       </div>
 
       <figure aria-label={summary} className="m-0">
         <div className="flex gap-2" dir="ltr">
           {/* y axis */}
-          <div className="relative h-52 w-11 shrink-0 text-[0.625rem] text-charcoal/40" aria-hidden="true">
+          <div className="relative h-48 w-10 shrink-0 text-[0.625rem] text-charcoal/40 sm:h-52 sm:w-11" aria-hidden="true">
             {ticks.map((t) => (
               <span key={t} className="absolute right-0 -translate-y-1/2 tabular-nums" style={{ top: `${toY(t)}%` }}>
                 {compact.format(t)}
@@ -129,7 +130,7 @@ export function SalesTrendChart({ points, bucket, canViewFinancial }: { points: 
               tabIndex={0}
               role="group"
               aria-label={`${summary}. استخدم الأسهم للتنقل بين ${bucket === "day" ? "الأيام" : "الشهور"}`}
-              className="relative h-52 cursor-crosshair touch-pan-y rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
+              className="relative h-48 cursor-crosshair touch-pan-y sm:h-52 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sage/40"
               onPointerMove={(e) => setActive(indexFromPointer(e.clientX))}
               onPointerDown={(e) => setActive(indexFromPointer(e.clientX))}
               onPointerLeave={(e) => e.pointerType === "mouse" && setActive(null)}
@@ -182,7 +183,7 @@ export function SalesTrendChart({ points, bucket, canViewFinancial }: { points: 
               {/* tooltip — mouse, touch and keyboard */}
               {a && (
                 <div
-                  className="pointer-events-none absolute top-1 z-10 w-48 rounded-xl border border-borderSoft bg-white px-3 py-2.5 text-xs shadow-lg"
+                  className="pointer-events-none absolute top-1 z-10 w-44 max-w-[85%] rounded-xl border border-borderSoft bg-white px-3 py-2.5 text-xs shadow-lg"
                   style={activeLeft > 55 ? { right: `${100 - activeLeft + 1.5}%` } : { left: `${activeLeft + 1.5}%` }}
                   dir="rtl"
                   role="status"
@@ -226,7 +227,8 @@ export function SalesTrendChart({ points, bucket, canViewFinancial }: { points: 
           {canViewFinancial && <span className="text-charcoal/35">صافي الربح = إجمالي الربح − المصروفات − العمولات المستحقة</span>}
         </figcaption>
 
-        <table className="sr-only">
+        <div className="sr-only">
+        <table>
           <caption>{summary}</caption>
           <thead>
             <tr>
@@ -245,18 +247,17 @@ export function SalesTrendChart({ points, bucket, canViewFinancial }: { points: 
             ))}
           </tbody>
         </table>
+        </div>
       </figure>
     </div>
   );
 }
 
-function Stat({ label, value, negative, className = "" }: { label: string; value: string; negative?: boolean; className?: string }) {
+function Stat({ label, value, unit, negative, className = "" }: { label: string; value: string; unit?: string; negative?: boolean; className?: string }) {
   return (
-    <div className={`rounded-xl bg-paper px-4 py-3 ${className}`}>
+    <div className={`min-w-0 rounded-xl bg-paper px-3.5 py-3 sm:px-4 ${className}`}>
       <p className="text-[0.6875rem] text-charcoal/45">{label}</p>
-      <p className={`mt-1 text-base font-semibold tracking-tight ${negative ? "text-rose" : "text-charcoal"}`} dir="ltr">
-        {value}
-      </p>
+      <StatValue className="mt-1" size="md" value={value} unit={unit} negative={negative} />
     </div>
   );
 }
@@ -265,7 +266,7 @@ function Row({ label, value, muted, strong }: { label: string; value: number; mu
   return (
     <div className={`flex items-center justify-between gap-3 py-0.5 ${muted ? "text-charcoal/50" : "text-charcoal"} ${strong ? "font-semibold" : ""}`}>
       <span>{label}</span>
-      <span dir="ltr" className={`tabular-nums ${strong && isNegativeMoney(value) ? "text-rose" : ""}`}>
+      <span dir="ltr" className={`num shrink-0 ${strong && isNegativeMoney(value) ? "text-rose" : ""}`}>
         {formatMoney(value)} ج.م
       </span>
     </div>

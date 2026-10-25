@@ -175,7 +175,7 @@ export default function SignupPage() {
 
       {step === 2 && (
         <form onSubmit={handleCreateAccount}>
-          <div className="mb-6 grid grid-cols-2 gap-2.5">
+          <div className="mb-6 grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2">
             {MODULES.filter((m) => !("core" in m && m.core)).map((m) => {
               const active = selectedModules.has(m.key);
               const Icon = MODULE_ICONS[m.icon] ?? Boxes;
@@ -188,7 +188,7 @@ export default function SignupPage() {
                   className={clsx("relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-3 text-start text-sm transition-all duration-200", active ? "border-sage bg-sageSoft/60 font-medium text-charcoal shadow-sm" : "border-borderSoft bg-white text-charcoal/60 hover:border-charcoal/25")}
                 >
                   <Icon size={17} strokeWidth={1.7} className={active ? "text-sage" : "text-charcoal/35"} />
-                  <span className="flex-1">{m.label}</span>
+                  <span className="min-w-0 flex-1 break-words">{m.label}</span>
                   <span className={clsx("flex h-4 w-4 items-center justify-center rounded-full border transition-colors", active ? "border-sage bg-sage text-ivory" : "border-borderSoft text-transparent")}><Check size={10} strokeWidth={3} /></span>
                 </button>
               );

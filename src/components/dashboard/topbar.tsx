@@ -29,12 +29,12 @@ export function Topbar({
   const initial = userEmail?.trim()?.[0]?.toUpperCase() ?? "؟";
 
   return (
-    <header className="flex min-h-[4.5rem] items-center justify-between gap-3 border-b border-borderSoft/70 px-1 sm:px-2">
-      <button onClick={onMenuClick} aria-label="فتح القائمة" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-borderSoft bg-white text-charcoal/55 md:hidden">
+    <header className="flex min-h-[4rem] items-center gap-2 border-b border-borderSoft/70 px-0 sm:min-h-[4.5rem] sm:gap-3 sm:px-2">
+      <button onClick={onMenuClick} aria-label="فتح القائمة" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-borderSoft bg-white text-charcoal/55 lg:hidden">
         <Menu size={20} />
       </button>
       <GlobalSearch organizationId={orgId} />
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <NotificationsMenu orgId={orgId} userId={userId} initialItems={initialNotifications} initialUnread={initialUnread} />
         <AccountMenu initial={initial} userEmail={userEmail} orgName={orgName} roleName={roleName} />
       </div>
@@ -71,7 +71,7 @@ function AccountMenu({ initial, userEmail, orgName, roleName }: { initial: strin
         {initial}
       </button>
       {open && (
-        <div className="absolute left-0 z-30 mt-2 w-64 overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)]">
+        <div className="absolute left-0 z-30 mt-2 w-64 max-w-[calc(100vw-1.75rem)] overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)]">
           <div className="border-b border-borderSoft px-4 py-3">
             <p className="truncate text-sm font-medium text-charcoal" dir="ltr">{userEmail ?? "—"}</p>
             <p className="mt-1 text-xs text-charcoal/45">

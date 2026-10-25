@@ -32,9 +32,9 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div onClick={onCancel} className="absolute inset-0 bg-charcoal/40" aria-hidden="true" />
-      <div className="relative w-full max-w-sm rounded-card border border-borderSoft bg-white p-6 text-center shadow-xl">
+      <div className="relative max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-card border border-borderSoft bg-white p-5 text-center shadow-xl sm:p-6">
         <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-rose/10 text-rose">
           <AlertTriangle size={20} strokeWidth={2} />
         </div>

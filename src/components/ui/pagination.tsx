@@ -23,27 +23,30 @@ export function Pagination({ page, pageSize, totalCount }: { page: number; pageS
 
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalCount);
+  const n = (v: number) => v.toLocaleString("ar-EG", { useGrouping: false });
 
   return (
-    <div className="mt-4 flex items-center justify-between text-xs text-charcoal/45">
-      <span dir="ltr">
-        {from}–{to} من {totalCount}
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs text-charcoal/45">
+      <span>
+        عرض <bdi className="num">{n(from)}–{n(to)}</bdi> من <bdi className="num">{n(totalCount)}</bdi>
       </span>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => goTo(page - 1)}
           disabled={page <= 1}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-borderSoft text-charcoal/50 disabled:opacity-30 hover:enabled:border-sage hover:enabled:text-sage"
+          aria-label="الصفحة السابقة"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-borderSoft bg-white text-charcoal/50 disabled:opacity-30 hover:enabled:border-sage hover:enabled:text-sage"
         >
           <ChevronRight size={14} strokeWidth={2} />
         </button>
-        <span>
-          {page} / {totalPages}
+        <span className="min-w-[4.5rem] text-center">
+          صفحة <bdi className="num">{n(page)}</bdi> من <bdi className="num">{n(totalPages)}</bdi>
         </span>
         <button
           onClick={() => goTo(page + 1)}
           disabled={page >= totalPages}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-borderSoft text-charcoal/50 disabled:opacity-30 hover:enabled:border-sage hover:enabled:text-sage"
+          aria-label="الصفحة التالية"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-borderSoft bg-white text-charcoal/50 disabled:opacity-30 hover:enabled:border-sage hover:enabled:text-sage"
         >
           <ChevronLeft size={14} strokeWidth={2} />
         </button>

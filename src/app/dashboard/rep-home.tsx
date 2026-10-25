@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { StatValue } from "@/components/ui/stat-value";
 import { PeriodPicker } from "@/components/ui/period-picker";
 import { resolvePeriod, type PeriodSel } from "@/lib/report-period";
 
@@ -48,9 +49,9 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
   const progress = target > 0 ? Math.min(100, Math.round((monthNet / target) * 100)) : null;
 
   const cards = [
-    { label: "مبيعات عملائك", value: `${money(netSales)} ج.م`, note: period.label },
-    { label: "عدد عملائك", value: customers.length.toLocaleString("ar-EG"), note: "العملاء المسندون إليك" },
-    { label: "مستحق لك عند عملائك", value: `${money(owedTotal)} ج.م`, note: "الرصيد الحالي لعملائك فقط" },
+    { label: "مبيعات عملائك", value: money(netSales), unit: "ج.م", note: period.label },
+    { label: "عدد عملائك", value: customers.length.toLocaleString("ar-EG"), unit: "", note: "العملاء المسندون إليك" },
+    { label: "مستحق لك عند عملائك", value: money(owedTotal), unit: "ج.م", note: "الرصيد الحالي لعملائك فقط" },
   ];
 
   return (
@@ -62,11 +63,11 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
         <PeriodPicker sel={period} />
       </div>
 
-      <div className="mb-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((c) => (
-          <Card key={c.label} className="p-5">
+          <Card key={c.label} className="p-4 sm:p-5 last:odd:sm:col-span-2 last:odd:xl:col-span-1">
             <p className="text-xs text-charcoal/50">{c.label}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-charcoal" dir="ltr">{c.value}</p>
+            <StatValue className="mt-2" size="lg" value={c.value} unit={c.unit} />
             <p className="mt-1 text-[0.6875rem] text-charcoal/35">{c.note}</p>
           </Card>
         ))}
@@ -75,11 +76,11 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
       {perf && (
         <Card className="mb-7 p-5">
           <p className="mb-3 text-xs font-medium text-charcoal/40">{period.kind === "month" && !period.isCurrent ? `أداؤك في ${period.title}` : "أداؤك هذا الشهر"}</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div><p className="text-[0.6875rem] text-charcoal/45">صافي مبيعاتك</p><p className="mt-1 text-lg font-semibold" dir="ltr">{money(monthNet)} ج.م</p></div>
-            <div><p className="text-[0.6875rem] text-charcoal/45">ما حصّلته</p><p className="mt-1 text-lg font-semibold" dir="ltr">{money(perf.collected)} ج.م</p></div>
-            {target > 0 && <div><p className="text-[0.6875rem] text-charcoal/45">هدفك الشهري</p><p className="mt-1 text-lg font-semibold" dir="ltr">{money(target)} ج.م</p></div>}
-            <div><p className="text-[0.6875rem] text-charcoal/45">عمولتك</p><p className="mt-1 text-lg font-semibold" dir="ltr">{money(perf.earned_commission)} ج.م</p></div>
+          <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-[0.6875rem] text-charcoal/45">صافي مبيعاتك</p><StatValue className="mt-1" size="md" value={money(monthNet)} unit="ج.م" /></div>
+            <div><p className="text-[0.6875rem] text-charcoal/45">ما حصّلته</p><StatValue className="mt-1" size="md" value={money(perf.collected)} unit="ج.م" /></div>
+            {target > 0 && <div><p className="text-[0.6875rem] text-charcoal/45">هدفك الشهري</p><StatValue className="mt-1" size="md" value={money(target)} unit="ج.م" /></div>}
+            <div><p className="text-[0.6875rem] text-charcoal/45">عمولتك</p><StatValue className="mt-1" size="md" value={money(perf.earned_commission)} unit="ج.م" /></div>
           </div>
           {progress !== null && (
             <div className="mt-4">
@@ -90,15 +91,15 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
         </Card>
       )}
 
-      <div className="mb-7 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card className="p-5">
           <p className="mb-3 text-xs font-medium text-charcoal/40">أكثر عملائك شراءً</p>
           {topCustomers.length === 0 ? <p className="text-sm text-charcoal/40">لا توجد مبيعات في هذه الفترة.</p> : (
             <ul className="divide-y divide-borderSoft">
               {topCustomers.map((r) => (
-                <li key={r.group_label} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="text-charcoal">{r.group_label}</span>
-                  <span className="text-charcoal/70" dir="ltr">{money(r.net_sales)} ج.م</span>
+                <li key={r.group_label} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <span className="min-w-0 break-words text-charcoal">{r.group_label}</span>
+                  <span className="num shrink-0 text-charcoal/70" dir="ltr">{money(r.net_sales)} ج.م</span>
                 </li>
               ))}
             </ul>
@@ -109,9 +110,9 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
           {topDebtors.length === 0 ? <p className="text-sm text-charcoal/40">لا توجد مستحقات على عملائك.</p> : (
             <ul className="divide-y divide-borderSoft">
               {topDebtors.map((r) => (
-                <li key={r.name} className="flex items-center justify-between py-2.5 text-sm">
-                  <span className="text-charcoal">{r.name}</span>
-                  <span className="text-rose" dir="ltr">{money(r.balance)} ج.م</span>
+                <li key={r.name} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                  <span className="min-w-0 break-words text-charcoal">{r.name}</span>
+                  <span className="num shrink-0 text-rose" dir="ltr">{money(r.balance)} ج.م</span>
                 </li>
               ))}
             </ul>
@@ -127,12 +128,12 @@ export async function RepHome({ supabase, orgId, period }: { supabase: SupabaseC
         {invoices.length === 0 ? <p className="text-sm text-charcoal/40">لم تسجل أي فاتورة بعد.</p> : (
           <ul className="divide-y divide-borderSoft">
             {invoices.map((i) => (
-              <li key={i.id} className="flex items-center justify-between py-2.5 text-sm">
-                <div>
+              <li key={i.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
                   <p className="text-charcoal">{nameOf.get(i.customer_id) ?? "—"}</p>
                   <p className="text-xs text-charcoal/40"><span dir="ltr">{i.invoice_number ? `#${i.invoice_number} · ` : ""}{i.invoice_date}</span></p>
                 </div>
-                <span className="text-charcoal/70" dir="ltr">{money(i.total)} ج.م</span>
+                <span className="num shrink-0 text-charcoal/70" dir="ltr">{money(i.total)} ج.م</span>
               </li>
             ))}
           </ul>

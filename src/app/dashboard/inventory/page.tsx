@@ -3,6 +3,7 @@ import { canViewCost } from "@/lib/costs";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
+import { StatValue } from "@/components/ui/stat-value";
 import { DataTable } from "@/components/ui/data-table";
 import { StockAdjustmentForm } from "./stock-adjustment-form";
 import { StockTransferForm } from "./stock-transfer-form";
@@ -64,10 +65,10 @@ export default async function InventoryPage() {
       {canAdjust && (warehouses?.length ?? 0) > 1 && <StockTransferForm products={products ?? []} warehouses={warehouses ?? []} />}
 
       {viewCost && (
-        <Card className="mb-7 flex items-center justify-between p-5 sm:p-6">
-          <div>
-            <p className="text-xs text-charcoal/45">قيمة المخزون الحالية (بمتوسط التكلفة المرجح)</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{money(totalValue)} ج.م</p>
+        <Card className="mb-6 p-4 sm:mb-7 sm:p-6">
+          <div className="min-w-0">
+            <p className="text-xs leading-6 text-charcoal/45">قيمة المخزون الحالية (بمتوسط التكلفة المرجح)</p>
+            <StatValue className="mt-2" value={money(totalValue)} unit="ج.م" />
           </div>
         </Card>
       )}

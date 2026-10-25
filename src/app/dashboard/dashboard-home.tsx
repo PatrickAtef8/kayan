@@ -8,6 +8,7 @@ import { TrendingUp, Wallet, Users, Truck, Boxes, Landmark, ChevronDown, Check, 
 import { formatMoney, isNegativeMoney } from "@/lib/money";
 import { PeriodPicker } from "@/components/ui/period-picker";
 import type { PeriodSel } from "@/lib/report-period";
+import { StatValue } from "@/components/ui/stat-value";
 import { DashboardAnalytics, type DashboardAnalyticsData } from "./dashboard-analytics";
 
 function money(n: number) {
@@ -76,31 +77,31 @@ function DashboardHomeContent({
 
   const locked = { value: "—", note: "غير مصرح بعرض هذا المؤشر" };
   const CARDS = [
-    { label: "صافي المبيعات", value: `${money(totalSales)} ج.م`, icon: TrendingUp, note: period.label },
+    { label: "صافي المبيعات", value: money(totalSales), unit: "ج.م", icon: TrendingUp, note: period.label },
     canViewFinancial
-      ? { label: "صافي الربح", value: `${money(netProfit)} ج.م`, icon: Landmark, note: period.label }
+      ? { label: "صافي الربح", value: money(netProfit), unit: "ج.م", negative: isNegativeMoney(netProfit), icon: Landmark, note: period.label }
       : { label: "صافي الربح", icon: Landmark, ...locked },
     canViewFinancial
-      ? { label: "رصيد الخزنة", value: `${money(treasuryBalance)} ج.م`, icon: Wallet, note: "الرصيد الحالي", negative: isNegativeMoney(treasuryBalance) }
+      ? { label: "رصيد الخزنة", value: money(treasuryBalance), unit: "ج.م", icon: Wallet, note: "الرصيد الحالي", negative: isNegativeMoney(treasuryBalance) }
       : { label: "رصيد الخزنة", icon: Wallet, ...locked },
     canViewFinancial
-      ? { label: "فلوس عند العملاء", value: `${money(customerReceivable)} ج.م`, icon: Users, note: "الرصيد الحالي" }
+      ? { label: "فلوس عند العملاء", value: money(customerReceivable), unit: "ج.م", icon: Users, note: "الرصيد الحالي" }
       : { label: "فلوس عند العملاء", icon: Users, ...locked },
     canViewFinancial
-      ? { label: "فلوس للموردين", value: `${money(supplierPayable)} ج.م`, icon: Truck, note: "الرصيد الحالي" }
+      ? { label: "فلوس للموردين", value: money(supplierPayable), unit: "ج.م", icon: Truck, note: "الرصيد الحالي" }
       : { label: "فلوس للموردين", icon: Truck, ...locked },
     canViewFinancial
-      ? { label: "قيمة المخزون", value: `${money(inventoryValue)} ج.م`, icon: Boxes, note: "الرصيد الحالي" }
+      ? { label: "قيمة المخزون", value: money(inventoryValue), unit: "ج.م", icon: Boxes, note: "الرصيد الحالي" }
       : { label: "قيمة المخزون", icon: Boxes, ...locked },
   ];
   const visibleCards = showMore ? CARDS : CARDS.slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-5xl pb-16 pt-5 sm:pt-10">
-      <div className="mb-10 flex items-start justify-between gap-6">
-        <div>
+    <div className="mx-auto min-w-0 max-w-5xl pb-12 pt-0 sm:pb-16 sm:pt-4">
+      <div className="mb-8 flex items-start justify-between gap-4 sm:mb-10 sm:gap-6">
+        <div className="min-w-0">
           <p className="mb-3 text-xs font-medium text-sage">مركز العمل</p>
-          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-charcoal sm:text-4xl">نظرة واضحة على يومك.</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-charcoal sm:text-4xl">نظرة واضحة على يومك.</h1>
           <p className="mt-3 max-w-lg text-sm leading-7 text-charcoal/50">كل ما تحتاجه لتبدأ، في مكان واحد وبدون تشتيت.</p>
         </div>
         <div className="hidden w-48 shrink-0 sm:block">
@@ -125,30 +126,30 @@ function DashboardHomeContent({
         </m.section>
       )}
 
-      <div className="mb-4 flex items-end justify-between">
+      <div className="mb-4 flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-charcoal/40">ملخص سريع</p>
           <h2 className="mt-1 text-xl font-semibold text-charcoal">أهم مؤشراتك</h2>
         </div>
-        <span className="text-[0.6875rem] text-charcoal/35">تتحدث تلقائيًا</span>
+        <span className="shrink-0 text-[0.6875rem] text-charcoal/35">تتحدث تلقائيًا</span>
       </div>
       <div className="mb-4 sm:hidden">
         <PeriodPicker sel={period} />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {visibleCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <m.div key={card.label} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04, duration: 0.28 }} className="group rounded-2xl border border-borderSoft bg-white p-5 transition-shadow duration-300 hover:shadow-[0_12px_30px_rgba(28,28,26,0.06)]">
-              <div className="mb-9 flex items-center justify-between">
+            <m.div key={card.label} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04, duration: 0.28 }} className={`group min-w-0 rounded-2xl border border-borderSoft bg-white p-4 transition-shadow duration-300 hover:shadow-[0_12px_30px_rgba(28,28,26,0.06)] sm:p-5 ${index === visibleCards.length - 1 && visibleCards.length % 2 === 1 ? "sm:col-span-2 xl:col-span-1" : ""}`}>
+              <div className="mb-6 flex items-center justify-between sm:mb-9">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sageSoft text-sage">
                   <Icon size={18} strokeWidth={1.8} />
                 </div>
-                <span className="text-[0.625rem] text-charcoal/25" dir="ltr">٠{index + 1}</span>
+                <span className="text-[0.625rem] text-charcoal/30" dir="ltr">{(index + 1).toLocaleString("ar-EG", { minimumIntegerDigits: 2 })}</span>
               </div>
               <p className="text-xs text-charcoal/50">{card.label}</p>
-              <p className={`mt-2 text-3xl font-semibold tracking-tight ${"negative" in card && card.negative ? "text-rose" : "text-charcoal"}`} dir="ltr">{card.value}</p>
+              {"unit" in card ? <StatValue className="mt-2" value={card.value} unit={card.unit} negative={"negative" in card && !!card.negative} /> : <p className="mt-2 text-2xl font-semibold text-charcoal/30 sm:text-3xl">{card.value}</p>}
               <p className="mt-1 text-[0.6875rem] text-charcoal/35">{card.note}</p>
             </m.div>
           );
@@ -184,19 +185,19 @@ function DashboardHomeContent({
               return (
                 <div
                   key={`${row.kind}-${row.occurred_at}-${index}`}
-                  className={`flex items-center justify-between gap-4 px-5 py-3.5 ${index !== recentActivity.length - 1 ? "border-b border-borderSoft" : ""}`}
+                  className={`flex items-center justify-between gap-3 px-3.5 py-3.5 sm:gap-4 sm:px-5 ${index !== recentActivity.length - 1 ? "border-b border-borderSoft" : ""}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-paper text-charcoal/40">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper text-charcoal/40">
                       <Clock size={14} strokeWidth={1.8} />
                     </div>
-                    <div>
-                      <p className="text-sm text-charcoal">{ACTIVITY_LABEL[row.kind] ?? row.kind}</p>
-                      <p className="text-xs text-charcoal/40">{row.label}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-charcoal">{ACTIVITY_LABEL[row.kind] ?? row.kind}</p>
+                      <p className="truncate text-xs text-charcoal/40">{row.label}</p>
                     </div>
                   </div>
-                  <div className="text-left">
-                    <p className={`text-sm font-medium ${sign > 0 ? "text-sage" : "text-rose"}`} dir="ltr">
+                  <div className="shrink-0 text-left">
+                    <p className={`num text-sm font-medium ${sign > 0 ? "text-sage" : "text-rose"}`} dir="ltr">
                       {sign > 0 ? "+" : "-"}
                       {money(row.amount)} ج.م
                     </p>

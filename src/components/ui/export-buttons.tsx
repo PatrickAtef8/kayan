@@ -7,7 +7,7 @@ import { downloadCsv } from "@/lib/csv";
 type Cell = string | number | null | undefined;
 
 const btn =
-  "flex items-center gap-1.5 rounded-lg border border-borderSoft px-3 py-2 text-xs font-medium text-charcoal/60 transition-colors hover:border-sage hover:text-sage disabled:opacity-50";
+  "flex items-center gap-1.5 rounded-lg border border-borderSoft bg-white px-3 py-2 text-xs font-medium text-charcoal/60 transition-colors hover:border-sage hover:text-sage disabled:opacity-50";
 
 // §56: CSV + Excel + PDF. PDF is the browser's own print-to-PDF against a
 // print stylesheet (see globals.css) rather than a JS PDF library: client-side

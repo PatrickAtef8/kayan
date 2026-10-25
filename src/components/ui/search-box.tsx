@@ -30,7 +30,7 @@ export function SearchBox({ paramName = "q", placeholder = "بحث..." }: { para
   }, [value]);
 
   return (
-    <div className="flex h-10 w-full max-w-xs items-center gap-2 rounded-xl border border-borderSoft bg-white px-3">
+    <div className="flex h-10 w-full min-w-0 items-center sm:max-w-xs gap-2 rounded-xl border border-borderSoft bg-white px-3">
       <Search size={14} className="shrink-0 text-charcoal/35" strokeWidth={2} />
       <input value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} className="w-full bg-transparent text-sm text-charcoal outline-none placeholder:text-charcoal/35" />
       {value && (

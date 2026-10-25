@@ -77,7 +77,7 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
   }
 
   return (
-    <div ref={containerRef} className="relative hidden w-72 sm:block">
+    <div ref={containerRef} className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
       <div className="flex h-10 items-center gap-2 rounded-xl border border-borderSoft bg-white px-3">
         <Search size={15} className="shrink-0 text-charcoal/35" strokeWidth={2} />
         <input
@@ -88,7 +88,7 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
           }}
           onFocus={() => setOpen(true)}
           placeholder="بحث عن عميل، مورد، منتج، أو رقم فاتورة..."
-          className="w-full bg-transparent text-sm text-charcoal outline-none placeholder:text-charcoal/35"
+          className="w-full min-w-0 truncate bg-transparent text-sm text-charcoal outline-none placeholder:text-charcoal/35"
         />
         {query && (
           <button onClick={() => setQuery("")} className="shrink-0 text-charcoal/30 hover:text-charcoal">
@@ -98,7 +98,7 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
       </div>
 
       {open && query.trim().length >= 2 && (
-        <div className="absolute right-0 z-30 mt-2 w-full overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)]">
+        <div className="fixed inset-x-3 top-[4.25rem] z-30 overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-full sm:min-w-[20rem]">
           {loading ? (
             <div className="px-4 py-6 text-center text-xs text-charcoal/40">جارٍ البحث...</div>
           ) : shownResults.length === 0 ? (

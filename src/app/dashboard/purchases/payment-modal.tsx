@@ -56,18 +56,18 @@ export function PaymentModal({
     <Modal open onClose={onClose} title={`تسجيل دفعة — ${invoiceLabel}`}>
       <div className="space-y-4">
         <div className="text-xs text-charcoal/50">{supplierName}</div>
-        <div className="grid grid-cols-3 gap-2 rounded-xl border border-borderSoft p-3 text-center text-xs text-charcoal/50">
+        <div className="grid grid-cols-1 gap-2 rounded-xl border border-borderSoft p-3 text-center text-xs text-charcoal/50 min-[420px]:grid-cols-3">
           <div>
             <div>إجمالي الفاتورة</div>
-            <div className="mt-1 text-sm font-medium text-charcoal" dir="ltr">{money(total)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-charcoal" dir="ltr">{money(total)}</div>
           </div>
           <div>
             <div>المدفوع</div>
-            <div className="mt-1 text-sm font-medium text-sage" dir="ltr">{money(paid)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-sage" dir="ltr">{money(paid)}</div>
           </div>
           <div>
             <div>المتبقي</div>
-            <div className="mt-1 text-sm font-medium text-rose" dir="ltr">{money(remaining)}</div>
+            <div className="mt-1 break-all text-sm font-medium text-rose" dir="ltr">{money(remaining)}</div>
           </div>
         </div>
 

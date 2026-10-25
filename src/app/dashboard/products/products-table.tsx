@@ -82,7 +82,7 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost, 
             <Field label="اسم المنتج">
               <Input name="name" required defaultValue={editing.name} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               <Field label="كود المنتج (SKU)">
                 <Input name="sku" dir="ltr" defaultValue={editing.sku ?? ""} />
               </Field>
@@ -90,7 +90,7 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost, 
                 <Input name="unit" defaultValue={editing.unit} />
               </Field>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
               <Field label="الباركود">
                 <Input name="barcode" dir="ltr" defaultValue={editing.barcode ?? ""} />
               </Field>
@@ -107,7 +107,7 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost, 
             <Field label="أو تصنيف جديد">
               <Input name="new_category" placeholder="اتركه فارغًا للإبقاء على التصنيف الحالي" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               {canViewCost && (<Field label="التكلفة">
                 <Input name="cost" type="number" step="0.01" dir="ltr" readOnly={!canEditCost} defaultValue={editingPrice?.cost ?? 0} />
               </Field>)}
@@ -115,7 +115,7 @@ export function ProductsTable({ products, categories, canViewCost, canEditCost, 
                 <Input name="selling_price" type="number" step="0.01" dir="ltr" defaultValue={editingPrice?.selling_price ?? 0} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               <Field label="سعر الجملة (اختياري)">
                 <Input name="wholesale_price" type="number" step="0.01" dir="ltr" defaultValue={editingPrice?.wholesale_price ?? ""} placeholder="بلا — يُستخدم سعر التجزئة" />
               </Field>

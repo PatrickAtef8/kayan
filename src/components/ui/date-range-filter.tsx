@@ -28,13 +28,13 @@ export function DateRangeFilter({ from, to }: { from?: string; to?: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
       <input
         type="date"
         dir="ltr"
         value={values.from}
         onChange={(e) => setParam("from", e.target.value)}
-        className="h-10 rounded-xl border border-borderSoft bg-white px-2.5 text-xs text-charcoal outline-none focus:border-sage"
+        className="h-10 min-w-0 flex-1 rounded-xl border border-borderSoft bg-white px-2.5 text-xs text-charcoal outline-none focus:border-sage sm:w-auto sm:flex-none"
       />
       <span className="text-xs text-charcoal/30">إلى</span>
       <input
@@ -42,7 +42,7 @@ export function DateRangeFilter({ from, to }: { from?: string; to?: string }) {
         dir="ltr"
         value={values.to}
         onChange={(e) => setParam("to", e.target.value)}
-        className="h-10 rounded-xl border border-borderSoft bg-white px-2.5 text-xs text-charcoal outline-none focus:border-sage"
+        className="h-10 min-w-0 flex-1 rounded-xl border border-borderSoft bg-white px-2.5 text-xs text-charcoal outline-none focus:border-sage sm:w-auto sm:flex-none"
       />
     </div>
   );

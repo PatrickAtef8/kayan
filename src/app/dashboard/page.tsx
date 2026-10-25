@@ -42,11 +42,11 @@ export default async function DashboardPage(props: { searchParams: Promise<{ per
     return (
       <div>
         <PageHeader title="الرئيسية" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-xl border border-borderSoft bg-white p-5 transition-colors hover:border-sage">
+            <Link key={t.label} href={t.href} className="min-w-0 rounded-xl border border-borderSoft bg-white p-4 transition-colors hover:border-sage sm:p-5">
               <p className="text-xs text-charcoal/45">{t.label}</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal" dir="ltr">{t.value}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-charcoal"><span dir="ltr" className="num">{t.value.toLocaleString("ar-EG")}</span></p>
             </Link>
           ))}
         </div>

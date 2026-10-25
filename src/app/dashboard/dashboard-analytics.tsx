@@ -30,17 +30,17 @@ export function DashboardAnalytics({ data, period, canViewFinancial }: { data: D
   if (data.trend.length === 0 && data.products.length === 0) return null;
 
   return (
-    <div className="mt-10 space-y-6 border-t border-borderSoft pt-8">
+    <div className="mt-8 min-w-0 space-y-5 border-t border-borderSoft pt-6 sm:mt-10 sm:space-y-6 sm:pt-8">
       <div>
         <p className="text-xs font-medium text-charcoal/40">أداء المبيعات · {period.title}</p>
         <h2 className="mt-1 text-xl font-semibold text-charcoal">{period.kind === "month" ? "المبيعات والأرباح اليومية" : "المبيعات والأرباح الشهرية"}</h2>
       </div>
 
-      <div className="rounded-2xl border border-borderSoft bg-white p-5">
+      <div className="min-w-0 rounded-2xl border border-borderSoft bg-white p-3.5 sm:p-5">
         <SalesTrendChart points={data.trend} bucket={period.kind === "month" ? "day" : "month"} canViewFinancial={canViewFinancial} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <RankCard title="أعلى المنتجات مبيعًا" rows={data.products} canViewFinancial={canViewFinancial} />
         <RankCard title="أعلى العملاء شراءً" rows={data.customers} canViewFinancial={canViewFinancial} />
         <RankCard title="أداء المندوبين" rows={data.representatives} canViewFinancial={canViewFinancial} />
@@ -52,7 +52,7 @@ export function DashboardAnalytics({ data, period, canViewFinancial }: { data: D
 function RankCard({ title, rows, canViewFinancial }: { title: string; rows: BreakdownRow[]; canViewFinancial: boolean }) {
   const max = Math.max(1, ...rows.map((r) => Number(r.net_sales)));
   return (
-    <div className="rounded-2xl border border-borderSoft bg-white p-5">
+    <div className="min-w-0 rounded-2xl border border-borderSoft bg-white p-4 sm:p-5">
       <p className="mb-4 text-sm font-medium text-charcoal">{title}</p>
       {rows.length === 0 ? (
         <p className="py-6 text-center text-xs text-charcoal/35">لا توجد بيانات</p>
@@ -61,8 +61,8 @@ function RankCard({ title, rows, canViewFinancial }: { title: string; rows: Brea
           {rows.map((r) => (
             <div key={r.group_key + r.group_label}>
               <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                <span className="truncate text-charcoal">{r.group_label}</span>
-                <span className="shrink-0 text-charcoal/55" dir="ltr">
+                <span className="min-w-0 truncate text-charcoal">{r.group_label}</span>
+                <span className="num shrink-0 text-charcoal/55" dir="ltr">
                   {money(Number(r.net_sales))} ج.م
                 </span>
               </div>
@@ -70,8 +70,8 @@ function RankCard({ title, rows, canViewFinancial }: { title: string; rows: Brea
                 <div className="h-full rounded-full bg-sage" style={{ width: `${Math.max(3, (Number(r.net_sales) / max) * 100)}%` }} />
               </div>
               {canViewFinancial && r.gross_profit != null && (
-                <p className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">
-                  ربح {money(Number(r.gross_profit))} ج.م · {r.invoices} فاتورة
+                <p className="mt-1 break-words text-[0.6875rem] text-charcoal/40">
+                  <span dir="ltr" className="num">ربح {money(Number(r.gross_profit))} ج.م</span> · <span className="num" dir="ltr">{r.invoices}</span> فاتورة
                 </p>
               )}
             </div>

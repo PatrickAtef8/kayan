@@ -11,7 +11,7 @@ export function PurchasesTabs() {
   ];
 
   return (
-    <div className="mb-6 flex gap-1.5 border-b border-borderSoft pb-3">
+    <div className="mb-6 flex flex-wrap gap-1.5 border-b border-borderSoft pb-3">
       {tabs.map((tab) => {
         const active = pathname === tab.href;
         return (
