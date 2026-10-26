@@ -45,6 +45,8 @@ export default async function SupplierItemsPage(props: { searchParams: Promise<{
       <div className="mb-4">
         {canExport && (
           <ExportButtons
+            title="أصناف الموردين"
+            kinds={["text", "text", "int:sum", "qty", "qty", "qty", "qty", "money:sum", "money:sum", "money:sum", "date"]}
             filename="أصناف-الموردين"
             headers={["المورد", "الصنف", "عدد الفواتير", "المشتريات", "بونص (مجاني)", "المرتجع", "صافي المستلم", "قيمة المشتريات", "قيمة المرتجع", "الصافي", "آخر شراء"]}
             rows={rows.map((r) => [r.supplier_name, r.product_name, r.invoices, r.purchased_qty, r.free_qty, r.returned_qty, r.received_qty, r.purchased_value, r.returned_value, r.net_value, r.last_purchase_date ?? ""])}

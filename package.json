@@ -13,6 +13,7 @@
     "test:unit": "node --test --experimental-strip-types src/lib/stock-requirements.test.ts src/lib/site-url.test.ts src/lib/auth-link.test.ts src/lib/auth-errors.test.ts src/lib/password-strength.test.ts src/lib/doc-search.test.ts src/lib/money.test.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",

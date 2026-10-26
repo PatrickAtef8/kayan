@@ -1,50 +1,105 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileSpreadsheet, Printer } from "lucide-react";
-import { downloadCsv } from "@/lib/csv";
-
-type Cell = string | number | null | undefined;
+import { FileSpreadsheet, FileText } from "lucide-react";
+import { useExportOrgName } from "@/components/ui/export-context";
+import { saveBlob } from "@/lib/export/download";
+import { MAX_PDF_ROWS, safeFileName, titleFromFilename, type Cell, type ExportSpec, type KindSpec, type ListFilters, type ListResult, type SummaryItem } from "@/lib/export/model";
 
 const btn =
   "flex items-center gap-1.5 rounded-lg border border-borderSoft bg-white px-3 py-2 text-xs font-medium text-charcoal/60 transition-colors hover:border-sage hover:text-sage disabled:opacity-50";
 
-// §56: CSV + Excel + PDF. PDF is the browser's own print-to-PDF against a
-// print stylesheet (see globals.css) rather than a JS PDF library: client-side
-// PDF generators don't shape or join Arabic text or lay out RTL reliably, while
-// the browser's renderer does both correctly.
-export function ExportButtons({ filename, headers, rows }: { filename: string; headers: string[]; rows: Cell[][] }) {
-  const [busy, setBusy] = useState(false);
+/**
+ * §56: Excel + PDF, both generated as real files from the same data (see src/lib/export/). There is no CSV: the
+ * people using the system work in Excel and PDF.
+ *
+ * Only `filename`, `headers` and `rows` are required. `title` / `subtitle` / `kinds` / `summary` / `notes` make the
+ * files read as proper reports: a title with the period, typed columns (money, dates, quantities…), totals for
+ * columns marked ":sum", and key figures above the table.
+ */
+export function ExportButtons({
+  filename,
+  headers,
+  rows,
+  loadRows,
+  loadFilters,
+  title,
+  subtitle,
+  kinds,
+  summary,
+  notes,
+}: {
+  filename: string;
+  headers: string[];
+  /** The rows to export. Leave out when `loadRows` fetches them (long lists the page only shows 20 of). */
+  rows?: Cell[][];
+  /** Server action that returns ALL rows for the page's current filters; runs when a button is pressed. */
+  loadRows?: (filters: ListFilters) => Promise<ListResult>;
+  loadFilters?: ListFilters;
+  title?: string;
+  subtitle?: string;
+  kinds?: KindSpec[];
+  summary?: SummaryItem[];
+  notes?: string[];
+}) {
+  const orgName = useExportOrgName();
+  const [busy, setBusy] = useState<"excel" | "pdf" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function exportExcel() {
-    setBusy(true);
+  async function run(kind: "excel" | "pdf") {
+    if (busy) return;
+    setError(null);
+    setBusy(kind);
+    // let the browser paint «جارٍ التجهيز...» before the heavy work starts
+    await new Promise((r) => setTimeout(r, 30));
     try {
-      // Loaded on click so the library isn't in every page's bundle.
-      const { default: writeExcelFile } = await import("write-excel-file/browser");
-      const sheetData = [
-        headers.map((h) => ({ value: h, fontWeight: "bold" as const })),
-        ...rows.map((row) => row.map((cell) => (cell === null || cell === undefined || cell === "" ? null : typeof cell === "number" ? cell : String(cell)))),
-      ];
-      await writeExcelFile(sheetData, { rightToLeft: true, columns: headers.map(() => ({ width: 22 })) }).toFile(filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`);
+      let data: Cell[][] = rows ?? [];
+      let allNotes = notes;
+      if (loadRows) {
+        const res = await loadRows(loadFilters ?? {});
+        if (!res.ok) {
+          setError(res.error);
+          return;
+        }
+        data = res.rows;
+        if (res.note) allNotes = [...(notes ?? []), res.note];
+      }
+      if (kind === "pdf" && data.length > MAX_PDF_ROWS) {
+        setError(`التقرير كبير (${data.length.toLocaleString("ar-EG")} صف) — صدّره بصيغة Excel.`);
+        return;
+      }
+      const spec: ExportSpec = { filename, title: title ?? titleFromFilename(filename), subtitle, headers, rows: data, kinds, summary, notes: allNotes, orgName };
+      // Loaded on click so these libraries aren't part of every page's bundle.
+      if (kind === "excel") {
+        const { buildExcelBlob } = await import("@/lib/export/excel");
+        saveBlob(await buildExcelBlob(spec), safeFileName(filename.replace(/\.xlsx$/i, ""), "xlsx"));
+      } else {
+        const { buildPdfBlob } = await import("@/lib/export/pdf");
+        saveBlob(await buildPdfBlob(spec), safeFileName(filename.replace(/\.pdf$/i, ""), "pdf"));
+      }
+    } catch (e) {
+      console.error("export failed", e);
+      setError("تعذّر إنشاء الملف. حاول مرة أخرى.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   return (
     <div className="no-print flex flex-wrap items-center gap-2">
-      <button type="button" onClick={() => downloadCsv(filename, headers, rows)} className={btn}>
-        <Download size={13} strokeWidth={2} />
-        CSV
-      </button>
-      <button type="button" disabled={busy} onClick={exportExcel} className={btn}>
+      <button type="button" disabled={busy !== null} onClick={() => run("excel")} className={btn}>
         <FileSpreadsheet size={13} strokeWidth={2} />
-        {busy ? "جارٍ التجهيز..." : "Excel"}
+        {busy === "excel" ? "جارٍ تجهيز ملف Excel..." : "Excel"}
       </button>
-      <button type="button" onClick={() => window.print()} className={btn}>
-        <Printer size={13} strokeWidth={2} />
-        PDF / طباعة
+      <button type="button" disabled={busy !== null} onClick={() => run("pdf")} className={btn}>
+        <FileText size={13} strokeWidth={2} />
+        {busy === "pdf" ? "جارٍ تجهيز ملف PDF..." : "PDF"}
       </button>
+      {error ? (
+        <span role="alert" className="text-xs text-rose">
+          {error}
+        </span>
+      ) : null}
     </div>
   );
 }

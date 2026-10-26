@@ -9,7 +9,6 @@ import { createSupplier } from "./actions";
 import { getMembership } from "@/lib/org-context";
 import { getOpeningBalances } from "@/lib/opening-balance";
 import { SuppliersTable } from "./suppliers-table";
-import { ImportSuppliersButton } from "./import-suppliers-button";
 
 const PAGE_SIZE = 20;
 
@@ -49,7 +48,7 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
 
   return (
     <div>
-      <PageHeader title="الموردين" action={<ImportSuppliersButton />} />
+      <PageHeader title="الموردين" />
 
       <Card className="mb-7 p-5 sm:p-6">
         <ActionForm action={createSupplier} successText="تمت إضافة المورد بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:items-end">

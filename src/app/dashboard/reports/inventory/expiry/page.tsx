@@ -88,6 +88,9 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {canExport ? (
           <ExportButtons
+            title="صلاحية المنتجات"
+            subtitle={`بتاريخ ${new Date().toISOString().slice(0, 10)}`}
+            kinds={["text", "code", "code", "text", "date", "qty", "int", "text", "text"]}
             filename={`صلاحية-المنتجات-${new Date().toISOString().slice(0, 10)}`}
             headers={["المنتج", "الكود", "الباركود", "المخزن", "تاريخ الصلاحية", "الكمية", "الأيام المتبقية", "المدة المتبقية", "الحالة"]}
             rows={exportRows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.warehouse_name, r.expiry_date ?? NO_EXPIRY_LABEL, r.quantity, r.days_to_expiry ?? "", r.days_to_expiry === null ? "" : (r.days_to_expiry < 0 ? "منتهي منذ " : "") + spanLabel(r.days_to_expiry), STATUS_LABEL[r.status]])}

@@ -50,6 +50,9 @@ export default async function ReorderReportPage(props: { searchParams: Promise<{
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {canExport ? (
           <ExportButtons
+            title="نواقص المخزون"
+            subtitle={`بتاريخ ${new Date().toISOString().slice(0, 10)}`}
+            kinds={["text", "code", "code", "text", "qty", "qty", "qty", "text"]}
             filename={`نواقص-المخزون-${new Date().toISOString().slice(0, 10)}`}
             headers={["المنتج", "الكود", "الباركود", "التصنيف", "الرصيد", "حد الطلب", "العجز عن الحد", "الحالة"]}
             rows={rows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.category_name ?? "", r.current_qty, r.reorder_level, r.shortage, r.status === "out" ? "نفد" : "أقل من الحد"])}

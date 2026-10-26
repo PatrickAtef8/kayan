@@ -10,7 +10,6 @@ import { createCustomer } from "./actions";
 import { getMembership, getRoleKey } from "@/lib/org-context";
 import { getOpeningBalances } from "@/lib/opening-balance";
 import { CustomersTable } from "./customers-table";
-import { ImportCustomersButton } from "./import-customers-button";
 
 const PAGE_SIZE = 20;
 
@@ -88,7 +87,7 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
 
   return (
     <div>
-      <PageHeader title="العملاء" action={isOwner ? <ImportCustomersButton /> : undefined} />
+      <PageHeader title="العملاء" />
 
       {isOwner && <Card className="mb-7 p-5 sm:p-6">
         <ActionForm action={createCustomer} successText="تمت إضافة العميل بنجاح" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">

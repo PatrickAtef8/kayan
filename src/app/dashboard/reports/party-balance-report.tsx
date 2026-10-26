@@ -75,6 +75,9 @@ export async function PartyBalanceReport({
           {canExport && (
             <div className="mr-3">
               <ExportButtons
+                title={`كشف حساب ${selected.name}`}
+                subtitle={type === "customer" ? "كشف حساب عميل" : "كشف حساب مورد"}
+                kinds={["date", "text", "code", "money:sum", "money:sum", "money"]}
                 filename={`كشف-حساب-${selected.name}`}
                 headers={["التاريخ", "النوع", "المرجع", "مدين", "دائن", "الرصيد"]}
                 rows={ledger.map((r) => [r.entry_date, ENTRY_LABEL[r.entry_type] ?? r.entry_type, r.reference, r.increase || "", r.decrease || "", r.balance])}
@@ -104,6 +107,8 @@ export async function PartyBalanceReport({
       {canExport && (
         <div className="mb-4 flex justify-end">
           <ExportButtons
+            title={type === "customer" ? "أرصدة العملاء" : "أرصدة الموردين"}
+            kinds={["text", "code", "money:sum", "money:sum", "money:sum"]}
             filename={type === "customer" ? "أرصدة-العملاء" : "أرصدة-الموردين"}
             headers={["الاسم", "الهاتف", totalLabel, settledLabel, "الرصيد"]}
             rows={rows.map((r) => [r.name, r.phone ?? "", r.total, r.settled, r.balance])}

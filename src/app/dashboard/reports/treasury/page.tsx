@@ -9,6 +9,7 @@ import { PeriodSelect } from "@/components/reports/period-select";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { resolvePeriod } from "@/lib/report-period";
 import Link from "next/link";
+import { rangeText } from "@/lib/export/model";
 
 function money(n: number) {
   return formatMoney(n);
@@ -108,6 +109,9 @@ export default async function TreasuryReportPage(props: { searchParams: Promise<
         <span className="text-xs font-medium text-charcoal/40">حركات الخزنة</span>
         {canExport && (
           <ExportButtons
+            title="حركات الخزنة"
+            subtitle={rangeText(from, to)}
+            kinds={["date", "text", "text", "money", "text", "text"]}
             filename={`حركات-الخزنة-${from ?? "الكل"}-${to ?? "الآن"}`}
             headers={["التاريخ", "الحساب", "التصنيف", "المبلغ", "الاتجاه", "الوصف"]}
             rows={rows.map((r) => [r.movement_date, r.account_name, CATEGORY_LABEL[r.category] ?? r.category, r.amount, r.direction === "in" ? "وارد" : "منصرف", r.description ?? ""])}

@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { SalesReportFilters } from "@/components/reports/sales-report-filters";
 import { cartonsText, loadFilterOptions, loadSalesRows, money, parseFilters, productCartons, qty, type SalesRow, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 export default async function SalesByProductPage(props: { searchParams: Promise<SalesSearchParams> }) {
   const sp = await props.searchParams;
@@ -28,6 +29,9 @@ export default async function SalesByProductPage(props: { searchParams: Promise<
       <div className="mb-3 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title="مبيعات حسب الصنف"
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", "qty", "qty", "qty", "qty", "int", "int", "int", "money:sum"]}
             filename={`مبيعات-الأصناف-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["الصنف", "المفوتر", "بونص", "مرتجع", "الصافي (قطع)", "عدد الوحدات بالكرتونة", "كراتين كاملة", "قطع زائدة", "صافي الإيراد"]}
             rows={rows.map((r) => [r.group_label, r.billed_qty, r.bonus_qty, r.returned_qty, r.net_qty, r.units_per_carton ?? "", r.whole_cartons ?? "", r.remainder_units ?? "", r.net_revenue])}

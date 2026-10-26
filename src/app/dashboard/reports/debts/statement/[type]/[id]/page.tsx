@@ -68,6 +68,9 @@ export default async function StatementPage(props: { params: Promise<{ type: str
         </div>
         {canExport && (
           <ExportButtons
+            title={`كشف حساب ${p.name}`}
+            subtitle={isCustomer ? "كشف حساب عميل" : "كشف حساب مورد"}
+            kinds={["text", "date", ...(isCustomer ? [] : ["date" as const]), "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "text"]}
             filename={`كشف-حساب-${p.name}`}
             headers={["البند", "التاريخ", ...(isCustomer ? [] : ["الاستحقاق"]), "الإجمالي", "مدفوع (مربوط بالفاتورة)", "مرتجع", "سُدِّد من دفعات على الحساب", "المتبقي", "الحالة"]}
             rows={rows.map((r) => [docLabel(r), r.doc_date ?? "", ...(isCustomer ? [] : [r.due_date ?? ""]), r.doc_total, r.linked_paid, r.returns_net, r.on_account_applied, r.remaining, STATUS_LABEL[r.status] ?? r.status])}

@@ -7,6 +7,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { SalesReportFilters } from "@/components/reports/sales-report-filters";
 import { cartonsText, loadFilterOptions, loadSalesRows, money, parseFilters, productCartons, qty, withParams, type SalesRow, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 export default async function SalesByRepPage(props: { searchParams: Promise<SalesSearchParams> }) {
   const sp = await props.searchParams;
@@ -34,6 +35,9 @@ export default async function SalesByRepPage(props: { searchParams: Promise<Sale
       <div className="mb-3 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title="مبيعات حسب المندوب"
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", "int:sum", "int", "int", "qty:sum", "qty:sum", "qty:sum", "money:sum"]}
             filename={`مبيعات-المناديب-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["المندوب", "الفواتير", "العملاء", "عدد الأصناف", "الكراتين", "القطع", "قطع بدون كرتونة", "صافي الإيراد"]}
             rows={rows.map((r) => [r.group_label, r.invoices, r.customers, r.products, r.cartons, r.net_qty, r.loose_units, r.net_revenue])}

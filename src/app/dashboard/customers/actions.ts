@@ -162,7 +162,9 @@ const TIER_ALIASES: Record<string, string> = {
 // §56: customers + opening balances in one pass. Rows with a name already
 // in the org are skipped (not merged) so re-importing a file can't
 // double-count an opening balance.
-export async function importCustomersCsv(rows: CustomerImportRow[]) {
+// Import is postponed: there is no import screen right now (CSV was removed — users work with Excel and PDF only).
+// This server action is kept, unchanged, for the upcoming Excel import; nothing calls it yet.
+export async function importCustomers(rows: CustomerImportRow[]) {
   const supabase = await createClient();
   const {
     data: { user },

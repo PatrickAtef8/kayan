@@ -26,6 +26,8 @@ export default async function ReceivablesByRepPage() {
       <div className="mb-4 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title="مديونيات العملاء حسب المندوب"
+            kinds={["text", "int:sum", "int:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum"]}
             filename="مديونيات-العملاء-حسب-المندوب"
             headers={["المندوب", "العملاء", "عملاء عليهم مديونية", "رصيد افتتاحي", "المبيعات", "المحصّل", "المرتجعات (صافي)", "المستحق علينا للعملاء (دفعات مقدمة)", "المديونية (المستحق لنا)", "الصافي"]}
             rows={all.map((r) => [r.group_label, r.customers, r.customers_with_debt, r.opening, r.sales, r.collected, r.returns_net, r.advances, r.receivable, r.net_balance])}

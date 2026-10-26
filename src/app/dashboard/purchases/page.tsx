@@ -10,6 +10,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { PurchasesTabs } from "@/components/purchases/purchases-tabs";
 import { PurchaseForm, type ShortagePrefill } from "./purchase-form";
 import { PurchasesTable } from "./purchases-table";
+import { ExportButtons } from "@/components/ui/export-buttons";
+import { rangeText } from "@/lib/export/model";
+import { exportPurchaseInvoiceList } from "../invoice-export-actions";
 
 const PAGE_SIZE = 20;
 
@@ -134,6 +137,7 @@ export default async function PurchasesPage(
       ])
     : [false, false];
   const showPayments = canPay || canViewFinancial;
+  const canExport = orgId ? !!(await supabase.rpc("has_permission", { target_org: orgId, perm_key: "reports.export" })).data : false;
 
   const rows = (invoices as unknown as PurchaseInvoiceRow[]) ?? [];
   const ids = rows.map((r) => r.id);
@@ -184,6 +188,17 @@ export default async function PurchasesPage(
         <div className="flex flex-wrap items-center gap-2">
           <SearchBox placeholder="بحث برقم الفاتورة..." />
           <DateRangeFilter from={from} to={to} />
+          {canExport && !inv && (
+            <ExportButtons
+              filename={`فواتير-المشتريات-${from ?? "الكل"}-${to ?? "الآن"}`}
+              title="فواتير المشتريات"
+              subtitle={`${rangeText(from, to)}${q ? ` — بحث: ${q}` : ""}`}
+              headers={["التاريخ", "رقم الفاتورة", "المورد", "المخزن", "الإجمالي", "المدفوع", "المرتجعات", "المتبقي", "الحالة"]}
+              kinds={["date", "code", "text", "text", "money:sum", "money:sum", "money:sum", "money:sum", "text"]}
+              loadRows={exportPurchaseInvoiceList}
+              loadFilters={{ q, from, to }}
+            />
+          )}
         </div>
       </div>
       {inv && <FocusedInvoiceBanner clearHref="/dashboard/purchases" found={rows.length > 0} />}

@@ -1555,17 +1555,22 @@ The system should support:
 * Inventory
 * Other supported master data
 
-CSV/Excel imports must include validation and error reporting.
+Imports must include validation and error reporting.
+
+> **Status (decision):** CSV is no longer part of the product — users work with Excel and PDF only. The import screens were removed and import is **postponed**; when it returns it will read Excel (.xlsx) files. The row-validating server actions (`importCustomers`, `importSuppliers`, `importProducts`) are kept, unused, for that work.
 
 ### Export
 
-Reports should support:
+Reports are exported as **Excel (.xlsx)** and **PDF** — both real, formatted files generated from the same data (no CSV, no browser print dialog):
 
-* CSV
-* Excel
-* PDF where appropriate
+* Excel: company header, title and period, typed columns (real numbers and dates, red negatives), totals row, frozen header, filters, print setup (A4, fit to width, repeated header, page numbers), a separate summary sheet when the report has key figures.
+* PDF: company header, title and period, key figures, table with repeating header on every page, totals row, page numbers, Arabic shaping and right-to-left layout (IBM Plex Sans Arabic).
 
-Exports must respect permissions and tenant isolation.
+* Invoices: every sales and purchase invoice can be exported as a professional invoice document (PDF or Excel) from its row or details dialog, and the whole invoice list (current filters) can be exported as Excel/PDF.
+
+How it is built and how to add an export to a new report: see `docs/EXPORTS.md`.
+
+Exports must respect permissions and tenant isolation (they contain only the rows and columns the page itself shows to that user).
 
 ---
 

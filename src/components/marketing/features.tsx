@@ -10,7 +10,7 @@ const FEATURES = [
   { eyebrow: "الخزنة والمصروفات", title: "رصيدك الحقيقي", description: "حركة لكل تحصيل ودفعة ومصروف، مع مرفقات، وسحوبات الشركاء بمعزل عن الأرباح.", icon: Wallet, size: "md:col-span-4" },
   { eyebrow: "المندوبين", title: "أداء كل مندوب أمامك", description: "أهداف شهرية وحد أدنى للعمولة، وتحصيل من عملائه المسندين إليه فقط.", icon: UserCheck, size: "md:col-span-4" },
   { eyebrow: "التقارير", title: "أرقام تفهمها من أول نظرة", description: "أرباح وخسائر، ديون العملاء والموردين، المركز المالي، رواتب المناديب والمرتجعات — لأي شهر أو سنة تختارها.", icon: BarChart3, size: "md:col-span-7" },
-  { eyebrow: "ابدأ بسرعة", title: "استورد، وابحث في ثانية", description: "استورد منتجاتك وعملاءك وموردينك من ملف CSV، وابحث في كل شيء من مكان واحد.", icon: Zap, size: "md:col-span-5" },
+  { eyebrow: "ابدأ بسرعة", title: "ابحث وصدّر في ثانية", description: "ابحث في كل شيء من مكان واحد، وصدّر تقاريرك بصيغة Excel أو PDF جاهزة للمشاركة.", icon: Zap, size: "md:col-span-5" },
 ];
 
 export function Features() {

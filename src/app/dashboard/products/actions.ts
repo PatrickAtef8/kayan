@@ -169,7 +169,9 @@ export async function deleteProduct(id: string) {
 export type ProductImportRow = { name: string; sku: string; unit: string; cost: number; selling_price: number; category: string; barcode?: string; reorder_level?: number; units_per_carton?: number };
 export type ProductImportResult = { created: number; skipped: { row: number; reason: string }[]; error: string | null };
 
-export async function importProductsCsv(rows: ProductImportRow[]): Promise<ProductImportResult> {
+// Import is postponed: there is no import screen right now (CSV was removed — users work with Excel and PDF only).
+// This server action is kept, unchanged, for the upcoming Excel import; nothing calls it yet.
+export async function importProducts(rows: ProductImportRow[]): Promise<ProductImportResult> {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
   if (!membership) return { created: 0, skipped: [], error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };

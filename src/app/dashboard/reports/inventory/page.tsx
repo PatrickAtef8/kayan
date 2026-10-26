@@ -74,6 +74,8 @@ export default async function InventoryReportPage() {
         <span className="text-xs font-medium text-charcoal/40">أرصدة المخزون حسب المخزن</span>
         {canExport && (
           <ExportButtons
+            title="أرصدة المخزون"
+            kinds={["text", "text", "qty", ...(canViewFinancial ? ["money" as const, "money:sum" as const] : [])]}
             filename="أرصدة-المخزون"
             headers={["المنتج", "المخزن", "الكمية", ...(canViewFinancial ? ["متوسط التكلفة", "القيمة"] : [])]}
             rows={stockRows.map((r) => [r.product_name, r.warehouse_name, r.quantity, ...(canViewFinancial ? [r.avg_cost ?? "", r.stock_value ?? ""] : [])])}

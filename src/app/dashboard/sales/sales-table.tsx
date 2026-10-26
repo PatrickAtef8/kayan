@@ -10,6 +10,8 @@ import { Modal } from "@/components/ui/modal";
 import { COMMISSION_BASIS_LABELS } from "../representatives/commission-basis";
 import { ReturnFormModal } from "./returns/return-form-modal";
 import { PaymentModal } from "./payment-modal";
+import { InvoiceExportButtons } from "@/components/ui/invoice-export-buttons";
+import { salesInvoiceDoc } from "@/lib/export/invoice-model";
 import type { SalesInvoiceRow } from "./page";
 
 const STATUS_LABEL: Record<SalesInvoiceRow["payment_status"], string> = {
@@ -88,6 +90,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                   <Eye size={15} strokeWidth={2} />
                   عرض التفاصيل
                 </button>
+                <InvoiceExportButtons build={(org) => salesInvoiceDoc(inv, org)} />
                 <button onClick={() => setReturning(inv)} className="rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="تسجيل مرتجع">
                   <Undo2 size={16} strokeWidth={2} />
                 </button>
@@ -125,6 +128,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
               <span>{viewing.customers?.name ?? "—"}</span>
               <span dir="ltr">{viewing.invoice_date}</span>
             </div>
+            <InvoiceExportButtons variant="full" build={(org) => salesInvoiceDoc(viewing, org)} />
             <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
               {viewing.sales_invoice_items.map((item, i) => (
                 <div key={i} className="px-3 py-2.5 text-sm">

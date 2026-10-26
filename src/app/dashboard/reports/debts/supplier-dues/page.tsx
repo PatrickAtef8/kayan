@@ -51,6 +51,9 @@ export default async function SupplierDuesPage(props: { searchParams: Promise<{ 
       {canExport && (
         <div className="mb-4">
           <ExportButtons
+            title="استحقاقات الموردين"
+            subtitle={`حتى تاريخ ${asOf}`}
+            kinds={["text", "int", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "int:sum", "date", "int", "date", "date", "money"]}
             filename={`استحقاقات-الموردين-${asOf}`}
             headers={["المورد", "مدة السداد (يوم)", "الرصيد", "متأخر", "لم يحن موعده", "بدون موعد", "دفعات مقدمة", "عدد الفواتير المتأخرة", "أقدم استحقاق متأخر", "أقصى تأخير (يوم)", "أقرب استحقاق قادم", "آخر دفعة", "مبلغ آخر دفعة"]}
             rows={rows.map((r) => [r.supplier_name, r.payment_terms_days ?? "", r.balance, r.overdue, r.not_due, r.undated, r.advance, r.overdue_invoices, r.oldest_overdue_date ?? "", r.max_days_overdue ?? "", r.next_due_date ?? "", r.last_payment_date ?? "", r.last_payment_amount ?? ""])}

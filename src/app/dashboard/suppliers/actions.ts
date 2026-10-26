@@ -148,7 +148,9 @@ export type SupplierImportRow = { name: string; phone: string; opening_balance: 
 
 // §56: suppliers + opening balances. Same skip-don't-merge rule as
 // customers so re-importing can't double-count a payable.
-export async function importSuppliersCsv(rows: SupplierImportRow[]) {
+// Import is postponed: there is no import screen right now (CSV was removed — users work with Excel and PDF only).
+// This server action is kept, unchanged, for the upcoming Excel import; nothing calls it yet.
+export async function importSuppliers(rows: SupplierImportRow[]) {
   const supabase = await createClient();
   const {
     data: { user },

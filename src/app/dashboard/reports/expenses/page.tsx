@@ -7,6 +7,7 @@ import { ExportButtons } from "@/components/ui/export-buttons";
 import { Stat, SimpleTable } from "../party-analysis";
 import { money } from "@/lib/party-reports";
 import { parseFilters, withParams, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 type Row = { group_id: string; group_label: string; expense_count: number; total: number; in_profit_loss: number };
 
@@ -45,9 +46,12 @@ export default async function ExpensesReportPage(props: { searchParams: Promise<
       <div className="mb-4">
         {canExport && (
           <ExportButtons
+            title={`المصروفات حسب ${group === "category" ? "التصنيف" : group === "type" ? "النوع" : "الشهر"}`}
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", "int:sum", "money:sum", "percent", "money:sum"]}
             filename={`المصروفات-${group}-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["البند", "عدد المصروفات", "الإجمالي", "النسبة", "داخل الأرباح والخسائر"]}
-            rows={rows.map((r) => [r.group_label, r.expense_count, r.total, share(r.total), r.in_profit_loss])}
+            rows={rows.map((r) => [r.group_label, r.expense_count, r.total, total.all > 0 ? Number(((r.total / total.all) * 100).toFixed(1)) : "", r.in_profit_loss])}
           />
         )}
       </div>

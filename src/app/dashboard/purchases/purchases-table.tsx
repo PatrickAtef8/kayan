@@ -8,6 +8,8 @@ import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { PaymentModal } from "./payment-modal";
+import { InvoiceExportButtons } from "@/components/ui/invoice-export-buttons";
+import { purchaseInvoiceDoc } from "@/lib/export/invoice-model";
 import type { PurchaseInvoiceRow } from "./page";
 
 const STATUS_LABEL: Record<PurchaseInvoiceRow["payment_status"], string> = {
@@ -76,6 +78,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                   <Eye size={15} strokeWidth={2} />
                   عرض التفاصيل
                 </button>
+                <InvoiceExportButtons build={(org) => purchaseInvoiceDoc(inv, org)} />
               </div>
             ),
           },
@@ -101,6 +104,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
               <span>{viewing.suppliers?.name ?? "—"}</span>
               <span dir="ltr">{viewing.invoice_date}</span>
             </div>
+            <InvoiceExportButtons variant="full" build={(org) => purchaseInvoiceDoc(viewing, org)} />
             <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
               {viewing.purchase_invoice_items.map((item, i) => (
                 <div key={i} className="px-3 py-2.5 text-sm">

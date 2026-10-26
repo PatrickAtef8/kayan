@@ -9,6 +9,7 @@ import { Stat, SimpleTable } from "../party-analysis";
 import { money } from "@/lib/party-reports";
 import { formatMoney } from "@/lib/money";
 import { parseFilters, withParams, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 type Row = {
   period_start: string | null; is_total: boolean;
@@ -56,6 +57,9 @@ export default async function ProfitLossPage(props: { searchParams: Promise<Sale
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         {canExport ? (
           <ExportButtons
+            title="الأرباح والخسائر"
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", ...cols.map(() => "money" as const)]}
             filename={`الأرباح-والخسائر-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["البند", ...cols.map((c) => (c.is_total ? "الإجمالي" : c.period_start ? monthLabel(c.period_start) : ""))]}
             rows={lines.map((l) => [l.label, ...cols.map((c) => Number(c[l.key] ?? 0))])}

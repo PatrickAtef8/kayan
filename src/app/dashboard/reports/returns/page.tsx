@@ -6,6 +6,7 @@ import { ExportButtons } from "@/components/ui/export-buttons";
 import { SalesReportFilters } from "@/components/reports/sales-report-filters";
 import { Stat, SimpleTable } from "../party-analysis";
 import { loadFilterOptions, money, parseFilters, qty, withParams, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 type Row = {
   group_id: string; group_label: string; returns: number; lines: number; customers: number;
@@ -50,6 +51,9 @@ export default async function ReturnsReportPage(props: { searchParams: Promise<S
       <div className="mb-4">
         {canExport && (
           <ExportButtons
+            title={`المرتجعات حسب ${group === "reason" ? "السبب" : group === "product" ? "الصنف" : "العميل"}`}
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", "int:sum", "qty:sum", "qty:sum", "qty:sum", "money:sum", "percent"]}
             filename={`المرتجعات-${group}-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["البند", "عدد المرتجعات", "الوحدات", "صالحة لإعادة البيع", "تالفة", "القيمة", "النسبة %"]}
             rows={rows.map((r) => [r.group_label, r.returns, r.units, r.resalable_units, r.damaged_units, r.value, r.share_pct])}

@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { SalesReportFilters } from "@/components/reports/sales-report-filters";
 import { cartonsText, loadFilterOptions, loadSalesRows, money, parseFilters, qty, type SalesRow, type SalesSearchParams } from "@/lib/sales-report";
+import { rangeText } from "@/lib/export/model";
 
 export default async function SalesByChannelPage(props: { searchParams: Promise<SalesSearchParams> }) {
   const sp = await props.searchParams;
@@ -26,6 +27,9 @@ export default async function SalesByChannelPage(props: { searchParams: Promise<
       <div className="mb-3 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title="مبيعات حسب القناة"
+            subtitle={rangeText(f.from, f.to)}
+            kinds={["text", "int:sum", "int", "qty:sum", "qty:sum", "money:sum", "percent"]}
             filename={`مبيعات-القنوات-${f.from ?? "الكل"}-${f.to ?? "الآن"}`}
             headers={["القناة", "الفواتير", "العملاء", "الكراتين", "القطع", "صافي الإيراد", "النسبة من الإجمالي %"]}
             rows={rows.map((r) => [r.group_label, r.invoices, r.customers, r.cartons, r.net_qty, r.net_revenue, Number(share(r).toFixed(1))])}

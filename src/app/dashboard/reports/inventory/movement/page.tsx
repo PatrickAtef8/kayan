@@ -1,3 +1,4 @@
+import { rangeText } from "@/lib/export/model";
 import { getReportContext } from "@/lib/report-context";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -51,6 +52,9 @@ export default async function ProductMovementPage(props: { searchParams: Promise
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         {canExport ? (
           <ExportButtons
+            title="حركة الأصناف"
+            subtitle={rangeText(from, to)}
+            kinds={["text", "code", "code", "qty", "qty", "qty", "qty", "qty", "qty", "qty", "qty", "qty", "int"]}
             filename={`حركة-الأصناف-${from ?? "الكل"}`}
             headers={["المنتج", "الكود", "الباركود", "رصيد أول المدة", "مشتريات", "مرتجع مبيعات", "مبيعات", "مرتجع مشتريات", "تسويات وتحويلات", "المتبقي", "صافي المبيعات", "المبيعات بالكرتونة", "الترتيب"]}
             rows={rows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.opening_qty, r.purchased_qty, r.sale_returned_qty, r.sold_qty, r.purchase_returned_qty, r.other_net_qty, r.closing_qty, r.net_sold_qty, cartons(r.net_sold_qty, r.units_per_carton), r.sales_rank])}

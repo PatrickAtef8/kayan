@@ -63,6 +63,23 @@ export default async function SalesReportPage(props: { searchParams: Promise<{ p
       <div className="mb-6 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title={`المبيعات حسب ${groupHeader}`}
+            subtitle={period.title}
+            kinds={["text", "int:sum", "qty:sum", "money:sum", ...(canViewFinancial ? ["money:sum" as const] : [])]}
+            summary={[
+              { label: "إجمالي المبيعات", value: s?.sales?.gross_sales ?? "" },
+              { label: "الخصومات", value: s?.sales?.discounts ?? "" },
+              { label: "صافي المبيعات", value: s?.sales?.net_sales ?? "" },
+              ...(canViewFinancial && s?.financial
+                ? [
+                    { label: "تكلفة البضاعة المباعة", value: (s.financial.cogs as number) ?? "" },
+                    { label: "إجمالي الربح", value: (s.financial.gross_profit as number) ?? "" },
+                    { label: "المصروفات التشغيلية", value: (s.financial.operating_expenses as number) ?? "" },
+                    { label: "العمولات", value: (s.financial.commissions as number) ?? "" },
+                    { label: "صافي الربح", value: (s.financial.net_profit as number) ?? "" },
+                  ]
+                : []),
+            ]}
             filename={`مبيعات-${group}-${from ?? "الكل"}-${to ?? "الآن"}`}
             headers={[groupHeader, "عدد الفواتير", "الكمية", "صافي المبيعات", ...(canViewFinancial ? ["الربح"] : [])]}
             rows={breakdown.map((r) => [r.group_label, r.invoices, r.quantity, r.net_sales, ...(canViewFinancial ? [r.gross_profit ?? ""] : [])])}

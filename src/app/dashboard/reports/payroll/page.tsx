@@ -66,6 +66,9 @@ export default async function PayrollReportPage(props: { searchParams: Promise<{
         <p className="text-sm font-medium text-charcoal">مرتبات وعمولات المناديب — {monthName}</p>
         {canExport && (
           <ExportButtons
+            title="مرتبات المناديب"
+            subtitle={`شهر ${monthName}`}
+            kinds={["text", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "money:sum", "int:sum", "money:sum", "date", "date"]}
             filename={`مرتبات-المناديب-${month}`}
             headers={["المندوب", "الأساسي", "بدل الانتقال", "عمولة البيع", "عمولة التحصيل", "إجمالي العمولة المستحقة", "راتب مدفوع", "عمولات مدفوعة", "مصروفات مندوب", "مستحق عمولات (تراكمي)", "عدد التحصيلات", "المبلغ المحصّل", "أول تحصيل", "آخر تحصيل"]}
             rows={rows.map((r) => [r.rep_name, r.fixed_salary, r.transportation_allowance, r.sales_commission, r.collection_commission, r.earned_commission, r.salary_paid, r.commission_paid, r.rep_expenses_paid, r.commission_payable, r.collections_count, r.collected_amount, r.first_collection_date ?? "", r.last_collection_date ?? ""])}

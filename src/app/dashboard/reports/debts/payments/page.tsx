@@ -8,6 +8,7 @@ import { DateRangeFilter } from "@/components/ui/date-range-filter";
 import { ParamSelect } from "@/components/reports/param-select";
 import { Stat } from "../../party-analysis";
 import { dateText, isoOrNull, money } from "@/lib/party-reports";
+import { rangeText } from "@/lib/export/model";
 
 type Row = {
   payment_id: string; payment_date: string; party_id: string; party_name: string; rep_name: string | null;
@@ -70,6 +71,9 @@ export default async function PaymentsRegisterPage(props: { searchParams: Promis
       <div className="mb-4 flex items-center justify-between">
         {canExport ? (
           <ExportButtons
+            title={type === "supplier" ? "مدفوعات الموردين" : "تحصيلات العملاء"}
+            subtitle={rangeText(from, to)}
+            kinds={["date", "text", ...(type === "customer" ? ["text" as const] : []), "money:sum", "text", "code", "code", "text"]}
             filename={type === "supplier" ? "مدفوعات-الموردين" : "تحصيلات-العملاء"}
             headers={["التاريخ", type === "supplier" ? "المورد" : "العميل", ...(type === "customer" ? ["المندوب"] : []), "المبلغ", "طريقة الدفع", "المرجع", "الفاتورة", "ملاحظات"]}
             rows={exportRows.map((r) => [r.payment_date, r.party_name, ...(type === "customer" ? [r.rep_name ?? ""] : []), r.amount, r.payment_method ?? "", r.reference ?? "", r.doc_number ?? "على الحساب", r.notes ?? ""])}

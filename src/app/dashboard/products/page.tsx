@@ -11,7 +11,6 @@ import { Pagination } from "@/components/ui/pagination";
 import { createProduct } from "./actions";
 import { ProductsTable } from "./products-table";
 import { AutoFocusNewProduct } from "./auto-focus-new-product";
-import { ImportProductsButton } from "./import-products-button";
 
 const PAGE_SIZE = 20;
 
@@ -59,7 +58,7 @@ export default async function ProductsPage(props: { searchParams: Promise<{ q?: 
 
   return (
     <div>
-      <PageHeader title="المنتجات" action={isOwner ? <ImportProductsButton /> : undefined} />
+      <PageHeader title="المنتجات" />
       <AutoFocusNewProduct />
 
       {isOwner && <Card className="mb-7 p-5 sm:p-6" id="add-product-form">

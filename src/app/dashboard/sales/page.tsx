@@ -8,6 +8,9 @@ import { FocusedInvoiceBanner } from "@/components/ui/focused-invoice-banner";
 import { containsPattern, invoiceParam } from "@/lib/doc-search";
 import { SalesForm } from "./sales-form";
 import { SalesTable } from "./sales-table";
+import { ExportButtons } from "@/components/ui/export-buttons";
+import { rangeText } from "@/lib/export/model";
+import { exportSalesInvoiceList } from "../invoice-export-actions";
 
 const PAGE_SIZE = 20;
 
@@ -107,6 +110,11 @@ export default async function SalesPage(
       ? supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "view_financial" })
       : Promise.resolve({ data: false }),
   ]);
+
+  // exporting the whole filtered list needs the same permission as every report export
+  const canExport = membership
+    ? !!(await supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "reports.export" })).data
+    : false;
 
   // may this user assign an invoice to a rep other than themselves? (permission sales.assign_any_rep)
   const canAssignAnyRep = membership
@@ -231,6 +239,17 @@ export default async function SalesPage(
         <div className="flex flex-wrap items-center gap-2">
           <SearchBox placeholder="بحث برقم الفاتورة..." />
           <DateRangeFilter from={from} to={to} />
+          {canExport && !inv && (
+            <ExportButtons
+              filename={`فواتير-المبيعات-${from ?? "الكل"}-${to ?? "الآن"}`}
+              title="فواتير المبيعات"
+              subtitle={`${rangeText(from, to)}${q ? ` — بحث: ${q}` : ""}`}
+              headers={["التاريخ", "رقم الفاتورة", "العميل", "المندوب", "المخزن", "الإجمالي", "المدفوع", "المرتجعات", "المتبقي", "الحالة"]}
+              kinds={["date", "code", "text", "text", "text", "money:sum", "money:sum", "money:sum", "money:sum", "text"]}
+              loadRows={exportSalesInvoiceList}
+              loadFilters={{ q, from, to }}
+            />
+          )}
         </div>
       </div>
       {inv && <FocusedInvoiceBanner clearHref="/dashboard/sales" found={rows.length > 0} />}
