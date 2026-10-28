@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { createSupplier } from "./actions";
-import { getMembership } from "@/lib/org-context";
+import { hasAnyPermission } from "@/lib/org-context";
 import { getOpeningBalances } from "@/lib/opening-balance";
 import { SuppliersTable } from "./suppliers-table";
 
@@ -18,14 +18,6 @@ export type SupplierBalance = { supplier_id: string; total_purchases: number; to
 export default async function SuppliersPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
   const searchParams = await props.searchParams;
   const supabase = await createClient();
-  const membership = await getMembership();
-  let canViewBalance = false;
-  if (membership) {
-    const checks = await Promise.all(
-      ["view_financial", "suppliers.view_balance"].map((perm_key) => supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key }))
-    );
-    canViewBalance = checks.some((c) => !!c.data);
-  }
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
@@ -36,14 +28,17 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) suppliersQuery = suppliersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
 
-  const [{ data: suppliers, count }, { data: balances }] = await Promise.all([
+  const [{ data: suppliers, count }, canViewBalance] = await Promise.all([
     suppliersQuery,
-    supabase.from("supplier_balances").select("supplier_id, total_purchases, total_paid, balance"),
+    hasAnyPermission(["view_financial", "suppliers.view_balance"]),
   ]);
 
-  const openingMap = canViewBalance
-    ? await getOpeningBalances(supabase, "supplier", (suppliers ?? []).map((s) => s.id as string))
-    : new Map<string, number>();
+  // Balances only for the (at most 20) suppliers on this page, not for every supplier of the organization (0059).
+  const pageIds = (suppliers ?? []).map((s) => s.id as string);
+  const [{ data: balances }, openingMap] = await Promise.all([
+    pageIds.length ? supabase.rpc("supplier_balances_for", { p_ids: pageIds }) : Promise.resolve({ data: [] as SupplierBalance[] }),
+    canViewBalance ? getOpeningBalances(supabase, "supplier", pageIds) : Promise.resolve(new Map<string, number>()),
+  ]);
   const suppliersView = (suppliers ?? []).map((s) => ({ ...s, opening_balance: openingMap.get(s.id as string) ?? 0 }));
 
   return (

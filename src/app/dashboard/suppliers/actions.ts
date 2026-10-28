@@ -5,6 +5,7 @@ import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
+import { insertChunked, upsertChunked, type BulkItem } from "@/lib/bulk";
 
 // Default payment terms in days (optional, 0-365): new purchase invoices get their due date from it.
 function readTerms(formData: FormData): number | null {
@@ -176,9 +177,11 @@ export async function importSuppliers(rows: SupplierImportRow[]) {
   const { data: existing } = await supabase.from("suppliers").select("name").eq("organization_id", orgId);
   const existingNames = new Set((existing ?? []).map((s) => s.name.trim()));
 
-  let created = 0;
   const skipped: { row: number; reason: string }[] = [];
 
+  // Pass 1 — validate every row (same rules, same order, same messages as before).
+  const items: BulkItem[] = [];
+  const balanceByRow = new Map<number, number>();
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const name = row.name.trim();
@@ -194,27 +197,29 @@ export async function importSuppliers(rows: SupplierImportRow[]) {
       skipped.push({ row: i + 1, reason: "الرصيد الافتتاحي غير صحيح" });
       continue;
     }
-
-    const { data: inserted, error } = await supabase
-      .from("suppliers")
-      .insert({
-        organization_id: orgId,
-        name,
-        phone: row.phone.trim() || null,
-      })
-      .select("id")
-      .single();
-    if (error || !inserted) {
-      skipped.push({ row: i + 1, reason: error?.message ?? "تعذر الإنشاء" });
-      continue;
-    }
-    if (canSetBalance && row.opening_balance !== 0) {
-      const ob = await setOpeningBalance(supabase, "supplier", inserted.id, row.opening_balance);
-      if (ob.error) skipped.push({ row: i + 1, reason: `تم إنشاء المورد لكن تعذر حفظ الرصيد الافتتاحي: ${ob.error}` });
-    }
     existingNames.add(name);
-    created++;
+    items.push({ row: i + 1, data: { organization_id: orgId, name, phone: row.phone.trim() || null } });
+    balanceByRow.set(i + 1, row.opening_balance);
   }
+
+  // Pass 2 — insert in chunks (one request per 200 suppliers instead of one per supplier).
+  const { inserted, failed } = await insertChunked(supabase, "suppliers", items, "تعذر الإنشاء");
+  for (const f of failed) skipped.push({ row: f.row, reason: f.error });
+
+  // Pass 3 — opening balances in chunks; a refused chunk is retried row by row to report the exact row.
+  if (canSetBalance) {
+    const withBalance = inserted.filter((r) => (balanceByRow.get(r.row) ?? 0) !== 0);
+    const results = await upsertChunked(supabase, "supplier_opening_balances", withBalance.map((r) => ({ supplier_id: r.id, amount: balanceByRow.get(r.row) })), "supplier_id");
+    for (let c = 0; c < results.length; c++) {
+      if (!results[c].error) continue;
+      for (const r of withBalance.slice(c * 500, c * 500 + 500)) {
+        const ob = await setOpeningBalance(supabase, "supplier", r.id, balanceByRow.get(r.row) as number);
+        if (ob.error) skipped.push({ row: r.row, reason: `تم إنشاء المورد لكن تعذر حفظ الرصيد الافتتاحي: ${ob.error}` });
+      }
+    }
+  }
+  const created = inserted.length;
+  skipped.sort((a, b) => a.row - b.row);
 
   revalidatePath("/dashboard/suppliers");
   return { created, skipped, error: null };

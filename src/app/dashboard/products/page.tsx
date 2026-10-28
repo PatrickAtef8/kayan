@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getMembership, getRoleKey } from "@/lib/org-context";
-import { canViewCost, canEditCost, getProductCosts } from "@/lib/costs";
+import { getRoleKey, hasAnyPermission } from "@/lib/org-context";
+import { getProductCosts } from "@/lib/costs";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -40,16 +40,17 @@ export default async function ProductsPage(props: { searchParams: Promise<{ q?: 
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) productsQuery = productsQuery.or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%`);
 
-  const [{ data: products, count }, { data: categories }] = await Promise.all([
+  // One batch: the page's queries and the permission checks (they used to be awaited one after the other)
+  const [{ data: products, count }, { data: categories }, roleKey, viewCost, editCost] = await Promise.all([
     productsQuery,
     supabase.from("product_categories").select("id, name").order("name"),
+    getRoleKey(),
+    hasAnyPermission(["view_financial", "products.view_cost"]),
+    hasAnyPermission(["view_financial", "purchases.approve", "manage_settings"]),
   ]);
+  const isOwner = roleKey === "owner";   // the storekeeper reads the catalogue: no prices, no editing
 
-  // cost comes from its own protected table (0034); empty for roles that may not read it
-  const membership = await getMembership();
-  const isOwner = (await getRoleKey()) === "owner";   // the storekeeper reads the catalogue: no prices, no editing
-  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
-  const editCost = membership ? await canEditCost(supabase, membership.organization_id) : false;
+  // cost comes from its own protected table (0034); empty for roles that may not read it (only this page's ≤20 products)
   const costMap = viewCost ? await getProductCosts(supabase, (products ?? []).map((p) => p.id as string)) : new Map<string, number>();
   const productsView = (products ?? []).map((p) => ({
     ...p,

@@ -66,5 +66,49 @@ present), image optimization (the app serves no images).
   click-test of invoice creation.
 - `count: "exact"` is NOT a problem after 0020 (6 ms at 40k rows); an earlier estimate
   was measured before the RLS fix.
-- `next@14.2.15` has a published security advisory - upgrade separately.
-- ESLint config added (`.eslintrc.json`, next/core-web-vitals, eslint 8 + eslint-config-next 14.2.15 pinned to match Next 14). Fixed the 3 pre-existing errors it found.
+- (Resolved since: the project is on Next 16 / ESLint 9 with `eslint.config.mjs`.)
+
+---
+
+# Performance audit, round 2 (see CHANGES-performance-audit.md for the file-by-file list)
+
+## What changed
+- **Fewer sequential round trips per navigation**
+  - `proxy.ts` + `org-context.ts`: `auth.getClaims()` replaces `auth.getUser()` for reads. With asymmetric JWT signing
+    keys enabled on the Supabase project the token is verified locally (no Auth round trip, twice per page before);
+    on a legacy shared-secret project the library falls back to `getUser()`, i.e. the old behaviour. Server actions
+    that write still call `auth.getUser()`.
+  - `dashboard/layout.tsx`: the role-dependent counters (`warehouse_pending_counts`, `stock_shortage_counts`) are now
+    part of the same parallel batch instead of two awaits after it.
+  - `org-context.ts`: per-request memoised `hasPermission`, `hasAnyPermission`, `getOwnRepId`, `getSalesLimits`.
+    Sales, purchases, customers, suppliers, products and inventory pages ask for every permission inside their first
+    `Promise.all` (they were awaited one RPC after another). Sales also fetches payments, returns and cost/profit in one batch.
+- **No more "download everything and add it up"** (`0059_perf_balance_totals.sql`)
+  - `dashboard_balance_totals()` gives receivable / payable / inventory value / treasury in one call (same views, same RLS).
+  - `customer_balances_for(ids)` / `supplier_balances_for(ids)`: the customers and suppliers pages only aggregate the
+    ≤20 parties on screen instead of the whole organization.
+  - Inventory page is paginated (50/page, zero-quantity rows filtered in SQL) and its total comes from `inventory_value_total()`.
+  - Purchases page reads the whole catalogue's costs with one `getAllProductCosts()` query (the old `.in(<all ids>)` URL
+    overflowed for a few hundred products and silently fell back to cost 0).
+  - Covered by `supabase/tests/111_perf_balance_totals_test.sql`.
+- **Bulk imports** (`src/lib/bulk.ts`): customers / suppliers / products are inserted in chunks of 200 (one request per
+  chunk, not per row); a refused chunk is retried row by row so each row keeps its own error message. (The import
+  actions have no screen yet; they are ready for the Excel import.)
+- **Sales entry form**: product / customer lookups are Maps and the option lists are memoised instead of being
+  scanned and rebuilt for every invoice row on every render.
+
+## Verified here
+- `tsc --noEmit` and `eslint` clean; `next build` compiles (checked with a local font, since the sandbox cannot reach Google Fonts).
+- Database suite: new `111` test passes; `80_dashboard_totals` and `101_dashboard_trend` fail identically BEFORE this
+  work (tests written for an older signature of the trend functions) - they need updating separately.
+- Client JS after build: ~3.1 MB raw / ~1.0 MB gzip over 82 chunks, of which the single largest (1.2 MB raw, the PDF
+  renderer) loads only when a PDF export is clicked.
+
+## Still open / to measure on the real deployment
+- **Vercel function region vs Supabase region** (no `vercel.json` in the repo). Set the function region next to the
+  database in the Vercel project settings; every remaining round trip pays that distance.
+- Supabase API `max_rows` (default 1000): the sales/purchase entry forms still load the whole customer and product list.
+  Replace with `AsyncSearchSelect`-style pickers together with an end-to-end invoice click-test (as noted above).
+- `EXPLAIN (ANALYZE, BUFFERS)` of `customer_balances` / `supplier_balances` (still used by reports) and
+  `dashboard_balance_totals` on the 100k-invoice seed; these views still aggregate the whole organization when asked for all parties.
+- Re-check `getClaims()` after enabling asymmetric signing keys: layout TTFB should drop by one Auth round trip.

@@ -28,9 +28,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() refreshes an expired session (cookies are rewritten through setAll above) and verifies the JWT
+  // locally when the project uses asymmetric signing keys — one Auth round trip less per request. On a legacy
+  // symmetric-secret project it falls back to getUser(), i.e. the previous behaviour.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
   const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard");
 

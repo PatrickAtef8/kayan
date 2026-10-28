@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, Trash2, PackageX } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
@@ -109,8 +109,14 @@ export function SalesForm({
     refreshStock();
   }
 
-  const productById = (id: string) => products.find((p) => p.id === id);
-  const customerTier = customers.find((c) => c.id === customerId)?.price_tier ?? "retail";
+  // Lookups and option lists are built once per data change instead of on every keystroke / row render
+  // (a catalogue of thousands of products used to be scanned and re-mapped for each invoice row on each render).
+  const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const customerMap = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+  const productSelectOptions = useMemo(() => products.map((p) => ({ value: p.id, label: p.name })), [products]);
+  const customerSelectOptions = useMemo(() => customers.map((c) => ({ value: c.id, label: c.name })), [customers]);
+  const productById = (id: string) => productMap.get(id);
+  const customerTier = customerMap.get(customerId)?.price_tier ?? "retail";
   const { preview, error: previewError, pending: previewPending } = usePricingPreview({
     applies_to: "sales",
     items: rows.map(({ key, ...r }) => r),
@@ -148,10 +154,10 @@ export function SalesForm({
   // already typed over by hand is left alone rather than silently
   // overwritten.
   function selectCustomer(nextCustomerId: string) {
-    const previousTier = customers.find((c) => c.id === customerId)?.price_tier ?? "retail";
-    const nextTier = customers.find((c) => c.id === nextCustomerId)?.price_tier ?? "retail";
+    const previousTier = customerMap.get(customerId)?.price_tier ?? "retail";
+    const nextTier = customerMap.get(nextCustomerId)?.price_tier ?? "retail";
     setCustomerId(nextCustomerId);
-    const nextRep = customers.find((c) => c.id === nextCustomerId)?.sales_rep_id;
+    const nextRep = customerMap.get(nextCustomerId)?.sales_rep_id;
     if (nextRep && (canAssignAnyRep || !ownRepId)) setSalesRepId(nextRep);
     if (previousTier === nextTier) return;
 
@@ -215,7 +221,7 @@ export function SalesForm({
       )}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-6">
         <Field label="العميل">
-          <ModernSelect value={customerId} onChange={selectCustomer} allowClear={false} placeholder="اختر عميلًا" options={customers.map((c) => ({ value: c.id, label: c.name }))} />
+          <ModernSelect value={customerId} onChange={selectCustomer} allowClear={false} placeholder="اختر عميلًا" options={customerSelectOptions} />
         </Field>
         <Field label="المخزن">
           <ModernSelect value={warehouseId} onChange={setWarehouseId} allowClear={false} placeholder="اختر مخزنًا" options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
@@ -284,7 +290,7 @@ export function SalesForm({
           return (
             <div key={row.key} className="grid grid-cols-1 gap-2.5 rounded-xl border border-borderSoft bg-paper/40 p-3 sm:grid-cols-[1.6fr_0.8fr_0.9fr_0.8fr_auto] sm:items-end">
               <Field label="المنتج">
-                <ModernSelect value={row.product_id} onChange={(id) => setProduct(row.key, id)} allowClear={false} placeholder="اختر منتجًا" options={products.map((p) => ({ value: p.id, label: p.name }))} />
+                <ModernSelect value={row.product_id} onChange={(id) => setProduct(row.key, id)} allowClear={false} placeholder="اختر منتجًا" options={productSelectOptions} />
               </Field>
               <Field label={`الكمية${product ? ` (${product.unit})` : ""}`}>
                 <Input type="number" step="0.001" min="0" dir="ltr" value={row.quantity} onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) })} />

@@ -1,7 +1,7 @@
 import { Money } from "@/components/ui/money";
 import { formatMoney } from "@/lib/money";
-import { getSupabase, getMembership, NO_ORG_ID } from "@/lib/org-context";
-import { canViewCost } from "@/lib/costs";
+import { getSupabase, getMembership, NO_ORG_ID, hasPermission, hasAnyPermission } from "@/lib/org-context";
+import { Pagination } from "@/components/ui/pagination";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { StatValue } from "@/components/ui/stat-value";
 import { DataTable } from "@/components/ui/data-table";
 import { StockAdjustmentForm } from "./stock-adjustment-form";
 import { StockTransferForm } from "./stock-transfer-form";
+
+const PAGE_SIZE = 50;
 
 type StockRow = {
   id: string;
@@ -24,29 +26,43 @@ function money(n: number) {
   return formatMoney(n);
 }
 
-export default async function InventoryPage() {
+export default async function InventoryPage(props: { searchParams: Promise<{ page?: string }> }) {
+  const searchParams = await props.searchParams;
+  const page = Math.max(1, Number(searchParams.page) || 1);
   const supabase = (await getSupabase());
   const membership = await getMembership();
   const orgId = membership?.organization_id ?? NO_ORG_ID;
 
-  const [{ data }, { data: canAdjust }, { data: products }, { data: warehouses }] = await Promise.all([
-    supabase.from("inventory_stock").select("id, quantity, product_id, warehouse_id, stock_costs(avg_cost), products(name, unit), warehouses(name)").eq("organization_id", orgId).order("updated_at", { ascending: false }),
-    membership ? supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "inventory.adjust" }) : Promise.resolve({ data: false }),
+  // One batch. The stock list is paginated (rows with a zero quantity are filtered in SQL, as the page used to do in
+  // memory) and the total value comes from SQL (0059), so the page no longer downloads — and joins — every stock row.
+  const [{ data, count }, canAdjust, { data: products }, { data: warehouses }, viewCost, totalValueRes, resvRes] = await Promise.all([
+    supabase
+      .from("inventory_stock")
+      .select("id, quantity, product_id, warehouse_id, stock_costs(avg_cost), products(name, unit), warehouses(name)", { count: "exact" })
+      .eq("organization_id", orgId)
+      .neq("quantity", 0)
+      .order("updated_at", { ascending: false })
+      .order("id")
+      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+    hasPermission("inventory.adjust"),
     supabase.from("products").select("id, name").eq("organization_id", orgId).order("name"),
     supabase.from("warehouses").select("id, name").eq("organization_id", orgId).order("name"),
+    // cost comes from the protected stock_costs table (0034); hidden for roles without cost access
+    hasAnyPermission(["view_financial", "products.view_cost"]),
+    membership ? supabase.rpc("inventory_value_total", { org_id: membership.organization_id }) : Promise.resolve({ data: 0 }),
+    // reserved = sold but not yet dispatched; incoming = bought but not yet received (0044). Quantities only.
+    membership ? supabase.rpc("inventory_reservations", { org_id: membership.organization_id }) : Promise.resolve({ data: [] }),
   ]);
 
-  // cost comes from the protected stock_costs table (0034); hidden for roles without cost access
-  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
   type RawRow = Omit<StockRow, "avg_cost"> & { stock_costs: { avg_cost: number } | { avg_cost: number }[] | null };
   const rows: StockRow[] = ((data as unknown as RawRow[]) ?? []).map((r) => {
     const c = Array.isArray(r.stock_costs) ? r.stock_costs[0] : r.stock_costs;
     return { id: r.id, quantity: r.quantity, product_id: (r as unknown as StockRow).product_id, warehouse_id: (r as unknown as StockRow).warehouse_id, products: r.products, warehouses: r.warehouses, avg_cost: Number(c?.avg_cost ?? 0) };
   });
-  const totalValue = rows.reduce((sum, r) => sum + r.quantity * r.avg_cost, 0);
+  const totalValue = Number(totalValueRes.data ?? 0);
 
   // reserved = sold but not yet dispatched; incoming = bought but not yet received (0044). Quantities only.
-  const { data: resv } = membership ? await supabase.rpc("inventory_reservations", { org_id: membership.organization_id }) : { data: [] };
+  const resv = resvRes.data;
   const resvByKey = new Map<string, { reserved: number; incoming: number }>();
   for (const r of (resv as { product_id: string; warehouse_id: string; reserved: number; incoming: number }[] | null) ?? []) {
     resvByKey.set(`${r.product_id}:${r.warehouse_id}`, { reserved: Number(r.reserved), incoming: Number(r.incoming) });
@@ -76,7 +92,7 @@ export default async function InventoryPage() {
       )}
 
       <DataTable<StockRow>
-        rows={rows.filter((r) => r.quantity !== 0)}
+        rows={rows}
         getRowKey={(r) => r.id}
         emptyLabel="لا يوجد مخزون بعد — سيظهر هنا بعد أول فاتورة شراء"
         columns={[
@@ -94,6 +110,7 @@ export default async function InventoryPage() {
             : []),
         ]}
       />
+      <Pagination page={page} pageSize={PAGE_SIZE} totalCount={count ?? 0} />
     </div>
   );
 }

@@ -32,3 +32,24 @@ export async function getProductCosts(supabase: SupabaseClient, productIds: stri
   for (const r of (data ?? []) as { product_id: string; cost: number | string }[]) map.set(r.product_id, Number(r.cost));
   return map;
 }
+
+// Every product cost of the organization in ONE query (RLS already limits it to what this member may read, and to
+// their organization). Used by pages that need the cost of the WHOLE catalogue: it replaces
+// getProductCosts(all ids), whose `.in(...)` URL grows with the catalogue (hundreds of UUIDs overflow the URL limit
+// and the failure was silent: every cost fell back to 0), and it can run in the same batch as the products query.
+export async function getAllProductCosts(supabase: SupabaseClient, orgId: string) {
+  const map = new Map<string, number>();
+  const PAGE = 1000; // PostgREST caps a response at max_rows (1000 by default): read in pages so nothing is cut off
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await supabase
+      .from("product_costs")
+      .select("product_id, cost")
+      .eq("organization_id", orgId)
+      .order("product_id")
+      .range(from, from + PAGE - 1);
+    const rows = (data ?? []) as { product_id: string; cost: number | string }[];
+    for (const r of rows) map.set(r.product_id, Number(r.cost));
+    if (rows.length < PAGE) break;
+  }
+  return map;
+}

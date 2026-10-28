@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { FocusedInvoiceBanner } from "@/components/ui/focused-invoice-banner";
 import { containsPattern, invoiceParam } from "@/lib/doc-search";
-import { getMembership } from "@/lib/org-context";
-import { canViewCost, getProductCosts } from "@/lib/costs";
+import { getMembership, hasPermission, hasAnyPermission } from "@/lib/org-context";
+import { getAllProductCosts } from "@/lib/costs";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBox } from "@/components/ui/search-box";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
@@ -76,17 +76,24 @@ export default async function PurchasesPage(
   if (from) invoicesQuery = invoicesQuery.gte("invoice_date", from);
   if (to) invoicesQuery = invoicesQuery.lte("invoice_date", to);
 
-  const [{ data: suppliers }, { data: warehouses }, { data: products }, { data: invoices, count }] = await Promise.all([
+  const membership = await getMembership();
+  const orgId = membership?.organization_id ?? null;
+
+  // One batch for everything that is independent: lists, the permission checks (they used to be awaited one after
+  // the other, after the lists) and the catalogue's costs (RLS returns nothing to roles that may not read them).
+  const [{ data: suppliers }, { data: warehouses }, { data: products }, { data: invoices, count }, canPay, canViewFinancial, canExport, viewCost, allCosts] = await Promise.all([
     supabase.from("suppliers").select("id, name, payment_terms_days").order("name"),
     supabase.from("warehouses").select("id, name").order("name"),
     supabase.from("products").select("id, name, unit").order("name"),
     invoicesQuery,
+    hasPermission("treasury.manage"),
+    hasPermission("view_financial"),
+    hasPermission("reports.export"),
+    // the default unit cost comes from the protected cost table; roles that may not read it simply start from 0
+    hasAnyPermission(["view_financial", "products.view_cost"]),
+    orgId ? getAllProductCosts(supabase, orgId) : Promise.resolve(new Map<string, number>()),
   ]);
-
-  // the default unit cost comes from the protected cost table; roles that may not read it simply start from 0
-  const membership = await getMembership();
-  const viewCost = membership ? await canViewCost(supabase, membership.organization_id) : false;
-  const costMap = viewCost ? await getProductCosts(supabase, (products ?? []).map((p) => p.id as string)) : new Map<string, number>();
+  const costMap = viewCost ? allCosts : new Map<string, number>();
   const productOptions: ProductOption[] = (products ?? []).map((p) => ({
     id: p.id,
     name: p.name,
@@ -129,15 +136,7 @@ export default async function PurchasesPage(
   // Payment history per invoice. Every payment is its own supplier_payments row (created with
   // the invoice or later), so nothing is ever overwritten. Same RLS as everything else.
   // Only members who handle money (treasury.manage) or may view financials get this detail.
-  const orgId = membership?.organization_id ?? null;
-  const [canPay, canViewFinancial] = orgId
-    ? await Promise.all([
-        supabase.rpc("has_permission", { target_org: orgId, perm_key: "treasury.manage" }).then((r) => !!r.data),
-        supabase.rpc("has_permission", { target_org: orgId, perm_key: "view_financial" }).then((r) => !!r.data),
-      ])
-    : [false, false];
   const showPayments = canPay || canViewFinancial;
-  const canExport = orgId ? !!(await supabase.rpc("has_permission", { target_org: orgId, perm_key: "reports.export" })).data : false;
 
   const rows = (invoices as unknown as PurchaseInvoiceRow[]) ?? [];
   const ids = rows.map((r) => r.id);

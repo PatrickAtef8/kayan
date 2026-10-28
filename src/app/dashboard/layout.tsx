@@ -47,21 +47,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const orgId = membership.organization_id;
   const roleName = roleNameOf(membership);
 
-  // Independent lookups run together instead of one after another.
-  const [orgRes, modulesRes, notificationsRes, unreadRes, roleKey] = await Promise.all([
+  // Independent lookups run together. The two role-dependent counters used to be awaited one after the other
+  // AFTER the batch (two extra sequential round trips on every page); they now hang off the role lookup inside
+  // the same batch, so the whole layout costs max(...) instead of sum(...).
+  const rolePromise = getRoleKey();
+  // storekeeper work queue (also shown to the owner): quantities only
+  const pendingPromise = rolePromise.then((rk) => (rk === "sales" || !rk ? null : supabase.rpc("warehouse_pending_counts", { org_id: orgId })));
+  // stock-shortage reports: the owner's open ones, or the rep's own (open + recently provided)
+  const shortagePromise = rolePromise.then((rk) => (rk === "owner" || rk === "sales" ? supabase.rpc("stock_shortage_counts", { org_id: orgId }) : null));
+  const [orgRes, modulesRes, notificationsRes, unreadRes, roleKey, pendingRes, shortageRes] = await Promise.all([
     supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
     supabase.from("organization_modules").select("module_key").eq("organization_id", orgId).eq("enabled", true),
     // stored notifications of THIS user (0046): the first page now, the rest follows over Realtime
     supabase.rpc("list_my_notifications", { org_id: orgId, p_filter: "all", p_limit: 20 }),
     supabase.rpc("my_unread_notification_count", { org_id: orgId }),
-    getRoleKey(),
+    rolePromise,
+    pendingPromise,
+    shortagePromise,
   ]);
-  // storekeeper work queue (also shown to the owner): quantities only
-  const pendingRes = roleKey === "sales" || !roleKey ? null : await supabase.rpc("warehouse_pending_counts", { org_id: orgId });
   const pending = (pendingRes?.data as { sales: number; purchases: number } | null) ?? { sales: 0, purchases: 0 };
   const pendingOrders = Number(pending.sales) + Number(pending.purchases);
-  // stock-shortage reports: the owner's open ones, or the rep's own (open + recently provided)
-  const shortageRes = roleKey === "owner" || roleKey === "sales" ? await supabase.rpc("stock_shortage_counts", { org_id: orgId }) : null;
   const sc = (shortageRes?.data as { new: number; in_progress: number; ready: number } | null) ?? { new: 0, in_progress: 0, ready: 0 };
   const shortageBadge = roleKey === "owner" ? Number(sc.new) : Number(sc.ready);
   if (orgRes.error) console.error("dashboard: organization lookup failed", orgRes.error);

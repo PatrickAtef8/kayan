@@ -1,4 +1,4 @@
-import { getSupabase, getMembership, NO_ORG_ID, isRestrictedRep } from "@/lib/org-context";
+import { getSupabase, getMembership, NO_ORG_ID, isRestrictedRep, hasPermission, hasAnyPermission, getOwnRepId, getSalesLimits } from "@/lib/org-context";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBox } from "@/components/ui/search-box";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
@@ -99,37 +99,28 @@ export default async function SalesPage(
   if (from) invoicesQuery = invoicesQuery.gte("invoice_date", from);
   if (to) invoicesQuery = invoicesQuery.lte("invoice_date", to);
 
-  const [{ data: customers }, { data: warehouses }, { data: products }, { data: salePrices }, { data: representatives }, { data: invoices, count }, { data: canViewFinancial }] = await Promise.all([
+  // Everything that does not depend on another result runs in ONE batch (the permission checks used to be
+  // awaited one after the other after this batch: ~5 extra sequential round trips on the busiest page).
+  const [{ data: customers }, { data: warehouses }, { data: products }, { data: salePrices }, { data: representatives }, { data: invoices, count }, canViewFinancial, canExport, canAssignAnyRep, ownRepId, limits, canCollect, restrictedRep] = await Promise.all([
     supabase.from("customers").select("id, name, price_tier, sales_rep_id").eq("organization_id", orgId).order("name"),
     supabase.from("warehouses").select("id, name").eq("organization_id", orgId).order("name"),
     supabase.from("products").select("id, name, unit").eq("organization_id", orgId).order("name"),
     supabase.from("product_sale_prices").select("product_id, selling_price, wholesale_price, distributor_price").eq("organization_id", orgId),
     supabase.from("sales_representatives").select("id, name").eq("organization_id", orgId).eq("is_active", true).order("name"),
     invoicesQuery,
-    membership
-      ? supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "view_financial" })
-      : Promise.resolve({ data: false }),
+    hasPermission("view_financial"),
+    // exporting the whole filtered list needs the same permission as every report export
+    hasPermission("reports.export"),
+    // may this user assign an invoice to a rep other than themselves? (permission sales.assign_any_rep)
+    hasPermission("sales.assign_any_rep"),
+    getOwnRepId(),
+    // what this user may do on an invoice (set by Owner/Admin in Settings → حدود الخصم)
+    getSalesLimits(),
+    // the owner collects through treasury.manage; a sales rep through collections.record (his own customers only —
+    // the database enforces that, a rep only receives his own customers' invoices here anyway)
+    hasAnyPermission(["treasury.manage", "collections.record"]),
+    isRestrictedRep(),
   ]);
-
-  // exporting the whole filtered list needs the same permission as every report export
-  const canExport = membership
-    ? !!(await supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "reports.export" })).data
-    : false;
-
-  // may this user assign an invoice to a rep other than themselves? (permission sales.assign_any_rep)
-  const canAssignAnyRep = membership
-    ? !!(await supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "sales.assign_any_rep" })).data
-    : false;
-  const { data: ownRepData } = membership
-    ? await supabase.rpc("own_rep_id", { p_org: membership.organization_id })
-    : { data: null };
-  const ownRepId = (ownRepData as string | null) ?? null;
-
-  // what this user may do on an invoice (set by Owner/Admin in Settings → حدود الخصم)
-  const { data: limitsData } = membership
-    ? await supabase.rpc("my_sales_limits", { org_id: membership.organization_id })
-    : { data: null };
-  const limits = (limitsData ?? null) as { unlimited: boolean; max_discount_pct: number | null; can_give_manual_bonus: boolean } | null;
 
   const priceByProduct = new Map((salePrices ?? []).map((pr) => [pr.product_id, pr]));
   const productOptions: ProductOption[] = (products ?? []).map((p) => {
@@ -163,7 +154,12 @@ export default async function SalesPage(
   // (created with the invoice or later), so nothing is ever overwritten. Same RLS as
   // everything else: a restricted rep only gets rows for their own customers.
   const invoiceIds = rows.map((r) => r.id);
-  const [{ data: collections }, { data: returnRows }] = invoiceIds.length
+  // Cost & profit live in tables only members with view_financial can read (reps and other members get
+  // nothing back), so they are fetched separately — but in the SAME batch as payments and returns, since all
+  // three only need the invoice ids.
+  const itemIds = rows.flatMap((r) => r.sales_invoice_items.map((it) => it.id));
+  const withFinancials = !!canViewFinancial && rows.length > 0;
+  const [{ data: collections }, { data: returnRows }, { data: invFin }, { data: itemFin }] = invoiceIds.length
     ? await Promise.all([
         supabase
           .from("customer_collections")
@@ -173,8 +169,14 @@ export default async function SalesPage(
           .order("collection_date", { ascending: true })
           .order("created_at", { ascending: true }),
         supabase.from("sales_returns").select("sales_invoice_id, total, cash_refunded").eq("organization_id", orgId).in("sales_invoice_id", invoiceIds),
+        withFinancials
+          ? supabase.from("sales_invoice_financials").select("sales_invoice_id, cogs_total, profit_total").in("sales_invoice_id", invoiceIds)
+          : Promise.resolve({ data: [] as { sales_invoice_id: string; cogs_total: number; profit_total: number }[] }),
+        withFinancials
+          ? supabase.from("sales_item_financials").select("sales_invoice_item_id, unit_cost, cost_total, profit").in("sales_invoice_item_id", itemIds)
+          : Promise.resolve({ data: [] as { sales_invoice_item_id: string; unit_cost: number; cost_total: number; profit: number }[] }),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
   const paymentsByInvoice = new Map<string, InvoicePayment[]>();
   for (const c of collections ?? []) {
     const list = paymentsByInvoice.get(c.sales_invoice_id as string) ?? [];
@@ -197,22 +199,7 @@ export default async function SalesPage(
     r.remaining = Math.max(0, Math.round((Number(r.total) - Number(r.amount_paid) - ret.total + ret.cash) * 100) / 100);
   }
 
-  // the owner collects through treasury.manage; a sales rep through collections.record (his own customers only —
-  // the database enforces that, a rep only receives his own customers' invoices here anyway)
-  const canCollect = membership
-    ? (await Promise.all(
-        ["treasury.manage", "collections.record"].map((perm_key) => supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key }))
-      )).some((r) => !!r.data)
-    : false;
-
-  // Cost & profit live in tables only members with view_financial can read
-  // (reps and other members get nothing back), so they are fetched separately.
-  if (canViewFinancial && rows.length > 0) {
-    const itemIds = rows.flatMap((r) => r.sales_invoice_items.map((it) => it.id));
-    const [{ data: invFin }, { data: itemFin }] = await Promise.all([
-      supabase.from("sales_invoice_financials").select("sales_invoice_id, cogs_total, profit_total").in("sales_invoice_id", rows.map((r) => r.id)),
-      supabase.from("sales_item_financials").select("sales_invoice_item_id, unit_cost, cost_total, profit").in("sales_invoice_item_id", itemIds),
-    ]);
+  if (withFinancials) {
     const invMap = new Map((invFin ?? []).map((f) => [f.sales_invoice_id, f]));
     const itemMap = new Map((itemFin ?? []).map((f) => [f.sales_invoice_item_id, f]));
     for (const r of rows) {
@@ -232,7 +219,7 @@ export default async function SalesPage(
       <PageHeader title="المبيعات" />
       <SalesTabs />
 
-      <SalesForm canAssignAnyRep={canAssignAnyRep} ownRepId={ownRepId} limits={limits} customers={customers ?? []} warehouses={warehouses ?? []} products={productOptions} representatives={representatives ?? []} restrictedRep={await isRestrictedRep()} />
+      <SalesForm canAssignAnyRep={canAssignAnyRep} ownRepId={ownRepId} limits={limits} customers={customers ?? []} warehouses={warehouses ?? []} products={productOptions} representatives={representatives ?? []} restrictedRep={restrictedRep} />
 
       <div className="mb-4 mt-9 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-medium text-charcoal/40">فواتير البيع</span>

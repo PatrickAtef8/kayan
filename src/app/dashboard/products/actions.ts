@@ -5,6 +5,7 @@ import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { canEditCost, setProductCost } from "@/lib/costs";
+import { insertChunked, insertManyChunked, upsertChunked, type BulkItem } from "@/lib/bulk";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -184,12 +185,14 @@ export async function importProducts(rows: ProductImportRow[]): Promise<ProductI
   const { data: existingProducts } = await supabase.from("products").select("name").eq("organization_id", orgId);
   const existingNames = new Set((existingProducts ?? []).map((p) => p.name.trim()));
 
-  let created = 0;
   const skipped: { row: number; reason: string }[] = [];
 
-  // Sequential, not Promise.all — a category created for row 2 needs to be
-  // visible to row 5 if they share a name, and this is a background,
-  // occasional bulk action, not something latency-sensitive (§56).
+  // Pass 1 — validate each row and resolve its category. Categories are created one at a time (only the DISTINCT
+  // missing ones, so a category created for row 2 is visible to row 5 when they share a name); a failed category is
+  // remembered so its rows are skipped without retrying it.
+  const failedCategories = new Set<string>();
+  const items: BulkItem[] = [];
+  const rowByName = new Map<string, ProductImportRow>();
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const name = row.name.trim();
@@ -206,24 +209,30 @@ export async function importProducts(rows: ProductImportRow[]): Promise<ProductI
     const categoryName = row.category.trim();
     if (categoryName) {
       categoryId = categoryByName.get(categoryName) ?? null;
-      if (!categoryId) {
+      if (!categoryId && !failedCategories.has(categoryName)) {
         const { data: newCategory, error: categoryError } = await supabase
           .from("product_categories")
           .insert({ organization_id: orgId, name: categoryName })
           .select("id")
           .single();
-        if (categoryError || !newCategory) {
-          skipped.push({ row: i + 1, reason: `تعذّر إنشاء الفئة: ${categoryName}` });
-          continue;
+        if (!categoryError && newCategory) {
+          categoryId = newCategory.id;
+          categoryByName.set(categoryName, newCategory.id);
+        } else {
+          failedCategories.add(categoryName);
         }
-        categoryId = newCategory.id;
-        categoryByName.set(categoryName, categoryId);
+      }
+      if (!categoryId) {
+        skipped.push({ row: i + 1, reason: `تعذّر إنشاء الفئة: ${categoryName}` });
+        continue;
       }
     }
 
-    const { data: product, error: productError } = await supabase
-      .from("products")
-      .insert({
+    existingNames.add(name);
+    rowByName.set(name, row);
+    items.push({
+      row: i + 1,
+      data: {
         organization_id: orgId,
         category_id: categoryId,
         name,
@@ -232,25 +241,25 @@ export async function importProducts(rows: ProductImportRow[]): Promise<ProductI
         barcode: row.barcode?.trim() || null,
         reorder_level: row.reorder_level && row.reorder_level > 0 ? row.reorder_level : 0,
         units_per_carton: row.units_per_carton && row.units_per_carton > 0 ? row.units_per_carton : null,
-      })
-      .select("id")
-      .single();
-
-    if (productError || !product) {
-      skipped.push({ row: i + 1, reason: productError?.message ?? "فشل إنشاء المنتج" });
-      continue;
-    }
-
-    await supabase.from("product_prices").insert({
-      organization_id: orgId,
-      product_id: product.id,
-      selling_price: row.selling_price || 0,
+      },
     });
-    if (canSetCost && row.cost > 0) await setProductCost(supabase, product.id, row.cost);
-
-    existingNames.add(name);
-    created++;
   }
+
+  // Pass 2 — products in chunks (one request per 200 products instead of one per product).
+  const { inserted, failed } = await insertChunked(supabase, "products", items, "فشل إنشاء المنتج");
+  for (const f of failed) skipped.push({ row: f.row, reason: f.error });
+
+  // Pass 3 — prices and (for roles allowed to set it) costs, also in chunks. As before, a failure here does not
+  // undo the product itself.
+  const itemByRow = new Map(items.map((it) => [it.row, it.data.name]));
+  const priced = inserted.map((r) => ({ id: r.id, row: rowByName.get(itemByRow.get(r.row) as string) as ProductImportRow }));
+  await insertManyChunked(supabase, "product_prices", priced.map((p) => ({ organization_id: orgId, product_id: p.id, selling_price: p.row.selling_price || 0 })));
+  if (canSetCost) {
+    const costed = priced.filter((p) => p.row.cost > 0).map((p) => ({ product_id: p.id, cost: p.row.cost }));
+    await upsertChunked(supabase, "product_costs", costed, "product_id");
+  }
+  const created = inserted.length;
+  skipped.sort((a, b) => a.row - b.row);
 
   revalidatePath("/dashboard/products");
   return { created, skipped, error: null };

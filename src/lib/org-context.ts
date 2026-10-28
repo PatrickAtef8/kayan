@@ -10,11 +10,22 @@ import { createClient } from "@/lib/supabase/server";
 
 export const getSupabase = cache(() => createClient());
 
-export const getCurrentUser = cache(async () => {
-  const {
-    data: { user },
-  } = await (await getSupabase()).auth.getUser();
-  return user;
+// The signed-in user for this request. Uses getClaims(): when the project signs JWTs with asymmetric keys
+// (Supabase "JWT signing keys") the token is verified locally against the cached JWKS, so no Auth round trip
+// is needed; on a legacy symmetric-secret project the library transparently falls back to getUser() (the same
+// network check as before), so behaviour is identical there. Server actions that WRITE still call
+// auth.getUser() directly.
+export type CurrentUser = { id: string; email?: string; user_metadata: Record<string, unknown> };
+
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  const { data, error } = await (await getSupabase()).auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+  return {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : undefined,
+    user_metadata: (claims.user_metadata as Record<string, unknown> | undefined) ?? {},
+  };
 });
 
 export const getMembership = cache(async () => {
@@ -60,4 +71,38 @@ export const isRestrictedRep = cache(async () => {
   if (!membership) return false;
   const { data } = await (await getSupabase()).rpc("is_restricted_rep", { target_org: membership.organization_id });
   return !!data;
+});
+
+// ---------------------------------------------------------------------------------------------------------
+// Permission helpers. Each is memoised for the current request only (React `cache`), so a page can ask for
+// all it needs INSIDE its first Promise.all instead of awaiting has_permission() one RPC after another, and
+// the layout and the page never pay twice for the same answer. They are display decisions only — the
+// database (RLS / RPC checks) stays the authority.
+// ---------------------------------------------------------------------------------------------------------
+export const hasPermission = cache(async (permKey: string): Promise<boolean> => {
+  const membership = await getMembership();
+  if (!membership) return false;
+  const { data } = await (await getSupabase()).rpc("has_permission", { target_org: membership.organization_id, perm_key: permKey });
+  return !!data;
+});
+
+// true when ANY of the permissions is granted (the checks run in parallel)
+export async function hasAnyPermission(permKeys: string[]): Promise<boolean> {
+  return (await Promise.all(permKeys.map((k) => hasPermission(k)))).some(Boolean);
+}
+
+export const getOwnRepId = cache(async (): Promise<string | null> => {
+  const membership = await getMembership();
+  if (!membership) return null;
+  const { data } = await (await getSupabase()).rpc("own_rep_id", { p_org: membership.organization_id });
+  return (data as string | null) ?? null;
+});
+
+export type SalesLimits = { unlimited: boolean; max_discount_pct: number | null; can_give_manual_bonus: boolean };
+
+export const getSalesLimits = cache(async (): Promise<SalesLimits | null> => {
+  const membership = await getMembership();
+  if (!membership) return null;
+  const { data } = await (await getSupabase()).rpc("my_sales_limits", { org_id: membership.organization_id });
+  return (data ?? null) as SalesLimits | null;
 });

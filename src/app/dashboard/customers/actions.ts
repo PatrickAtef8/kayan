@@ -5,6 +5,7 @@ import { translateDbError } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
+import { insertChunked, upsertChunked, type BulkItem } from "@/lib/bulk";
 
 // Customers are created, assigned to reps and deleted by the OWNER only. The database enforces this
 // (policies + triggers); the check here gives a clear message before the request is even sent.
@@ -192,9 +193,11 @@ export async function importCustomers(rows: CustomerImportRow[]) {
   const { data: existing } = await supabase.from("customers").select("name").eq("organization_id", orgId);
   const existingNames = new Set((existing ?? []).map((c) => c.name.trim()));
 
-  let created = 0;
   const skipped: { row: number; reason: string }[] = [];
 
+  // Pass 1 — validate every row (same rules, same order, same messages as before).
+  const items: BulkItem[] = [];
+  const balanceByRow = new Map<number, number>();
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const name = row.name.trim();
@@ -210,28 +213,37 @@ export async function importCustomers(rows: CustomerImportRow[]) {
       skipped.push({ row: i + 1, reason: "الرصيد الافتتاحي غير صحيح" });
       continue;
     }
-
-    const { data: inserted, error } = await supabase
-      .from("customers")
-      .insert({
+    existingNames.add(name);   // a later row with the same name in this file is skipped, as before
+    items.push({
+      row: i + 1,
+      data: {
         organization_id: orgId,
         name,
         phone: row.phone.trim() || null,
         price_tier: TIER_ALIASES[row.price_tier.trim().toLowerCase()] ?? "retail",
-      })
-      .select("id")
-      .single();
-    if (error || !inserted) {
-      skipped.push({ row: i + 1, reason: error?.message ?? "تعذر الإنشاء" });
-      continue;
-    }
-    if (canSetBalance && row.opening_balance !== 0) {
-      const ob = await setOpeningBalance(supabase, "customer", inserted.id, row.opening_balance);
-      if (ob.error) skipped.push({ row: i + 1, reason: `تم إنشاء العميل لكن تعذر حفظ الرصيد الافتتاحي: ${ob.error}` });
-    }
-    existingNames.add(name);
-    created++;
+      },
+    });
+    balanceByRow.set(i + 1, row.opening_balance);
   }
+
+  // Pass 2 — insert in chunks (one request per 200 customers instead of one per customer).
+  const { inserted, failed } = await insertChunked(supabase, "customers", items, "تعذر الإنشاء");
+  for (const f of failed) skipped.push({ row: f.row, reason: f.error });
+
+  // Pass 3 — opening balances, also in chunks; a refused chunk is retried row by row to report the exact row.
+  if (canSetBalance) {
+    const withBalance = inserted.filter((r) => (balanceByRow.get(r.row) ?? 0) !== 0);
+    const results = await upsertChunked(supabase, "customer_opening_balances", withBalance.map((r) => ({ customer_id: r.id, amount: balanceByRow.get(r.row) })), "customer_id");
+    for (let c = 0; c < results.length; c++) {
+      if (!results[c].error) continue;
+      for (const r of withBalance.slice(c * 500, c * 500 + 500)) {
+        const ob = await setOpeningBalance(supabase, "customer", r.id, balanceByRow.get(r.row) as number);
+        if (ob.error) skipped.push({ row: r.row, reason: `تم إنشاء العميل لكن تعذر حفظ الرصيد الافتتاحي: ${ob.error}` });
+      }
+    }
+  }
+  const created = inserted.length;
+  skipped.sort((a, b) => a.row - b.row);
 
   revalidatePath("/dashboard/customers");
   return { created, skipped, error: null };

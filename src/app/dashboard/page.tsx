@@ -59,15 +59,14 @@ export default async function DashboardPage(props: { searchParams: Promise<{ per
     return <RepHome supabase={supabase} orgId={orgId} period={period} />;
   }
 
-  const [{ count: productCount }, { data: canViewFinancial }, { data: salesTotals }, { data: customerBalances }, { data: supplierBalances }, { data: stockRows }, { data: treasuryRows }, { data: recentActivity }, { data: rollups }, { data: topProducts }, { data: trendRows }] =
+  const [{ count: productCount }, { data: canViewFinancial }, { data: salesTotals }, { data: balanceTotals }, { data: recentActivity }, { data: rollups }, { data: topProducts }, { data: trendRows }] =
     await Promise.all([
       supabase.from("products").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
       supabase.rpc("has_permission", { target_org: orgId, perm_key: "view_financial" }),
       supabase.rpc("dashboard_sales_totals", { org_id: orgId, p_from: start, p_to: end }),
-      supabase.from("customer_balances").select("balance").eq("organization_id", orgId),
-      supabase.from("supplier_balances").select("balance").eq("organization_id", orgId),
-      supabase.from("inventory_stock").select("quantity, stock_costs(avg_cost)").eq("organization_id", orgId),
-      supabase.from("treasury_balances").select("balance").eq("organization_id", orgId),
+      // receivable / payable / inventory value / treasury: summed in SQL (0059) instead of downloading every
+      // customer, supplier, stock and treasury row (which also silently cut the totals past 1000 rows)
+      supabase.rpc("dashboard_balance_totals", { org_id: orgId }),
       supabase.rpc("report_recent_activity", { org_id: orgId, p_limit: 8 }),
       // Top customers + top representatives in one pass (0021; its trend rows are no longer used); top
       // products still needs invoice-line data so it keeps the report function.
@@ -83,15 +82,12 @@ export default async function DashboardPage(props: { searchParams: Promise<{ per
   const totalsRow = Array.isArray(salesTotals) ? salesTotals[0] : null;
   const totalSales = Number(totalsRow?.total_sales ?? 0);
   const netProfit = Number(totalsRow?.total_profit ?? 0);
-  const customerReceivable = (customerBalances ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
-  const supplierPayable = (supplierBalances ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
-  // avg cost is protected (0034): empty for roles without cost access, so the value is only meaningful for financial viewers
-  type StockCostRow = { quantity: number; stock_costs: { avg_cost: number } | { avg_cost: number }[] | null };
-  const inventoryValue = ((stockRows ?? []) as unknown as StockCostRow[]).reduce((sum, r) => {
-    const c = Array.isArray(r.stock_costs) ? r.stock_costs[0] : r.stock_costs;
-    return sum + Number(r.quantity) * Number(c?.avg_cost ?? 0);
-  }, 0);
-  const treasuryBalance = (treasuryRows ?? []).reduce((sum, r) => sum + Number(r.balance), 0);
+  const bt = (Array.isArray(balanceTotals) ? balanceTotals[0] : balanceTotals) as { customer_receivable?: number | string; supplier_payable?: number | string; inventory_value?: number | string; treasury_balance?: number | string } | null;
+  const customerReceivable = Number(bt?.customer_receivable ?? 0);
+  const supplierPayable = Number(bt?.supplier_payable ?? 0);
+  // avg cost is protected (0034): the value is 0 for roles without cost access, so it is only meaningful for financial viewers
+  const inventoryValue = Number(bt?.inventory_value ?? 0);
+  const treasuryBalance = Number(bt?.treasury_balance ?? 0);
 
   return (
     <DashboardHome

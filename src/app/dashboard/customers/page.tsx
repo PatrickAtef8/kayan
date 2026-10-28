@@ -7,7 +7,7 @@ import { ModernSelect } from "@/components/ui/select";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { createCustomer } from "./actions";
-import { getMembership, getRoleKey } from "@/lib/org-context";
+import { getMembership, getRoleKey, hasPermission, hasAnyPermission } from "@/lib/org-context";
 import { getOpeningBalances } from "@/lib/opening-balance";
 import { CustomersTable } from "./customers-table";
 
@@ -35,22 +35,6 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
   const searchParams = await props.searchParams;
   const supabase = await createClient();
   const membership = await getMembership();
-  let canViewBalance = false;
-  if (membership) {
-    const checks = await Promise.all(
-      ["view_financial", "customers.view_balance"].map((perm_key) => supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key }))
-    );
-    canViewBalance = checks.some((c) => !!c.data);
-  }
-  const canCollect = membership
-    ? (await Promise.all(
-        ["treasury.manage", "collections.record"].map((perm_key) => supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key }))
-      )).some((r) => !!r.data)
-    : false;
-  const canAssignRep = membership
-    ? !!(await supabase.rpc("has_permission", { target_org: membership.organization_id, perm_key: "sales.assign_any_rep" })).data
-    : false;
-  const isOwner = (await getRoleKey()) === "owner";   // only the owner creates customers and assigns them to reps
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
@@ -61,28 +45,36 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   if (q) customersQuery = customersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
 
-  const [{ data: customers, count }, { data: balances }, { data: reps }] = await Promise.all([
+  // Permission checks and the page's lists run in one batch (they used to be awaited one after the other).
+  const [{ data: customers, count }, { data: reps }, canViewBalance, canCollect, canAssignRep, roleKey] = await Promise.all([
     customersQuery,
-    supabase.from("customer_balances").select("customer_id, total_sales, total_collected, balance"),
     supabase.from("sales_representatives").select("id, name, user_id").eq("is_active", true).order("name"),
+    hasAnyPermission(["view_financial", "customers.view_balance"]),
+    hasAnyPermission(["treasury.manage", "collections.record"]),
+    hasPermission("sales.assign_any_rep"),
+    getRoleKey(),
+  ]);
+  const isOwner = roleKey === "owner";   // only the owner creates customers and assigns them to reps
+
+  // Balances and opening balances only for the (at most 20) customers on this page: the balance view aggregates
+  // every invoice, collection and return, so asking it for the whole customer list on each page view was wasteful.
+  const pageIds = (customers ?? []).map((c) => c.id as string);
+  const [{ data: balances }, openingMap, teamRes] = await Promise.all([
+    pageIds.length ? supabase.rpc("customer_balances_for", { p_ids: pageIds }) : Promise.resolve({ data: [] as CustomerBalance[] }),
+    // opening balances come from their own protected table (0032); empty for roles that may not read it
+    canViewBalance ? getOpeningBalances(supabase, "customer", pageIds) : Promise.resolve(new Map<string, number>()),
+    isOwner && membership ? supabase.rpc("list_org_members", { org_id: membership.organization_id }) : Promise.resolve({ data: null }),
   ]);
 
   // Show each rep as "name — email" (the email of the login linked to the record) so two reps with similar
   // names can never be confused when assigning a customer. Only the owner can list the team; others get names only.
   const emailByUser = new Map<string, string>();
-  if (isOwner && membership) {
-    const { data: team } = await supabase.rpc("list_org_members", { org_id: membership.organization_id });
-    for (const m of (team as { user_id: string; email: string }[] | null) ?? []) emailByUser.set(m.user_id, m.email);
-  }
+  for (const m of (teamRes.data as { user_id: string; email: string }[] | null) ?? []) emailByUser.set(m.user_id, m.email);
   const repOptions = (reps ?? []).map((r) => {
     const email = r.user_id ? emailByUser.get(r.user_id as string) : undefined;
     return { id: r.id as string, name: email ? `${r.name} — ${email}` : (r.name as string) };
   });
 
-  // opening balances come from their own protected table (0032); empty for roles that may not read it
-  const openingMap = canViewBalance
-    ? await getOpeningBalances(supabase, "customer", (customers ?? []).map((c) => c.id as string))
-    : new Map<string, number>();
   const customersView = (customers ?? []).map((c) => ({ ...c, opening_balance: openingMap.get(c.id as string) ?? 0 }));
 
   return (
