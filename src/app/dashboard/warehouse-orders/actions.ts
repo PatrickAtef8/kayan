@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 // Confirms dispatch (sales) or receiving (purchases). Runs as the caller: the database function checks the
 // warehouse.fulfill permission, refuses excess quantities and refuses a second confirmation of the same units.
@@ -37,7 +38,7 @@ export async function confirmFulfilment(input: {
     p_lines: lines,
     p_note: input.note.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/warehouse-orders");
   revalidatePath("/dashboard/inventory");

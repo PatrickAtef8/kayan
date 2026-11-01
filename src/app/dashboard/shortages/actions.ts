@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getOrg(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -29,7 +30,7 @@ export async function getSellableStock(warehouseId: string): Promise<{ error: st
   if (!orgId) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا", stock: {} };
   if (!warehouseId) return { error: null, stock: {} };
   const { data, error } = await supabase.rpc("get_sellable_stock", { org_id: orgId, p_warehouse_id: warehouseId });
-  if (error) return { error: error.message, stock: {} };
+  if (error) return { error: safeErrorMessage(error), stock: {} };
   const stock: Record<string, SellableRow> = {};
   for (const r of (data ?? []) as { product_id: string; tracked: boolean; available: number | string | null }[]) {
     stock[r.product_id] = { tracked: r.tracked, available: r.available == null ? null : Number(r.available) };
@@ -53,7 +54,7 @@ export async function reportStockShortage(input: { productId: string; warehouseI
     p_needed_qty: needed,
     p_note: input.note?.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   revalidatePath("/dashboard/shortages");
   revalidatePath("/dashboard");
   const r = data as { created: boolean; duplicate: boolean; status: string };
@@ -70,7 +71,7 @@ export async function setShortageStatus(input: { reportId: string; status: "new"
     p_status: input.status,
     p_owner_note: input.note?.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   revalidatePath("/dashboard/shortages");
   revalidatePath("/dashboard");
   return { error: null };

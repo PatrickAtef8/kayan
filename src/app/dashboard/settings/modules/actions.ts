@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { MODULES, type ModuleKey } from "@/lib/modules";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 export async function toggleModule(moduleKey: ModuleKey, enabled: boolean) {
   const supabase = await createClient();
@@ -27,7 +28,7 @@ export async function toggleModule(moduleKey: ModuleKey, enabled: boolean) {
   const { error } = await supabase
     .from("organization_modules")
     .upsert({ organization_id: membership.organization_id, module_key: moduleKey, enabled }, { onConflict: "organization_id,module_key" });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/modules");
   revalidatePath("/dashboard");

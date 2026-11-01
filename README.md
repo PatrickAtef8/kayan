@@ -81,6 +81,14 @@ sidebar's "الإعدادات" link was dead (404). Both are now built:
   per-organization roles (beyond the 5 system templates) were not built
   here; that was never in the MVP scope (§68), just an example in §14.
 
+## Pricing & payments
+
+Packages, prices and XPay checkout: see **`docs/BILLING.md`** (config in `src/config/pricing.config.ts`, migration `0060`).
+
+## Super Admin
+
+Platform back office at `/admin` (users, companies, package prices/limits): see **`docs/SUPER_ADMIN.md`** (migration `0061`).
+
 ## Database tests
 
 `supabase/tests/` is a from-scratch test suite that runs against a plain

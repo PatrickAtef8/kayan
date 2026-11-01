@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -42,7 +43,7 @@ export async function recordTreasuryMovement(input: {
     p_description: input.description,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/treasury");
   revalidatePath("/dashboard");
@@ -57,7 +58,7 @@ export async function setTreasuryOpeningBalance(amount: number) {
   if (!Number.isFinite(amount) || amount < 0) return { error: "أدخل مبلغًا صحيحًا (صفر أو أكثر)" };
 
   const { error } = await supabase.rpc("set_treasury_opening_balance", { org_id: membership.organization_id, p_amount: amount });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/treasury");
   revalidatePath("/dashboard");

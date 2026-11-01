@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Menu, Settings2, LogOut, Globe } from "lucide-react";
+import { Menu, Settings2, LogOut, Globe, ShieldCheck } from "lucide-react";
+import { AdminSwitcher } from "@/components/admin/admin-switcher";
 import { GlobalSearch } from "./global-search";
 import { NotificationsMenu } from "./notifications-menu";
 import type { AppNotification } from "@/lib/notifications";
 
 export function Topbar({
+  isAdmin = false,
   orgId,
   userId,
   userEmail,
@@ -17,6 +19,7 @@ export function Topbar({
   initialUnread,
   onMenuClick,
 }: {
+  isAdmin?: boolean;
   orgId: string;
   userId: string;
   userEmail?: string;
@@ -35,8 +38,9 @@ export function Topbar({
       </button>
       <GlobalSearch organizationId={orgId} />
       <div className="mr-auto flex shrink-0 items-center gap-2">
+        {isAdmin && <AdminSwitcher current="app" className="hidden md:inline-flex" />}
         <NotificationsMenu orgId={orgId} userId={userId} initialItems={initialNotifications} initialUnread={initialUnread} />
-        <AccountMenu initial={initial} userEmail={userEmail} orgName={orgName} roleName={roleName} />
+        <AccountMenu isAdmin={isAdmin} initial={initial} userEmail={userEmail} orgName={orgName} roleName={roleName} />
       </div>
     </header>
   );
@@ -54,7 +58,7 @@ function useClickOutside(onOutside: () => void) {
   return ref;
 }
 
-function AccountMenu({ initial, userEmail, orgName, roleName }: { initial: string; userEmail?: string; orgName?: string; roleName?: string }) {
+function AccountMenu({ isAdmin, initial, userEmail, orgName, roleName }: { isAdmin: boolean; initial: string; userEmail?: string; orgName?: string; roleName?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside(() => setOpen(false));
 
@@ -79,6 +83,12 @@ function AccountMenu({ initial, userEmail, orgName, roleName }: { initial: strin
               {roleName ? ` · ${roleName}` : ""}
             </p>
           </div>
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-charcoal hover:bg-paper md:hidden">
+              <ShieldCheck size={16} />
+              لوحة تحكم الأدمن
+            </Link>
+          )}
           <Link href="/dashboard/settings" onClick={() => setOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-charcoal/70 hover:bg-paper hover:text-charcoal">
             <Settings2 size={16} />
             الإعدادات

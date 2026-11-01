@@ -46,14 +46,9 @@ select t.eq((select total_sales  from dashboard_sales_totals(:'org_id', null)), 
 select t.eq((select total_profit from dashboard_sales_totals(:'org_id', null)), 0, 'but profit is withheld (= 0)');
 select t.ok((select bool_and(gross_profit is null) from dashboard_sales_rollups(:'org_id', null)), 'and rollups return NULL profit for a member without view_financial');
 
--- 3b. dashboard_sales_rollups equals report_sales_breakdown for the widgets it replaces.
-select t.eq((select count(*) from dashboard_sales_rollups(:'org_id', null) where kind = 'trend'), 2, 'trend: one row per invoice date');
-select t.ok(not exists (
-  (select group_key, invoices, net_sales, gross_profit from report_sales_breakdown(:'org_id', null, null, 'date', 1000, 0)
-   except select group_key, invoices, net_sales, gross_profit from dashboard_sales_rollups(:'org_id', null) where kind = 'trend')
-  union all
-  (select group_key, invoices, net_sales, gross_profit from dashboard_sales_rollups(:'org_id', null) where kind = 'trend'
-   except select group_key, invoices, net_sales, gross_profit from report_sales_breakdown(:'org_id', null, null, 'date', 1000, 0))), 'trend matches report_sales_breakdown exactly');
+-- 3b. dashboard_sales_rollups equals report_sales_breakdown for the widgets it replaces. (Since 0055/0056 the chart is
+--     dashboard_sales_trend — covered by 101 — so the rollups no longer carry 'trend' rows.)
+select t.eq((select count(*) from dashboard_sales_rollups(:'org_id', null) where kind = 'trend'), 0, 'the rollups no longer carry trend rows (the chart has its own function)');
 select t.ok(not exists (
   (select group_key, group_label, invoices, net_sales, gross_profit from report_sales_breakdown(:'org_id', null, null, 'customer', 5, 0)
    except select group_key, group_label, invoices, net_sales, gross_profit from dashboard_sales_rollups(:'org_id', null) where kind = 'customer')), 'top customers match report_sales_breakdown');

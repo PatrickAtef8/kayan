@@ -9,8 +9,15 @@ export default async function ModulesSettingsPage() {
   if (!orgId) return null;
   if (!canManage) return <NoSettingsAccess />;
 
-  const { data: rows } = await supabase.from("organization_modules").select("module_key, enabled").eq("organization_id", orgId);
+  const [{ data: rows }, { data: lic }] = await Promise.all([
+    supabase.from("organization_modules").select("module_key, enabled").eq("organization_id", orgId),
+    supabase.from("organization_licenses").select("entitlements").eq("organization_id", orgId).maybeSingle(),
+  ]);
   const enabledMap = new Map((rows ?? []).map((r) => [r.module_key, r.enabled]));
+  // The PACKAGE decides which optional modules can be switched on; the rest are shown locked. (The database enforces it too.)
+  const ent = lic?.entitlements as { modules?: unknown } | null | undefined;
+  const included = new Set<string>(Array.isArray(ent?.modules) ? (ent!.modules as unknown[]).filter((k): k is string => typeof k === "string") : []);
+  const hasLicense = !!lic;
 
   const toggleable = MODULES.filter((m) => !("core" in m && m.core));
   const core = MODULES.filter((m) => "core" in m && m.core);
@@ -29,10 +36,11 @@ export default async function ModulesSettingsPage() {
       </div>
 
       <div>
-        <p className="mb-3 text-xs font-medium text-charcoal/40">وحدات اختيارية</p>
+        <p className="mb-1 text-xs font-medium text-charcoal/40">وحدات اختيارية</p>
+        <p className="mb-3 text-xs leading-6 text-charcoal/45">الوحدات المتاحة تحددها الباقة التي اشتركت بها. الوحدات غير المشمولة تظهر مقفلة، ويمكنك ترقية الباقة بالتواصل مع فريق كيان.</p>
         <Card className="divide-y divide-borderSoft p-0">
           {toggleable.map((m) => (
-            <ModuleToggleRow key={m.key} moduleKey={m.key} label={m.label} initialEnabled={enabledMap.get(m.key) ?? false} />
+            <ModuleToggleRow key={m.key} moduleKey={m.key} label={m.label} initialEnabled={enabledMap.get(m.key) ?? false} locked={m.key === "offers" ? false : !hasLicense || !included.has(m.key)} />
           ))}
         </Card>
       </div>

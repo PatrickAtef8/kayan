@@ -77,7 +77,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             className="mt-9 flex flex-wrap items-center justify-end gap-3"
           >
             <PrimaryButton href={signedIn ? "/dashboard" : "/signup"} className="rounded-[4px] px-6 py-3.5">
-              {signedIn ? "افتح لوحة التحكم" : "ابدأ مجانًا"}
+              {signedIn ? "افتح لوحة التحكم" : "ابدأ الآن"}
               <ArrowLeft size={19} strokeWidth={2} />
             </PrimaryButton>
             <SecondaryLink href="#how" className="rounded-[4px] border border-borderSoft px-5 py-3.5 hover:border-charcoal">

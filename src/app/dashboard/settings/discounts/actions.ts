@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getOrg() {
   const supabase = await createClient();
@@ -30,7 +31,7 @@ export async function deleteTier(id: string) {
   const { supabase, orgId } = await getOrg();
   if (!orgId) return { error: "غير مصرح" };
   const { error } = await supabase.from("discount_tiers").delete().eq("id", id).eq("organization_id", orgId);
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   done();
   return { error: null };
 }
@@ -39,7 +40,7 @@ export async function toggleTier(id: string, isActive: boolean) {
   const { supabase, orgId } = await getOrg();
   if (!orgId) return { error: "غير مصرح" };
   const { error } = await supabase.from("discount_tiers").update({ is_active: isActive }).eq("id", id).eq("organization_id", orgId);
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   done();
   return { error: null };
 }

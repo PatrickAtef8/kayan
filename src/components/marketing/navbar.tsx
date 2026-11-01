@@ -20,9 +20,10 @@ export function Navbar({ signedIn = false }: { signedIn?: boolean }) {
           <span className="font-medium tracking-tight text-charcoal">كيان</span>
         </Link>
         <nav className="hidden items-center gap-8 text-xs text-charcoal/55 md:flex">
-          <a href="#features" className="transition-colors hover:text-charcoal">المميزات</a>
-          <a href="#roles" className="transition-colors hover:text-charcoal">الأدوار</a>
-          <a href="#how" className="transition-colors hover:text-charcoal">كيف يعمل</a>
+          <Link href="/#features" className="transition-colors hover:text-charcoal">المميزات</Link>
+          <Link href="/#roles" className="transition-colors hover:text-charcoal">الأدوار</Link>
+          <Link href="/#how" className="transition-colors hover:text-charcoal">كيف يعمل</Link>
+          <Link href="/pricing" className="transition-colors hover:text-charcoal">الأسعار</Link>
         </nav>
         <div className="flex items-center gap-4">
           {signedIn ? (

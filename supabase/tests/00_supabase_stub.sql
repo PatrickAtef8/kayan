@@ -5,10 +5,23 @@
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+  -- the role the Next.js server uses (SUPABASE_SERVICE_ROLE_KEY); the billing functions are executable by it alone
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
 end $$;
 
+-- Supabase gives every object that the `postgres` role creates in `public` to anon / authenticated / service_role by default
+-- (tables, functions, sequences). Reproducing that here is what lets the suite see a function or table that was never locked
+-- down: with bare PostgreSQL defaults such a leak is invisible (it only exists on a real project).
+alter default privileges for role postgres in schema public grant all on tables    to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public grant all on functions to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public grant all on sequences to anon, authenticated, service_role;
+
 create schema if not exists auth;
-create table if not exists auth.users (id uuid primary key default gen_random_uuid(), email text);
+create table if not exists auth.users (
+  id uuid primary key default gen_random_uuid(), email text, email_confirmed_at timestamptz,
+  -- the columns the admin back office reads (0068); the real Supabase table has all of them
+  created_at timestamptz not null default now(), last_sign_in_at timestamptz, banned_until timestamptz
+);
 
 create or replace function auth.uid() returns uuid language sql stable as $$
   select coalesce(

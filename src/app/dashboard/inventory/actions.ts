@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -40,7 +41,7 @@ export async function adjustStock(input: { product_id: string; warehouse_id: str
     p_expiry_date: input.quantity_delta > 0 && input.expiry_date ? input.expiry_date : null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/reports/inventory");
@@ -64,7 +65,7 @@ export async function getStockBatches(product_id: string, warehouse_id: string):
     .eq("product_id", product_id)
     .eq("warehouse_id", warehouse_id)
     .order("expiry_date", { ascending: true, nullsFirst: false });
-  if (error) return { batches: [], error: error.message };
+  if (error) return { batches: [], error: safeErrorMessage(error) };
   return { batches: (data ?? []).map((b) => ({ expiry_date: b.expiry_date as string | null, quantity: Number(b.quantity) })), error: null };
 }
 
@@ -85,7 +86,7 @@ export async function disposeBatch(input: { batch_id: string; quantity: number; 
     p_quantity: input.quantity,
     p_reason: input.reason,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/reports/inventory");
@@ -121,7 +122,7 @@ export async function createStockTransfer(input: {
     p_notes: input.notes || null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/inventory");
   revalidatePath("/dashboard/reports/inventory");

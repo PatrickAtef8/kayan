@@ -27,5 +27,7 @@ export const ENTITY_OPTIONS = [
   { value: "user", label: "مستخدم" },
   { value: "module", label: "وحدة" },
   { value: "organization", label: "المؤسسة" },
+  { value: "license", label: "ترخيص الباقة" },
+  { value: "billing_order", label: "طلب دفع" },
 ];
 

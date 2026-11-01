@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { translateDbError } from "@/lib/db-errors";
+import { translateDbError, safeErrorMessage } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
@@ -145,7 +145,7 @@ export async function recordCustomerCollection(input: {
     p_notes: input.notes,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard/sales");

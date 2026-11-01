@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -62,7 +63,7 @@ export async function createPurchaseInvoice(input: {
   // (A purchase that does not yet cover the need, e.g. after a partial receipt, never asks.)
   if (input.shortage_report_id && !input.confirm_additional) {
     const { data: check, error: checkError } = await supabase.rpc("shortage_purchase_precheck", { org_id: membership.organization_id, p_report_id: input.shortage_report_id });
-    if (checkError) return { error: checkError.message };
+    if (checkError) return { error: safeErrorMessage(checkError) };
     const c = check as { covered?: boolean; incoming?: number; available?: number; needed?: number } | null;
     if (c?.covered) {
       return { error: `يوجد بالفعل فاتورة شراء قائمة لهذا البلاغ (الكمية في الطريق: ${c.incoming}) تغطي العجز — المتاح ${c.available} + في الطريق ${c.incoming} من المطلوب ${c.needed}. لم تُحفظ فاتورة جديدة. لو تحتاج فاتورة إضافية فعلًا فعّل خانة التأكيد ثم احفظ.` };
@@ -100,7 +101,7 @@ export async function createPurchaseInvoice(input: {
     linkedShortage = true;
   } else {
     const { error } = await supabase.rpc("create_purchase_invoice", common);
-    if (error) return { error: error.message };
+    if (error) return { error: safeErrorMessage(error) };
   }
 
   revalidatePath("/dashboard/purchases");
@@ -152,7 +153,7 @@ export async function recordPurchaseInvoicePayment(input: {
     p_reference: "",
     p_notes: input.notes,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/purchases");
   revalidatePath("/dashboard/suppliers");

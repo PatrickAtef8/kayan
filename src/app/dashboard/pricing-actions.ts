@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 export type PricingPreview = {
   gross: number;
@@ -62,6 +63,6 @@ export async function previewPricing(input: PricingPreviewInput): Promise<{ prev
     p_tax: input.tax || 0,
     p_bonus_items: input.bonus_items.filter((b) => b.product_id && b.quantity > 0),
   });
-  if (error) return { preview: null, error: error.message };
+  if (error) return { preview: null, error: safeErrorMessage(error) };
   return { preview: data as PricingPreview, error: null };
 }

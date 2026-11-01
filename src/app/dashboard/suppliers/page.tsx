@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { searchEntityPage, idsOrNone, sortByIds, fallbackOrFilter } from "@/lib/entity-search";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -6,7 +7,7 @@ import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { SearchBox } from "@/components/ui/search-box";
 import { Pagination } from "@/components/ui/pagination";
 import { createSupplier } from "./actions";
-import { hasAnyPermission } from "@/lib/org-context";
+import { getMembership, hasAnyPermission } from "@/lib/org-context";
 import { getOpeningBalances } from "@/lib/opening-balance";
 import { SuppliersTable } from "./suppliers-table";
 
@@ -21,17 +22,25 @@ export default async function SuppliersPage(props: { searchParams: Promise<{ q?:
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
+  const membership = await getMembership();
+  const search = q && membership ? await searchEntityPage(supabase, membership.organization_id as string, "suppliers", q, page, PAGE_SIZE) : null;
   let suppliersQuery = supabase
     .from("suppliers")
-    .select("id, name, phone, payment_terms_days", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  if (q) suppliersQuery = suppliersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
+    .select("id, name, phone, payment_terms_days", { count: "exact" });
+  if (search) suppliersQuery = suppliersQuery.in("id", idsOrNone(search.ids));
+  else {
+    suppliersQuery = suppliersQuery.order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    const fallback = q ? fallbackOrFilter(["name", "phone"], q) : null;
+    if (fallback) suppliersQuery = suppliersQuery.or(fallback);
+  }
 
-  const [{ data: suppliers, count }, canViewBalance] = await Promise.all([
+  const [{ data: suppliersRaw, count: countRaw }, canViewBalance] = await Promise.all([
     suppliersQuery,
     hasAnyPermission(["view_financial", "suppliers.view_balance"]),
   ]);
+
+  const suppliers = search ? sortByIds(suppliersRaw ?? [], search.ids) : suppliersRaw;
+  const count = search ? search.total : countRaw;
 
   // Balances only for the (at most 20) suppliers on this page, not for every supplier of the organization (0059).
   const pageIds = (suppliers ?? []).map((s) => s.id as string);

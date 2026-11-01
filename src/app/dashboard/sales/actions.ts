@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -70,7 +71,7 @@ export async function createSalesInvoice(input: {
     p_bonus_items: input.bonus_items.filter((b) => b.product_id && b.quantity > 0),
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/sales");
   revalidatePath("/dashboard/customers");
@@ -120,7 +121,7 @@ export async function recordInvoicePayment(input: {
     p_reference: "",
     p_notes: input.notes,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/sales");
   revalidatePath("/dashboard/customers");

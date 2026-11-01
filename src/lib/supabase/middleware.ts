@@ -7,6 +7,10 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 // users away from the dashboard. This is the FIRST layer of protection;
 // the real, unbypassable layer is Postgres RLS (0001_foundation.sql).
 export async function updateSession(request: NextRequest) {
+  // The dashboard layout (the payment gate) must know which page is being opened so that an unpaid owner can still reach
+  // the billing pages. A layout cannot read the URL by itself, so it is handed over here. It is always SET (never
+  // appended), so a value sent by a browser is overwritten and cannot be used to skip the gate.
+  request.headers.set("x-kayan-path", request.nextUrl.pathname);
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -34,7 +38,7 @@ export async function updateSession(request: NextRequest) {
   const { data: claimsData } = await supabase.auth.getClaims();
   const user = claimsData?.claims?.sub ? claimsData.claims : null;
 
-  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/checkout");
 
   if (!user && isDashboardRoute) {
     const url = request.nextUrl.clone();

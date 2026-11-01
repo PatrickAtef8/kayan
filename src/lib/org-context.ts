@@ -43,6 +43,10 @@ export const getMembership = cache(async () => {
   return data;
 });
 
+// The company's subscription state (my_org_access). The dashboard layout, the billing page and /checkout all need it for the same
+// request: one call, shared (React `cache`, this request only — never across requests or users).
+export const getOrgAccess = cache(async (orgId: string) => (await getSupabase()).rpc("my_org_access", { target_org: orgId }));
+
 export function roleNameOf(membership: { roles: unknown } | null): string | undefined {
   const roles = membership?.roles as { name: string } | { name: string }[] | null | undefined;
   return Array.isArray(roles) ? roles[0]?.name : roles?.name;

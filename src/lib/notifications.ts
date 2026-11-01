@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/money";
+import { formatMoney } from "./money.ts";
 // Notifications (migration 0046).  Pure helpers only — no React, no Supabase — so they can be unit tested
 // (`npm run test:notifications`) and shared by the server layout and the client bell.
 //

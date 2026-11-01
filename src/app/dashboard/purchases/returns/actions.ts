@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -30,7 +31,7 @@ export async function searchPurchaseInvoices(query: string): Promise<{ value: st
   if (!membership) return [];
   const orgId = membership.organization_id as string;
   // strip characters that have meaning inside a PostgREST filter expression
-  const q = query.replace(/[%,()*\\]/g, " ").trim().slice(0, 60);
+  const q = query.replace(/[%_,()*"\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
 
   let request = supabase
     .from("purchase_invoices")
@@ -78,7 +79,7 @@ export async function getReturnablePurchaseItems(purchaseInvoiceId: string): Pro
     p_purchase_invoice_id: purchaseInvoiceId,
   });
 
-  if (error) return { items: [], error: error.message };
+  if (error) return { items: [], error: safeErrorMessage(error) };
   return { items: (data as ReturnablePurchaseItem[]) ?? [], error: null };
 }
 
@@ -107,7 +108,7 @@ export async function createPurchaseReturn(input: {
     p_notes: input.notes || null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/purchases");
   revalidatePath("/dashboard/purchases/returns");

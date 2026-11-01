@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteUrl, explainInviteError } from "@/lib/site-url";
-import { translateDbError } from "@/lib/db-errors";
+import { translateDbError, safeErrorMessage } from "@/lib/db-errors";
+import { rateLimit, RATE_POLICIES, tooManyRequestsMessage } from "@/lib/rate-limit.server";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -38,6 +39,11 @@ export async function addTeamMember(email: string, roleId: string, name: string)
   if (!trimmedEmail || !roleId) return { error: "البريد الإلكتروني والدور مطلوبان" };
   if (!trimmedName) return { error: "اسم الشخص مطلوب" };
   if (trimmedName.length > 100) return { error: "الاسم طويل جدًا (الحد الأقصى ١٠٠ حرف)" };
+  if (trimmedEmail.length > 254) return { error: "البريد الإلكتروني غير صالح" };
+
+  // an invitation can send a real e-mail to any address: cap how many one company can trigger per hour
+  const limit = await rateLimit(RATE_POLICIES.teamInvite, membership.organization_id);
+  if (!limit.allowed) return { error: tooManyRequestsMessage(limit.retryAfter) };
 
   const { data, error } = await supabase.rpc("add_team_member", {
     org_id: membership.organization_id,
@@ -45,7 +51,7 @@ export async function addTeamMember(email: string, roleId: string, name: string)
     p_role_id: roleId,
     p_name: trimmedName,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   const status = (data as { status: string } | null)?.status;
 
@@ -84,7 +90,7 @@ export async function addTeamMember(email: string, roleId: string, name: string)
     p_role_id: roleId,
     p_name: trimmedName,
   });
-  if (completeError) return { error: completeError.message };
+  if (completeError) return { error: safeErrorMessage(completeError) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null, mode: "emailed" };
@@ -96,7 +102,7 @@ export async function updateMemberRole(userId: string, roleId: string) {
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
   const { error } = await supabase.from("organization_users").update({ role_id: roleId }).eq("organization_id", membership.organization_id).eq("user_id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };
@@ -112,7 +118,7 @@ export async function updateMemberName(userId: string, name: string): Promise<{ 
   if (trimmed.length > 100) return { error: "الاسم طويل جدًا (الحد الأقصى ١٠٠ حرف)" };
 
   const { error } = await supabase.rpc("update_member_name", { org_id: membership.organization_id, p_user_id: userId, p_name: trimmed });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };
@@ -124,7 +130,7 @@ export async function removeMember(userId: string) {
   if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
 
   const { error } = await supabase.from("organization_users").delete().eq("organization_id", membership.organization_id).eq("user_id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };

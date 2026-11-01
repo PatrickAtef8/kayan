@@ -13,7 +13,7 @@ export function FinalCta({ signedIn = false }: { signedIn?: boolean }) {
           <p className="mb-5 text-xs tracking-[0.16em] text-ivory/60" dir="ltr">٠٦ / خطوتك التالية</p>
           <h2 className="text-4xl font-medium leading-tight tracking-[-0.04em] sm:text-6xl">جاهز تدير شركتك بشكل مختلف؟</h2>
           <p className="mt-5 text-sm text-ivory/65">بدون بطاقة ائتمان، وبدون التزام. ابدأ من الرقم الذي يهمك اليوم.</p>
-          <div className="mt-9"><PrimaryButton href={signedIn ? "/dashboard" : "/signup"} className="rounded-[4px] bg-ivory text-charcoal hover:bg-charcoal hover:text-ivory">{signedIn ? "ارجع إلى لوحة التحكم" : "ابدأ مجانًا الآن"} <ArrowLeft size={19} strokeWidth={2} /></PrimaryButton></div>
+          <div className="mt-9"><PrimaryButton href={signedIn ? "/dashboard" : "/signup"} className="rounded-[4px] bg-ivory text-charcoal hover:bg-charcoal hover:text-ivory">{signedIn ? "ارجع إلى لوحة التحكم" : "ابدأ الآن"} <ArrowLeft size={19} strokeWidth={2} /></PrimaryButton></div>
         </div>
         <div className="absolute bottom-7 left-8 hidden text-[0.625rem] tracking-[0.16em] text-ivory/45 sm:block" dir="ltr">كيان / بساطة مدروسة</div>
       </m.div>

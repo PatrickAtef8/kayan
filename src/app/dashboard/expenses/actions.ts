@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -83,7 +84,7 @@ export async function createExpense(input: ExpenseInput) {
     p_expense_type: expenseType,
     p_sales_rep_id: repId,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/expenses");
   revalidatePath("/dashboard/reports", "layout");

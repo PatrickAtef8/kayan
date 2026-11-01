@@ -39,6 +39,8 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
   const [results, setResults] = useState<ResultRow[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const requestId = useRef(0);   // only the LATEST request may write its answer (a slow reply to «ab» must not replace the one for «abc»)
 
   useEffect(() => {
     function onOutside(event: MouseEvent) {
@@ -59,13 +61,23 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
 
   useEffect(() => {
     if (!searchable) return;
+    const id = ++requestId.current;
     const handle = setTimeout(async () => {
-      // Loaded on first use so the Supabase browser client (~65 kB gzipped)
-      // is not part of every dashboard page's initial JavaScript.
-      const { createClient } = await import("@/lib/supabase/client");
-      const { data } = await createClient().rpc("global_search", { org_id: organizationId, p_query: query, p_limit: 6 });
-      setResults((data as ResultRow[]) ?? []);
-      setLoading(false);
+      try {
+        // Loaded on first use so the Supabase browser client (~65 kB gzipped)
+        // is not part of every dashboard page's initial JavaScript.
+        const { createClient } = await import("@/lib/supabase/client");
+        const { data, error } = await createClient().rpc("global_search", { org_id: organizationId, p_query: query, p_limit: 6 });
+        if (id !== requestId.current) return;
+        setFailed(!!error);
+        setResults(error ? [] : ((data as ResultRow[]) ?? []));
+      } catch {
+        if (id !== requestId.current) return;
+        setFailed(true);
+        setResults([]);
+      } finally {
+        if (id === requestId.current) setLoading(false);
+      }
     }, 250);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,20 +102,33 @@ export function GlobalSearch({ organizationId }: { organizationId: string }) {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setOpen(false);
+            else if (e.key === "Enter" && shownResults.length > 0 && !loading) go(shownResults[0]);   // Enter opens the best match
+          }}
+          type="search"
+          enterKeyHint="search"
+          aria-label="بحث عام"
+          role="combobox"
+          aria-expanded={open && searchable}
+          aria-autocomplete="list"
+          aria-controls="global-search-results"
           placeholder="بحث عن عميل، مورد، منتج، أو رقم فاتورة..."
-          className="w-full min-w-0 truncate bg-transparent text-sm text-charcoal outline-none placeholder:text-charcoal/35"
+          className="w-full min-w-0 truncate bg-transparent text-sm text-charcoal outline-none placeholder:text-charcoal/35 [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
-          <button onClick={() => setQuery("")} className="shrink-0 text-charcoal/30 hover:text-charcoal">
+          <button type="button" aria-label="مسح البحث" onClick={() => setQuery("")} className="shrink-0 text-charcoal/30 hover:text-charcoal">
             <X size={14} strokeWidth={2} />
           </button>
         )}
       </div>
 
       {open && query.trim().length >= 2 && (
-        <div className="fixed inset-x-3 top-[4.25rem] z-30 overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-full sm:min-w-[20rem]">
+        <div id="global-search-results" role="listbox" className="fixed inset-x-3 top-[4.25rem] z-30 overflow-hidden rounded-xl border border-borderSoft bg-white shadow-[0_18px_40px_rgba(28,28,26,0.12)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-full sm:min-w-[20rem]">
           {loading ? (
             <div className="px-4 py-6 text-center text-xs text-charcoal/40">جارٍ البحث...</div>
+          ) : failed ? (
+            <div className="px-4 py-6 text-center text-xs text-rose">تعذّر البحث الآن. حاول مرة أخرى.</div>
           ) : shownResults.length === 0 ? (
             <div className="px-4 py-6 text-center text-xs text-charcoal/40">لا توجد نتائج لـ &quot;{query}&quot;</div>
           ) : (

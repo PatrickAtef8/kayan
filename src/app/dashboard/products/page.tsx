@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getRoleKey, hasAnyPermission } from "@/lib/org-context";
+import { getMembership, getRoleKey, hasAnyPermission } from "@/lib/org-context";
 import { getProductCosts } from "@/lib/costs";
+import { searchEntityPage, idsOrNone, sortByIds, fallbackOrFilter } from "@/lib/entity-search";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -33,15 +34,20 @@ export default async function ProductsPage(props: { searchParams: Promise<{ q?: 
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
+  const membership = await getMembership();
+  const search = q && membership ? await searchEntityPage(supabase, membership.organization_id as string, "products", q, page, PAGE_SIZE) : null;
   let productsQuery = supabase
     .from("products")
-    .select("id, name, sku, barcode, reorder_level, units_per_carton, unit, category_id, product_categories(name), product_prices(selling_price, wholesale_price, distributor_price)", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  if (q) productsQuery = productsQuery.or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%`);
+    .select("id, name, sku, barcode, reorder_level, units_per_carton, unit, category_id, product_categories(name), product_prices(selling_price, wholesale_price, distributor_price)", { count: "exact" });
+  if (search) productsQuery = productsQuery.in("id", idsOrNone(search.ids));
+  else {
+    productsQuery = productsQuery.order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    const fallback = q ? fallbackOrFilter(["name", "sku", "barcode"], q) : null;
+    if (fallback) productsQuery = productsQuery.or(fallback);
+  }
 
   // One batch: the page's queries and the permission checks (they used to be awaited one after the other)
-  const [{ data: products, count }, { data: categories }, roleKey, viewCost, editCost] = await Promise.all([
+  const [{ data: productsRaw, count: countRaw }, { data: categories }, roleKey, viewCost, editCost] = await Promise.all([
     productsQuery,
     supabase.from("product_categories").select("id, name").order("name"),
     getRoleKey(),
@@ -49,6 +55,8 @@ export default async function ProductsPage(props: { searchParams: Promise<{ q?: 
     hasAnyPermission(["view_financial", "purchases.approve", "manage_settings"]),
   ]);
   const isOwner = roleKey === "owner";   // the storekeeper reads the catalogue: no prices, no editing
+  const products = search ? sortByIds(productsRaw ?? [], search.ids) : productsRaw;
+  const count = search ? search.total : countRaw;
 
   // cost comes from its own protected table (0034); empty for roles that may not read it (only this page's ≤20 products)
   const costMap = viewCost ? await getProductCosts(supabase, (products ?? []).map((p) => p.id as string)) : new Map<string, number>();

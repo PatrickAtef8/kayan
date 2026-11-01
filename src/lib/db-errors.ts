@@ -38,5 +38,27 @@ export function translateDbError(error: PostgrestErrorLike, table?: string): str
     return "ليس لديك صلاحية تنفيذ هذا الإجراء.";
   }
 
-  return error.message || "حدث خطأ غير متوقع";
+  return safeErrorMessage(error);
+}
+
+const ARABIC = /[\u0600-\u06FF]/;
+
+/**
+ * What a person may be shown for a database error.
+ * The RPCs raise their business messages in Arabic on purpose ("المخزون غير كافٍ …"): those pass through untouched. Anything else —
+ * an English Postgres message, a constraint / column / table name, a SQLSTATE detail — is internal and is replaced by a generic
+ * sentence; the original goes to the server log so it can still be diagnosed.
+ */
+export function safeErrorMessage(error: PostgrestErrorLike): string {
+  const msg = error?.message?.trim() ?? "";
+  if (msg && ARABIC.test(msg)) return msg;
+  switch (error?.code) {
+    case "42501": case "PGRST301": return "ليس لديك صلاحية تنفيذ هذا الإجراء.";
+    case "23505": return "يوجد سجل آخر بنفس البيانات بالفعل.";
+    case "23503": return "لا يمكن تنفيذ العملية لوجود بيانات مرتبطة بهذا السجل.";
+    case "23502": case "23514": case "22P02": case "22003": case "22001": return "البيانات المُدخلة غير صالحة. راجعها وحاول مرة أخرى.";
+  }
+  if (/row-level security/i.test(msg)) return "ليس لديك صلاحية تنفيذ هذا الإجراء.";
+  if (msg) console.error("database error (hidden from the user):", { code: error?.code, message: msg });
+  return "حدث خطأ غير متوقع. حاول مرة أخرى.";
 }

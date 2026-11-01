@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -31,7 +32,7 @@ export async function createCustomRole(name: string, permissionKeys: string[]) {
     p_name: name.trim(),
     p_permission_keys: permissionKeys,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };
@@ -48,7 +49,7 @@ export async function updateCustomRole(roleId: string, name: string, permissionK
     p_name: name.trim(),
     p_permission_keys: permissionKeys,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };
@@ -63,7 +64,7 @@ export async function deleteCustomRole(roleId: string) {
     org_id: membership.organization_id,
     p_role_id: roleId,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
 
   revalidatePath("/dashboard/settings/team");
   return { error: null };

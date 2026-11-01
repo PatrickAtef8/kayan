@@ -112,3 +112,10 @@ present), image optimization (the app serves no images).
 - `EXPLAIN (ANALYZE, BUFFERS)` of `customer_balances` / `supplier_balances` (still used by reports) and
   `dashboard_balance_totals` on the 100k-invoice seed; these views still aggregate the whole organization when asked for all parties.
 - Re-check `getClaims()` after enabling asymmetric signing keys: layout TTFB should drop by one Auth round trip.
+
+---
+
+# Round 3: admin area, billing and checkout
+See `CHANGES-package-controls-modules.md` ("Round 4") for the list. Rule going forward: any new page under `/admin`, `/checkout` or
+`/dashboard/billing` gets (1) one `Promise.all` for its reads, (2) a sibling `loading.tsx`, (3) `requireSuperAdminPage()` / `getOrgAccess()` instead of
+its own auth or `my_org_access` call. Not measured on a real database (no Postgres in the sandbox): the gains are round trips removed, not timings.

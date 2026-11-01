@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeErrorMessage } from "@/lib/db-errors";
 
 // Every rule (permissions, staleness, batch-specific adjustments, costing, audit) lives in the
 // database functions (0039). These actions only forward the call and surface the Arabic message.
@@ -43,7 +44,7 @@ export async function startStocktake(input: { warehouse_id: string; notes: strin
     p_warehouse_id: input.warehouse_id,
     p_notes: input.notes || null,
   });
-  if (error) return { error: error.message, id: null };
+  if (error) return { error: safeErrorMessage(error), id: null };
   refresh();
   return { error: null, id: data as string };
 }
@@ -56,7 +57,7 @@ export async function saveStocktakeCounts(input: { stocktake_id: string; counts:
     p_stocktake_id: input.stocktake_id,
     p_counts: input.counts,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   refresh(input.stocktake_id);
   return { error: null };
 }
@@ -73,7 +74,7 @@ export async function addStocktakeFound(input: { stocktake_id: string; product_i
     p_expiry: input.expiry_date || null,
     p_counted: input.quantity,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   refresh(input.stocktake_id);
   return { error: null };
 }
@@ -82,7 +83,7 @@ export async function removeStocktakeFound(input: { stocktake_id: string; line_i
   const ctx = await context();
   if (!ctx) return NOT_SIGNED_IN;
   const { error } = await ctx.supabase.rpc("remove_stocktake_found", { org_id: ctx.orgId, p_line_id: input.line_id });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   refresh(input.stocktake_id);
   return { error: null };
 }
@@ -91,7 +92,7 @@ export async function reconcileStocktake(stocktakeId: string) {
   const ctx = await context();
   if (!ctx) return NOT_SIGNED_IN;
   const { error } = await ctx.supabase.rpc("reconcile_stocktake", { org_id: ctx.orgId, p_stocktake_id: stocktakeId });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   refresh(stocktakeId);
   return { error: null };
 }
@@ -100,7 +101,7 @@ export async function applyStocktake(stocktakeId: string) {
   const ctx = await context();
   if (!ctx) return { ...NOT_SIGNED_IN, applied: 0 };
   const { data, error } = await ctx.supabase.rpc("apply_stocktake", { org_id: ctx.orgId, p_stocktake_id: stocktakeId });
-  if (error) return { error: error.message, applied: 0 };
+  if (error) return { error: safeErrorMessage(error), applied: 0 };
   refresh(stocktakeId);
   return { error: null, applied: Number(data) };
 }
@@ -109,7 +110,7 @@ export async function cancelStocktake(stocktakeId: string) {
   const ctx = await context();
   if (!ctx) return NOT_SIGNED_IN;
   const { error } = await ctx.supabase.rpc("cancel_stocktake", { org_id: ctx.orgId, p_stocktake_id: stocktakeId });
-  if (error) return { error: error.message };
+  if (error) return { error: safeErrorMessage(error) };
   refresh(stocktakeId);
   return { error: null };
 }

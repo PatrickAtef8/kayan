@@ -7,9 +7,11 @@ import { ArrowLeft, Lock, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth-errors";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { checkoutPath, signupPath, type PlanSelection } from "@/lib/billing/selection";
 import { AuthAlert, AuthField, AuthInput, PasswordInput, SubmitButton } from "@/components/auth/auth-fields";
 
-export function LoginForm({ confirmed = false }: { confirmed?: boolean }) {
+// `selection` was validated on the server (see page.tsx); /checkout validates and prices it again.
+export function LoginForm({ confirmed = false, selection = null }: { confirmed?: boolean; selection?: PlanSelection | null }) {
   const router = useRouter();
   const supabase = createClient();
   const [email, setEmail] = useState("");
@@ -28,7 +30,7 @@ export function LoginForm({ confirmed = false }: { confirmed?: boolean }) {
       setError(/invalid login|invalid_credentials|credentials/i.test(`${error.message} ${(error as { code?: string }).code ?? ""}`) ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : translateAuthError(error.message, (error as { code?: string }).code));
       return;
     }
-    router.push("/dashboard");
+    router.push(selection ? checkoutPath(selection) : "/dashboard");
     router.refresh();
   }
 
@@ -63,7 +65,7 @@ export function LoginForm({ confirmed = false }: { confirmed?: boolean }) {
 
       <div className="my-7 flex items-center gap-3 text-xs text-charcoal/30"><span className="h-px flex-1 bg-borderSoft" />جديد على كيان؟<span className="h-px flex-1 bg-borderSoft" /></div>
 
-      <Link href="/signup" className="flex w-full items-center justify-center rounded-xl border border-borderSoft bg-white px-4 py-3 text-[0.9rem] font-medium text-charcoal transition-all hover:border-sage hover:bg-sageSoft/40">
+      <Link href={signupPath(selection)} className="flex w-full items-center justify-center rounded-xl border border-borderSoft bg-white px-4 py-3 text-[0.9rem] font-medium text-charcoal transition-all hover:border-sage hover:bg-sageSoft/40">
         إنشاء حساب شركة جديد
       </Link>
     </AuthShell>

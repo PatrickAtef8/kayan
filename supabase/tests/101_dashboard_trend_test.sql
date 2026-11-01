@@ -42,21 +42,21 @@ select t.eq((select total_sales  from dashboard_sales_totals(:'org_id', :'m0'::d
 select t.eq((select total_profit from dashboard_sales_totals(:'org_id', :'m0'::date)), 780,  'card: net profit this month = 780');
 
 -- 2. The chart adds up to the cards (daily buckets, this month)
-select t.eq((select sum(net_sales)  from dashboard_sales_trend(:'org_id', :'m0'::date, 'day')), (select total_sales  from dashboard_sales_totals(:'org_id', :'m0'::date)), 'daily bars sum to the net-sales card');
-select t.eq((select sum(net_profit) from dashboard_sales_trend(:'org_id', :'m0'::date, 'day')), (select total_profit from dashboard_sales_totals(:'org_id', :'m0'::date)), 'daily profit sums to the net-profit card');
+select t.eq((select sum(net_sales)  from dashboard_sales_trend(:'org_id', :'m0'::date, null, 'day')), (select total_sales  from dashboard_sales_totals(:'org_id', :'m0'::date)), 'daily bars sum to the net-sales card');
+select t.eq((select sum(net_profit) from dashboard_sales_trend(:'org_id', :'m0'::date, null, 'day')), (select total_profit from dashboard_sales_totals(:'org_id', :'m0'::date)), 'daily profit sums to the net-profit card');
 
 -- 3. The return lands on the day it was made (this month), not on last month's invoice date
-select t.eq((select net_sales from dashboard_sales_trend(:'org_id', :'m0'::date, 'day') where bucket_date = :'m0'::date), 1800, 'the return is netted on its own date');
+select t.eq((select net_sales from dashboard_sales_trend(:'org_id', :'m0'::date, null, 'day') where bucket_date = :'m0'::date), 1800, 'the return is netted on its own date');
 
 -- 4. Zero-filled: one row per day from the 1st to today
-select t.eq((select count(*) from dashboard_sales_trend(:'org_id', :'m0'::date, 'day')), (:'d0'::date - :'m0'::date + 1)::bigint, 'one row per day, empty days included');
+select t.eq((select count(*) from dashboard_sales_trend(:'org_id', :'m0'::date, null, 'day')), (:'d0'::date - :'m0'::date + 1)::bigint, 'one row per day, empty days included');
 
 -- 5. All time, monthly buckets, still adds up
-select t.eq((select sum(net_sales)  from dashboard_sales_trend(:'org_id', null, 'month')), (select total_sales  from dashboard_sales_totals(:'org_id', null)), 'all-time monthly sales sum to the card');
-select t.eq((select sum(net_profit) from dashboard_sales_trend(:'org_id', null, 'month')), (select total_profit from dashboard_sales_totals(:'org_id', null)), 'all-time monthly profit sums to the card');
+select t.eq((select sum(net_sales)  from dashboard_sales_trend(:'org_id', null, null, 'month')), (select total_sales  from dashboard_sales_totals(:'org_id', null)), 'all-time monthly sales sum to the card');
+select t.eq((select sum(net_profit) from dashboard_sales_trend(:'org_id', null, null, 'month')), (select total_profit from dashboard_sales_totals(:'org_id', null)), 'all-time monthly profit sums to the card');
 
 -- 6. Bad bucket is refused
-select t.throws(format($q$select * from dashboard_sales_trend(%L, null, 'week')$q$, :'org_id'), 'تجميع غير مدعوم', 'only day / month buckets');
+select t.throws(format($q$select * from dashboard_sales_trend(%L, null, null, 'week')$q$, :'org_id'), 'تجميع غير مدعوم', 'only day / month buckets');
 
 -- ===== 0056: a SPECIFIC past month (closed range p_from .. p_to) =====
 -- LAST month = :dprev's month. S1 (1000 sales, cost 400) was invoiced then; the 200/80 return was made THIS month.
@@ -80,4 +80,4 @@ select t.eq((select net_sales from dashboard_sales_rollups(:'org_id', :'m0'::dat
 select (extract(year from :'dprev'::date)::int || '-01-01')::date as y0 \gset
 select (extract(year from :'dprev'::date)::int || '-12-31')::date as y1 \gset
 select t.eq((select count(*) from dashboard_sales_trend(:'org_id', :'y0'::date, :'y1'::date, 'month')), 12::bigint, 'past year: 12 monthly buckets');
-select t.eq((select max(bucket_date) from dashboard_sales_trend(:'org_id', :'y0'::date, :'y1'::date, 'month')), (extract(year from :'dprev'::date)::int || '-12-01')::date, 'past year: axis ends in December, not today');
+select t.eq_text((select max(bucket_date)::text from dashboard_sales_trend(:'org_id', :'y0'::date, :'y1'::date, 'month')), ((extract(year from :'dprev'::date)::int || '-12-01')::date)::text, 'past year: axis ends in December, not today');

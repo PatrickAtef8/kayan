@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { searchEntityPage, idsOrNone, sortByIds, fallbackOrFilter } from "@/lib/entity-search";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -38,15 +39,21 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
   const page = Math.max(1, Number(searchParams.page) || 1);
   const q = searchParams.q?.trim() ?? "";
 
+  // A search asks the database for ONE page of matching ids (Arabic spellings treated alike, indexed: migration 0069); the page then
+  // reads those few rows with its usual joins. Without a search the list is the same newest-first, ranged query as always.
+  const search = q && membership ? await searchEntityPage(supabase, membership.organization_id as string, "customers", q, page, PAGE_SIZE) : null;
   let customersQuery = supabase
     .from("customers")
-    .select("id, name, phone, price_tier, credit_status, sales_rep_id, sales_representatives(name)", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  if (q) customersQuery = customersQuery.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
+    .select("id, name, phone, price_tier, credit_status, sales_rep_id, sales_representatives(name)", { count: "exact" });
+  if (search) customersQuery = customersQuery.in("id", idsOrNone(search.ids));
+  else {
+    customersQuery = customersQuery.order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    const fallback = q ? fallbackOrFilter(["name", "phone"], q) : null;   // only when the search function is unavailable
+    if (fallback) customersQuery = customersQuery.or(fallback);
+  }
 
   // Permission checks and the page's lists run in one batch (they used to be awaited one after the other).
-  const [{ data: customers, count }, { data: reps }, canViewBalance, canCollect, canAssignRep, roleKey] = await Promise.all([
+  const [{ data: customersRaw, count: countRaw }, { data: reps }, canViewBalance, canCollect, canAssignRep, roleKey] = await Promise.all([
     customersQuery,
     supabase.from("sales_representatives").select("id, name, user_id").eq("is_active", true).order("name"),
     hasAnyPermission(["view_financial", "customers.view_balance"]),
@@ -55,6 +62,8 @@ export default async function CustomersPage(props: { searchParams: Promise<{ q?:
     getRoleKey(),
   ]);
   const isOwner = roleKey === "owner";   // only the owner creates customers and assigns them to reps
+  const customers = search ? sortByIds(customersRaw ?? [], search.ids) : customersRaw;
+  const count = search ? search.total : countRaw;
 
   // Balances and opening balances only for the (at most 20) customers on this page: the balance view aggregates
   // every invoice, collection and return, so asking it for the whole customer list on each page view was wasteful.
