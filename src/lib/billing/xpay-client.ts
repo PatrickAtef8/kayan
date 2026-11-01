@@ -51,7 +51,7 @@ export function buildCheckoutSessionBody(input: CheckoutBodyInput) {
   return {
     mode: "payment",
     uiMode: "hosted",
-    submitType: "pay",
+    submitType: "PAY",
     locale: "ar",
     // Kayan's own result pages. Neither is proof of anything: they ask XPay (server to server) what happened to this order.
     afterCompletion: { type: "redirect", redirect: { url: `${base}/checkout/success?order=${order}` } },
