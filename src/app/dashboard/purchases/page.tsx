@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FocusedInvoiceBanner } from "@/components/ui/focused-invoice-banner";
 import { containsPattern, invoiceParam } from "@/lib/doc-search";
 import { getMembership, hasPermission, hasAnyPermission } from "@/lib/org-context";
-import { getAllProductCosts } from "@/lib/costs";
+import { getPurchaseProductPicks } from "../lookup-actions";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBox } from "@/components/ui/search-box";
 import { DateRangeFilter } from "@/components/ui/date-range-filter";
@@ -81,33 +81,26 @@ export default async function PurchasesPage(
 
   // One batch for everything that is independent: lists, the permission checks (they used to be awaited one after
   // the other, after the lists) and the catalogue's costs (RLS returns nothing to roles that may not read them).
-  const [{ data: suppliers }, { data: warehouses }, { data: products }, { data: invoices, count }, canPay, canViewFinancial, canExport, viewCost, allCosts] = await Promise.all([
-    supabase.from("suppliers").select("id, name, payment_terms_days").order("name"),
+  const [{ data: warehouses }, { data: invoices, count }, canPay, canViewFinancial, canExport, viewCost] = await Promise.all([
     supabase.from("warehouses").select("id, name").order("name"),
-    supabase.from("products").select("id, name, unit").order("name"),
     invoicesQuery,
     hasPermission("treasury.manage"),
     hasPermission("view_financial"),
     hasPermission("reports.export"),
     // the default unit cost comes from the protected cost table; roles that may not read it simply start from 0
     hasAnyPermission(["view_financial", "products.view_cost"]),
-    orgId ? getAllProductCosts(supabase, orgId) : Promise.resolve(new Map<string, number>()),
   ]);
-  const costMap = viewCost ? allCosts : new Map<string, number>();
-  const productOptions: ProductOption[] = (products ?? []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    unit: p.unit,
-    cost: costMap.get(p.id as string) ?? 0,
-  }));
-
   // Opened from a stock-shortage report («إنشاء فاتورة مشتريات»): start the form with the missing product already
   // chosen. These are only defaults — the Owner still picks the supplier and enters the real quantity, and the database
   // re-validates the report when the invoice is linked to it.
   const isUuid = (v?: string) => !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
   let prefill: ShortagePrefill | undefined;
+  let prefillProducts: ProductOption[] = [];
   if (isUuid(searchParams.shortage) && isUuid(searchParams.product)) {
-    const prod = productOptions.find((p) => p.id === searchParams.product);
+    // only the one product the link names is loaded (the cost only for roles that may read it — the protected table returns nothing otherwise)
+    const prod = (await getPurchaseProductPicks([searchParams.product as string]))[0] as ProductOption | undefined;
+    if (prod && !viewCost) prod.cost = 0;
+    prefillProducts = prod ? [prod] : [];
     if (prod) {
       const qty = Math.round(Number(searchParams.qty) * 1000) / 1000;
       prefill = {
@@ -180,7 +173,7 @@ export default async function PurchasesPage(
       <PageHeader title="المشتريات" />
       <PurchasesTabs />
 
-      <PurchaseForm key={prefill?.reportId ?? "new"} suppliers={suppliers ?? []} warehouses={warehouses ?? []} products={productOptions} prefill={prefill} />
+      <PurchaseForm key={prefill?.reportId ?? "new"} warehouses={warehouses ?? []} prefill={prefill} prefillProducts={prefillProducts} />
 
       <div className="mb-4 mt-9 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-medium text-charcoal/40">فواتير الشراء</span>

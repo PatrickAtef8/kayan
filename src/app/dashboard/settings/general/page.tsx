@@ -36,6 +36,12 @@ export default async function GeneralSettingsPage() {
           <Row label="نوع النشاط" value={org.business_type ?? "—"} />
         </div>
       </Card>
+
+      <Card>
+        <h2 className="text-sm font-medium">تصدير بيانات الشركة</h2>
+        <p className="mt-1 text-xs leading-6 text-charcoal/50">ملف Excel واحد يضم عملاءك وموردينك ومنتجاتك وفواتيرك وحركاتك المالية، كل نوع في ورقة. متاح لمالك الشركة فقط، ويحتوي على بيانات شركتك وحدها.</p>
+        <a href="/api/export/company" className="mt-3 inline-flex rounded-xl bg-charcoal px-4 py-2 text-sm font-medium text-ivory hover:bg-sage">تنزيل ملف Excel</a>
+      </Card>
     </div>
   );
 }

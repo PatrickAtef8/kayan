@@ -7,6 +7,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModernSelect } from "@/components/ui/select";
 import { createStockTransfer, type TransferLineInput } from "./actions";
+import { cairoDate } from "@/lib/report-period";
 
 type Line = TransferLineInput & { key: number };
 
@@ -18,7 +19,7 @@ function emptyLine(): Line {
 export function StockTransferForm({ products, warehouses }: { products: { id: string; name: string }[]; warehouses: { id: string; name: string }[] }) {
   const [fromWarehouseId, setFromWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [toWarehouseId, setToWarehouseId] = useState(warehouses[1]?.id ?? "");
-  const [transferDate, setTransferDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [transferDate, setTransferDate] = useState(() => cairoDate());
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);

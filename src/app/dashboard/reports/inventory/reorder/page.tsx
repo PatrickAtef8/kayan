@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ExportButtons } from "@/components/ui/export-buttons";
 import { ParamSelect } from "@/components/reports/param-select";
+import { cairoDate } from "@/lib/report-period";
 
 type ReorderRow = {
   product_id: string;
@@ -51,9 +52,9 @@ export default async function ReorderReportPage(props: { searchParams: Promise<{
         {canExport ? (
           <ExportButtons
             title="نواقص المخزون"
-            subtitle={`بتاريخ ${new Date().toISOString().slice(0, 10)}`}
+            subtitle={`بتاريخ ${cairoDate()}`}
             kinds={["text", "code", "code", "text", "qty", "qty", "qty", "text"]}
-            filename={`نواقص-المخزون-${new Date().toISOString().slice(0, 10)}`}
+            filename={`نواقص-المخزون-${cairoDate()}`}
             headers={["المنتج", "الكود", "الباركود", "التصنيف", "الرصيد", "حد الطلب", "العجز عن الحد", "الحالة"]}
             rows={rows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.category_name ?? "", r.current_qty, r.reorder_level, r.shortage, r.status === "out" ? "نفد" : "أقل من الحد"])}
           />

@@ -5,18 +5,23 @@ import { requireSuperAdminPage, configuredAdmins } from "@/lib/admin/auth.server
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadPricingConfig } from "@/lib/billing/config";
 import { fmtDate, ADMIN_ACTION_LABEL } from "@/lib/admin/format";
+import { billingReadiness } from "@/lib/billing/xpay.server";
+import { loadEmailConfig, describeConfigProblem } from "@/lib/email/config";
 
 export default async function AdminHome() {
   await requireSuperAdminPage();
   const admin = createAdminClient();
   const admins = configuredAdmins();
-  const [stats, pricing, audit, unpaid] = await Promise.all([
+  const readiness = billingReadiness();
+  const mail = loadEmailConfig();
+  const [stats, pricing, audit, unpaid, review] = await Promise.all([
     // ONE query for the four counters (companies, users, paid, free). Before: the companies function, an Auth-API call and a download
     // of every license row. If it fails the cards show «—», never a silent 0.
     admin.rpc("admin_overview_stats"),
     loadPricingConfig(admin),
     admin.from("admin_audit_log").select("action, created_at, details").order("created_at", { ascending: false }).limit(8),
     admin.rpc("admin_unpaid_company_count", { p_exclude_users: admins.ids, p_exclude_emails: admins.emails }),
+    admin.from("billing_orders").select("id", { count: "exact", head: true }).eq("needs_review", true),
   ]);
   const s = (stats.error ? null : stats.data) as { companies?: number; users?: number; paid?: number; complimentary?: number } | null;
   const num = (v: number | undefined) => (s && typeof v === "number" ? v : "—");
@@ -37,6 +42,15 @@ export default async function AdminHome() {
         {stat("بانتظار الدفع", typeof unpaid.data === "number" ? unpaid.data : "—", "/admin/companies")}
         {stat("وصول مجاني", num(s?.complimentary))}
       </div>
+      <Card className="mt-4 p-5">
+        <p className="text-sm font-medium">جاهزية الإنتاج</p>
+        <ul className="mt-2 space-y-1 text-xs text-charcoal/70">
+          <li>مدفوعات تحتاج مراجعة: <b className="num">{review.error ? "—" : review.count ?? 0}</b> {(review.count ?? 0) > 0 && <Link href="/admin/review" className="font-medium text-sage hover:underline">عرض</Link>}</li>
+          <li>XPay: {readiness.mode === "unset" ? "غير مضبوط" : readiness.mode === "live" ? "مفتاح حقيقي (live)" : "مفتاح تجريبي (test)"}{readiness.blocking.length > 0 ? <span className="text-rose"> — يمنع الدفع: {readiness.blocking.join(" ")}</span> : <span className="text-sage"> — لا موانع</span>}</li>
+          {readiness.warnings.map((w) => <li key={w} className="text-amber-700">{w}</li>)}
+          <li>البريد (Resend): {mail.ok ? <span className="text-sage">مضبوط{mail.config.testingSender ? " — مرسل اختبار: يصل فقط لبريد حساب Resend" : ""}</span> : <span className="text-rose">{describeConfigProblem(mail.problem)}</span>}</li>
+        </ul>
+      </Card>
       <Card className="mt-4 flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-charcoal/70">إعدادات الباقات الحالية: <span className="font-medium text-charcoal">{pricing.custom ? `معدّلة (آخر تعديل ${fmtDate(pricing.updatedAt)})` : "الإعدادات الأصلية كما شُحنت"}</span></p>
         <Link href="/admin/packages" className="text-sm font-medium text-sage hover:underline">الباقات والأسعار</Link>

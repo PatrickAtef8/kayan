@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/db-errors";
+import { cairoDate } from "@/lib/report-period";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -77,7 +78,7 @@ export async function createExpense(input: ExpenseInput) {
     p_category_id: categoryId,
     p_treasury_account_id: null,
     p_amount: amount,
-    p_expense_date: input.expense_date || new Date().toISOString().slice(0, 10),
+    p_expense_date: input.expense_date || cairoDate(),
     p_payment_method: input.payment_method.trim() || null,
     p_description: input.description.trim() || null,
     p_responsible_user: membership.userId,

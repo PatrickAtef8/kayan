@@ -14,6 +14,7 @@ import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { ModernSelect } from "@/components/ui/select";
 import { updateCustomer, deleteCustomer, recordCustomerCollection } from "./actions";
 import type { CustomerBalance } from "./page";
+import { cairoDate } from "@/lib/report-period";
 
 const PRICE_TIER_OPTIONS = [
   { value: "retail", label: "تجزئة" },
@@ -162,7 +163,7 @@ export function CustomersTable({ customers, balances, reps, canViewBalance, canA
 
 function CollectionModal({ customer, onClose }: { customer: Customer | null; onClose: () => void }) {
   const [amount, setAmount] = useState(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => cairoDate());
   const [method, setMethod] = useState("نقدًا");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");

@@ -14,7 +14,7 @@ export function AddMemberForm({ roles, onAdded }: { roles: RoleOption[]; onAdded
   const [roleId, setRoleId] = useState(roles[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<null | { mode: "existing" | "emailed"; email: string; name: string }>(null);
+  const [success, setSuccess] = useState<null | { mode: "existing" | "notified" | "emailed" | "email_failed"; email: string; name: string; warning?: string }>(null);
 
   function submit() {
     setError(null);
@@ -33,7 +33,7 @@ export function AddMemberForm({ roles, onAdded }: { roles: RoleOption[]; onAdded
         setError(result.error);
         return;
       }
-      setSuccess({ mode: result.mode ?? "emailed", email: email.trim(), name: name.trim() });
+      setSuccess({ mode: result.mode ?? "emailed", email: email.trim(), name: name.trim(), warning: result.warning });
       setEmail("");
       setName("");
       onAdded();
@@ -57,6 +57,14 @@ export function AddMemberForm({ roles, onAdded }: { roles: RoleOption[]; onAdded
       {error && <p className="text-xs text-rose sm:col-span-4">{error}</p>}
       {success?.mode === "emailed" && (
         <p className="text-xs text-sage sm:col-span-4">تم إرسال دعوة بالبريد إلى {success.name} ({success.email}) — سيجد فيها رابطًا لتعيين كلمة المرور (راجع Spam إن لم تظهر).</p>
+      )}
+      {success?.mode === "notified" && (
+        <p className="text-xs text-sage sm:col-span-4">{success.name} ({success.email}) لديه حساب بالفعل. أرسلنا له بريدًا يخبره بالدعوة، وسيجدها في صفحة «الدعوات» عند تسجيل دخوله.</p>
+      )}
+      {success?.mode === "email_failed" && (
+        <p className="text-xs text-rose sm:col-span-4">
+          سجّلنا دعوة {success.name} ({success.email}) لكن <b>تعذّر إرسال البريد</b>. {success.warning} بعد حل المشكلة أضف نفس البريد مرة أخرى لإعادة الإرسال.
+        </p>
       )}
       {success?.mode === "existing" && (
         <p className="text-xs text-brass sm:col-span-4">

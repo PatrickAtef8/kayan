@@ -31,8 +31,12 @@ where n.nspname='public' and has_function_privilege('anon',p.oid,'execute')
 ```
 
 ## C. Supabase dashboard settings (cannot be set from code)
-Authentication → turn ON "Confirm email"; set minimum password length ≥ 12 and enable leaked-password protection;
-restrict Redirect URLs to your real domains; enable CAPTCHA; review rate limits.
+Authentication → turn ON "Confirm email"; set minimum password length to **8** (this is what the app itself enforces — `MIN_PASSWORD_LENGTH`
+in `src/lib/password-strength.ts`; Supabase's setting must not be *lower*, and a higher value would reject passwords the app's form accepts) and
+enable leaked-password protection if your plan has it; restrict Site URL / Redirect URLs to your real domains; review rate limits.
+**Keep CAPTCHA OFF** — the sign-up / sign-in / reset forms do not send a `captchaToken`, so enabling Supabase CAPTCHA today would make every
+sign-up and login fail. Abuse protection that IS in place: per-address / per-company rate limits in the app, Supabase's own Auth rate limits.
+Full list of dashboard settings: `docs/SUPABASE_AUTH_SETTINGS.md`.
 
 ## D. Private GitHub repo over SSH
 ```bash

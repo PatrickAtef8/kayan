@@ -1,4 +1,5 @@
 import { validateXpayBaseUrl } from "./xpay-base-url";
+import { assertKeyAllowed, checkXpayConfig, type GuardReport } from "./xpay-guard.ts";
 import "server-only";
 import { createXpayClient, type XpayApi } from "./xpay-client.ts";
 
@@ -16,6 +17,8 @@ export function xpaySecretKey(): string {
   const key = process.env.XPAY_SECRET_KEY?.trim();
   if (!key) throw new BillingConfigError("XPAY_SECRET_KEY is not set");
   if (!/^sk_(test|live)_[A-Za-z0-9_-]+$/.test(key)) throw new BillingConfigError("XPAY_SECRET_KEY does not look like an XPay secret key (sk_test_… / sk_live_…)");
+  // a test key must never run in real production (see xpay-guard.ts): this is the single place every XPay call gets its key from
+  try { assertKeyAllowed(process.env); } catch (e) { throw new BillingConfigError(e instanceof Error ? e.message : "test key in production"); }
   return key;
 }
 
@@ -58,5 +61,11 @@ export function getXpay(): XpayApi {
  * src/config/pricing.config.ts are the real ones (the ones shipped in the repository are placeholders).
  */
 export function pricesConfirmed(): boolean {
-  return process.env.NODE_ENV !== "production" || process.env.BILLING_PRICES_CONFIRMED === "true";
+  // real production only: Vercel previews run with NODE_ENV=production too, but they are not live
+  return !checkXpayConfig(process.env).realProduction || process.env.BILLING_PRICES_CONFIRMED === "true";
+}
+
+/** What would stop real payments right now (for the admin dashboard). Booleans / generic sentences only — never a secret's value. */
+export function billingReadiness(): GuardReport {
+  return checkXpayConfig(process.env);
 }

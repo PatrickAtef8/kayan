@@ -9,6 +9,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_PAYMENT_METHOD, PAYMENT_METHODS } from "@/lib/payment-methods";
 import { recordPurchaseInvoicePayment } from "./actions";
+import { cairoDate } from "@/lib/report-period";
 
 function money(n: number) {
   return formatMoney(n);
@@ -34,7 +35,7 @@ export function PaymentModal({
   remaining: number;
 }) {
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => cairoDate());
   const [method, setMethod] = useState<string>(DEFAULT_PAYMENT_METHOD);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updateSupplier, deleteSupplier, recordSupplierPayment } from "./actions";
 import type { SupplierBalance } from "./page";
+import { cairoDate } from "@/lib/report-period";
 
 type Supplier = { id: string; name: string; phone: string | null; payment_terms_days: number | null; opening_balance: number };
 
@@ -127,7 +128,7 @@ export function SuppliersTable({ suppliers, balances, canViewBalance }: { suppli
 
 function PaymentModal({ supplier, onClose }: { supplier: Supplier | null; onClose: () => void }) {
   const [amount, setAmount] = useState(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => cairoDate());
   const [method, setMethod] = useState("نقدًا");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");

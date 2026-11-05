@@ -15,7 +15,13 @@ export interface BillingStore {
   markOrder(orderId: string, status: "failed" | "expired" | "canceled", reason: string): Promise<boolean>;
 }
 
-export type Deps = { store: BillingStore; xpay: Pick<XpayApi, "getCheckoutSession">; log?: (msg: string, meta?: Record<string, unknown>) => void };
+export type Deps = {
+  store: BillingStore;
+  xpay: Pick<XpayApi, "getCheckoutSession">;
+  log?: (msg: string, meta?: Record<string, unknown>) => void;
+  /** Called after a payment was recorded ("applied") or parked for a human ("amount_mismatch"). Failures here never change the verdict. */
+  onPaymentRecorded?: (orderId: string, result: "applied" | "amount_mismatch") => Promise<void>;
+};
 
 export type Outcome =
   | "applied" | "already_applied" | "awaiting_payment" | "session_open" | "expired" | "failed_marked"
@@ -49,6 +55,9 @@ export async function reconcileSession(sessionId: string, deps: Deps, hint?: { f
     });
     if (r === "amount_mismatch" || r === "session_mismatch" || r === "not_found") {
       deps.log?.("billing: a payment needs a human", { order: order.id, session: session.id, result: r });
+    }
+    if (r === "applied" || r === "amount_mismatch") {
+      try { await deps.onPaymentRecorded?.(order.id, r); } catch (e) { deps.log?.("billing: payment notification failed", { order: order.id, error: e instanceof Error ? e.message : "unknown" }); }
     }
     return r === "not_found" ? "unknown_order" : r;
   }

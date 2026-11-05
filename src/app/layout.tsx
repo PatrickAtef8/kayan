@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/site-url";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 
@@ -18,9 +19,17 @@ const arabicFont = IBM_Plex_Sans_Arabic({
   display: "swap",
 });
 
+const TITLE = "كيان — إدارة الأعمال";
+const DESCRIPTION = "منصة إدارة أعمال متكاملة للشركات الصغيرة والمتوسطة";
+const siteUrl = (() => { try { return getSiteUrl(); } catch { return null; } })();
+
 export const metadata: Metadata = {
-  title: "كيان — إدارة الأعمال",
-  description: "منصة إدارة أعمال متكاملة للشركات الصغيرة والمتوسطة",
+  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+  title: { default: TITLE, template: "%s | كيان" },
+  description: DESCRIPTION,
+  applicationName: "Kayan",
+  openGraph: { type: "website", locale: "ar_EG", siteName: "كيان", title: TITLE, description: DESCRIPTION },
+  twitter: { card: "summary", title: TITLE, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

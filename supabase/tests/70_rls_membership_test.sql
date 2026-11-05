@@ -18,10 +18,12 @@ select t.as_user('e0000000-0000-0000-0000-00000000000b');
 select create_organization('ب', 'x', 'EG', 'EGP', 'ar', array['customers']) as id \gset orgb_
 
 select t.as_owner();
+alter table organization_users disable trigger zz_one_active_company;   -- models a grandfathered user who already belonged to two companies
 insert into organization_users (organization_id, user_id, role_id, status)
 select o, 'e0000000-0000-0000-0000-00000000000c', r.id, 'active'
 from (values (:'orga_id'::uuid), (:'orgb_id'::uuid)) v(o), roles r
 where r.key = 'sales' and r.organization_id is null;
+alter table organization_users enable trigger zz_one_active_company;
 
 insert into customers (organization_id, name) values (:'orga_id', 'عميل أ'), (:'orgb_id', 'عميل ب');
 select t.make_rep(:'orga_id', 'e0000000-0000-0000-0000-00000000000c');   -- a sales member sees the customers assigned to him

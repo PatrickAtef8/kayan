@@ -12,6 +12,8 @@ import { COMPLIMENTARY_ENTITLEMENTS } from "@/lib/billing/complimentary";
 import { GraceBanner } from "@/components/dashboard/grace-banner";
 import { decideAccess, isBillingPath, parseAccess, type GateDecision } from "@/lib/billing/access-gate";
 
+export const metadata = { robots: { index: false, follow: false, nocache: true } };
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = (await getSupabase());
   const user = await getCurrentUser();

@@ -2,6 +2,8 @@
 
 import { COMPLIMENTARY_ENTITLEMENTS } from "@/lib/billing/complimentary";
 import { revalidatePath } from "next/cache";
+import { namesMatch } from "@/lib/admin/confirm-name";
+import { removeCompanyFiles } from "@/lib/admin/storage-cleanup";
 import { requireSuperAdminAction } from "@/lib/admin/auth.server";
 import { PRICING_CONFIG, PACKAGE_MODULE_ORDER } from "@/config/pricing.config";
 import {
@@ -52,15 +54,35 @@ export async function deleteUser(userId: string): Promise<AdminResult> {
   return { error: null, message: "حُذف المستخدم نهائيًا." };
 }
 
-export async function deleteCompany(orgId: string): Promise<AdminResult> {
+export async function deleteCompany(orgId: string, typedName: string): Promise<AdminResult> {
   const ctx = await requireSuperAdminAction();
   if (!ctx.ok) return { error: ctx.error };
   if (typeof orgId !== "string" || !UUID.test(orgId)) return { error: "طلب غير صالح." };
+
+  // The name is read from the database, never from the browser: the typed text must equal what is stored.
+  const { data: org } = await ctx.admin.from("organizations").select("name").eq("id", orgId).maybeSingle();
+  if (!org) return { error: "الشركة غير موجودة." };
+  if (!namesMatch(typedName, (org as { name: string }).name)) return { error: "الاسم المكتوب لا يطابق اسم الشركة تمامًا. لم يُحذف شيء." };
+
+  // 1. the database (one transaction; archives the audit log and payment records first — migration 0072)
   const { data, error } = await ctx.admin.rpc("admin_delete_company", { p_admin: ctx.userId, p_org: orgId });
-  if (error) { console.error("admin: could not delete the company", error.message); return { error: "تعذّر حذف الشركة، ولم يُحذف شيء. تأكّد من تطبيق ترحيل قاعدة البيانات 0067." }; }
+  if (error) { console.error("admin: could not delete the company", error.message); return { error: "تعذّر حذف الشركة، ولم يُحذف شيء. تأكّد من تطبيق ترحيل قاعدة البيانات 0072." }; }
   if (data === "not_found") return { error: "الشركة غير موجودة." };
+
+  // 2. the files — only AFTER the database step succeeded, so a failure above never costs anyone their attachments
+  let files = "";
+  try {
+    const { data: arch } = await ctx.admin.from("company_deletion_archive").select("id, attachment_paths").eq("source_org_id", orgId).order("deleted_at", { ascending: false }).limit(1).maybeSingle();
+    const known = Array.isArray((arch as { attachment_paths?: unknown } | null)?.attachment_paths) ? ((arch as { attachment_paths: unknown[] }).attachment_paths.filter((p) => typeof p === "string") as string[]) : [];
+    const report = await removeCompanyFiles(ctx.admin.storage.from("attachments"), orgId, known);
+    await ctx.admin.rpc("admin_audit", { p_admin: ctx.userId, p_action: "company.delete.files", p_type: "organization", p_id: orgId, p_details: { found: report.found, removed: report.removed, failed: report.failed } });
+    if (report.failed > 0) files = ` تعذّر حذف ${report.failed} ملفًا من التخزين — ابحث عن المجلد ${orgId} في Storage واحذفه يدويًا.`;
+  } catch (e) {
+    console.error("admin: company deleted but file cleanup failed", e instanceof Error ? e.message : "unknown");
+    files = ` حُذفت الشركة لكن تعذّر تنظيف ملفاتها من Storage — احذف المجلد ${orgId} من bucket «attachments» يدويًا.`;
+  }
   revalidatePath("/admin/companies"); revalidatePath("/admin/users"); revalidatePath("/admin");
-  return { error: null, message: "حُذفت الشركة وكل بياناتها." };
+  return { error: null, message: `حُذفت الشركة وكل بياناتها. نُسخ سجل المراجعة وسجل المدفوعات إلى الأرشيف قبل الحذف.${files}` };
 }
 
 // ------------------------------------------------------------------------------------------------ free licenses

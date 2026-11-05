@@ -16,6 +16,8 @@ export function ConfirmDialog({
   error,
   onConfirm,
   onCancel,
+  children,
+  confirmDisabled = false,
 }: {
   open: boolean;
   title: string;
@@ -28,6 +30,9 @@ export function ConfirmDialog({
   error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
+  // optional extra content above the buttons (e.g. a "type the name to confirm" field) and a way to keep Confirm disabled until it is satisfied
+  children?: React.ReactNode;
+  confirmDisabled?: boolean;
 }) {
   if (!open) return null;
 
@@ -40,12 +45,13 @@ export function ConfirmDialog({
         </div>
         <h2 className="mb-1.5 text-base font-medium text-ink">{title}</h2>
         <p className={error ? "mb-3 text-sm text-ink/55" : "mb-6 text-sm text-ink/55"}>{description}</p>
+        {children}
         {error && <p className="mb-4 rounded-lg bg-rose/10 px-3 py-2 text-xs text-rose">{error}</p>}
         <div className="flex gap-2">
           <Button variant="secondary" className="flex-1" onClick={onCancel} disabled={loading}>
             إلغاء
           </Button>
-          <Button variant="danger" className="flex-1" onClick={onConfirm} disabled={loading}>
+          <Button variant="danger" className="flex-1" onClick={onConfirm} disabled={loading || confirmDisabled}>
             {loading ? "جارٍ الحذف..." : confirmLabel}
           </Button>
         </div>

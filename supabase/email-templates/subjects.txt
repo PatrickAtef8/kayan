@@ -1,0 +1,6 @@
+confirm-signup.html	أكّد بريدك الإلكتروني — كيان
+invite.html	تمت دعوتك للانضمام إلى كيان
+recovery.html	إعادة تعيين كلمة المرور — كيان
+magic-link.html	رابط تسجيل الدخول — كيان
+email-change.html	تأكيد تغيير البريد الإلكتروني — كيان
+reauthentication.html	رمز التحقق — كيان

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { MODULES, type ModuleKey } from "@/lib/modules";
+import { MODULES, HIDDEN_MODULE_KEYS, type ModuleKey } from "@/lib/modules";
 import { safeErrorMessage } from "@/lib/db-errors";
 
 export async function toggleModule(moduleKey: ModuleKey, enabled: boolean) {
@@ -22,7 +22,7 @@ export async function toggleModule(moduleKey: ModuleKey, enabled: boolean) {
     .maybeSingle();
   if (!membership) return { error: "غير مصرح" };
 
-  const target = MODULES.find((m) => m.key === moduleKey);
+  const target = MODULES.find((m) => m.key === moduleKey && !HIDDEN_MODULE_KEYS.includes(m.key));
   if (!target || ("core" in target && target.core)) return { error: "لا يمكن تعطيل هذه الوحدة الأساسية" };
 
   const { error } = await supabase

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { translateDbError, safeErrorMessage } from "@/lib/db-errors";
 import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
+import { cairoDate } from "@/lib/report-period";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -83,7 +84,7 @@ export async function recordPartnerWithdrawal(input: {
     p_partner_id: input.partner_id,
     p_treasury_account_id: null,
     p_amount: input.amount,
-    p_withdrawal_date: input.withdrawal_date || new Date().toISOString().slice(0, 10),
+    p_withdrawal_date: input.withdrawal_date || cairoDate(),
     p_description: input.description,
     p_notes: input.notes,
   });

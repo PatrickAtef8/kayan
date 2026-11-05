@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Plus, Trash2, PackageX } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModernSelect } from "@/components/ui/select";
+import { AsyncSearchSelect } from "@/components/ui/async-search-select";
+import { useKnownPicks } from "@/components/ui/use-known-picks";
+import { searchCustomerPicks, searchSalesProductPicks } from "../lookup-actions";
 import { PricingSummary, usePricingPreview } from "@/components/sales/pricing-summary";
 import { BonusEditor, emptyBonusRow, type BonusRow } from "@/components/sales/bonus-editor";
 import { PAYMENT_METHODS, DEFAULT_PAYMENT_METHOD } from "@/lib/payment-methods";
@@ -14,6 +17,7 @@ import { createSalesInvoice, type SalesItemInput } from "./actions";
 import { requiredUnits, findShortages } from "@/lib/stock-requirements";
 import { getSellableStock, reportStockShortage, type SellableRow } from "../shortages/actions";
 import type { ProductOption, CustomerOption } from "./page";
+import { cairoDate } from "@/lib/report-period";
 
 type Row = SalesItemInput & { key: number };
 
@@ -29,18 +33,14 @@ function priceForTier(product: ProductOption, tier: string): number {
 }
 
 export function SalesForm({
-  customers,
   warehouses,
-  products,
   representatives,
   restrictedRep = false,
   canAssignAnyRep = false,
   ownRepId = null,
   limits = null,
 }: {
-  customers: CustomerOption[];
   warehouses: { id: string; name: string }[];
-  products: ProductOption[];
   representatives: { id: string; name: string }[];
   restrictedRep?: boolean;
   canAssignAnyRep?: boolean;
@@ -53,7 +53,7 @@ export function SalesForm({
   const [salesRepId, setSalesRepId] = useState(!canAssignAnyRep && ownRepId ? ownRepId : "");
   const [salesChannel, setSalesChannel] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(() => cairoDate());
   const [discountPct, setDiscountPct] = useState(0);
   const [cashDiscountPct, setCashDiscountPct] = useState(0);
   const [bonusRows, setBonusRows] = useState<BonusRow[]>([]);
@@ -109,12 +109,10 @@ export function SalesForm({
     refreshStock();
   }
 
-  // Lookups and option lists are built once per data change instead of on every keystroke / row render
-  // (a catalogue of thousands of products used to be scanned and re-mapped for each invoice row on each render).
-  const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-  const customerMap = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
-  const productSelectOptions = useMemo(() => products.map((p) => ({ value: p.id, label: p.name })), [products]);
-  const customerSelectOptions = useMemo(() => customers.map((c) => ({ value: c.id, label: c.name })), [customers]);
+  // Customers and products are searched on the server as the person types (no full catalogue is loaded, so there is no 1000-row cap);
+  // every record found is remembered here so a selection already has its price tier / prices.
+  const { known: productMap, search: searchProducts } = useKnownPicks<ProductOption>(searchSalesProductPicks);
+  const { known: customerMap, search: searchCustomers } = useKnownPicks<CustomerOption>(searchCustomerPicks);
   const productById = (id: string) => productMap.get(id);
   const customerTier = customerMap.get(customerId)?.price_tier ?? "retail";
   const { preview, error: previewError, pending: previewPending } = usePricingPreview({
@@ -221,7 +219,7 @@ export function SalesForm({
       )}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-6">
         <Field label="العميل">
-          <ModernSelect value={customerId} onChange={selectCustomer} allowClear={false} placeholder="اختر عميلًا" options={customerSelectOptions} />
+          <AsyncSearchSelect value={customerId} selectedLabel={customerMap.get(customerId)?.name} onChange={(id) => selectCustomer(id)} search={searchCustomers} placeholder="اختر عميلًا" searchPlaceholder="ابحث بالاسم أو الهاتف..." />
         </Field>
         <Field label="المخزن">
           <ModernSelect value={warehouseId} onChange={setWarehouseId} allowClear={false} placeholder="اختر مخزنًا" options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
@@ -290,7 +288,7 @@ export function SalesForm({
           return (
             <div key={row.key} className="grid grid-cols-1 gap-2.5 rounded-xl border border-borderSoft bg-paper/40 p-3 sm:grid-cols-[1.6fr_0.8fr_0.9fr_0.8fr_auto] sm:items-end">
               <Field label="المنتج">
-                <ModernSelect value={row.product_id} onChange={(id) => setProduct(row.key, id)} allowClear={false} placeholder="اختر منتجًا" options={productSelectOptions} />
+                <AsyncSearchSelect value={row.product_id} selectedLabel={product?.name} onChange={(id) => setProduct(row.key, id)} search={searchProducts} placeholder="اختر منتجًا" searchPlaceholder="ابحث باسم المنتج أو الكود..." />
               </Field>
               <Field label={`الكمية${product ? ` (${product.unit})` : ""}`}>
                 <Input type="number" step="0.001" min="0" dir="ltr" value={row.quantity} onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) })} />
@@ -340,7 +338,7 @@ export function SalesForm({
         <Plus size={15} /> إضافة صنف
       </button>
 
-      <BonusEditor products={products} rows={bonusRows} onChange={setBonusRows} />
+      <BonusEditor search={searchProducts} known={productMap} rows={bonusRows} onChange={setBonusRows} />
 
       <div className="mt-6 grid grid-cols-1 gap-4 border-t border-borderSoft pt-5 sm:grid-cols-5">
         <Field label="خصم على إجمالي الفاتورة (%)">

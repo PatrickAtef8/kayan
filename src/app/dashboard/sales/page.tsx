@@ -101,11 +101,8 @@ export default async function SalesPage(
 
   // Everything that does not depend on another result runs in ONE batch (the permission checks used to be
   // awaited one after the other after this batch: ~5 extra sequential round trips on the busiest page).
-  const [{ data: customers }, { data: warehouses }, { data: products }, { data: salePrices }, { data: representatives }, { data: invoices, count }, canViewFinancial, canExport, canAssignAnyRep, ownRepId, limits, canCollect, restrictedRep] = await Promise.all([
-    supabase.from("customers").select("id, name, price_tier, sales_rep_id").eq("organization_id", orgId).order("name"),
+  const [{ data: warehouses }, { data: representatives }, { data: invoices, count }, canViewFinancial, canExport, canAssignAnyRep, ownRepId, limits, canCollect, restrictedRep] = await Promise.all([
     supabase.from("warehouses").select("id, name").eq("organization_id", orgId).order("name"),
-    supabase.from("products").select("id, name, unit").eq("organization_id", orgId).order("name"),
-    supabase.from("product_sale_prices").select("product_id, selling_price, wholesale_price, distributor_price").eq("organization_id", orgId),
     supabase.from("sales_representatives").select("id, name").eq("organization_id", orgId).eq("is_active", true).order("name"),
     invoicesQuery,
     hasPermission("view_financial"),
@@ -121,19 +118,6 @@ export default async function SalesPage(
     hasAnyPermission(["treasury.manage", "collections.record"]),
     isRestrictedRep(),
   ]);
-
-  const priceByProduct = new Map((salePrices ?? []).map((pr) => [pr.product_id, pr]));
-  const productOptions: ProductOption[] = (products ?? []).map((p) => {
-    const pr = priceByProduct.get(p.id);
-    return {
-      id: p.id,
-      name: p.name,
-      unit: p.unit,
-      selling_price: pr?.selling_price ?? 0,
-      wholesale_price: pr?.wholesale_price ?? null,
-      distributor_price: pr?.distributor_price ?? null,
-    };
-  });
 
   const rows = (invoices as unknown as SalesInvoiceRow[]) ?? [];
 
@@ -219,7 +203,7 @@ export default async function SalesPage(
       <PageHeader title="المبيعات" />
       <SalesTabs />
 
-      <SalesForm canAssignAnyRep={canAssignAnyRep} ownRepId={ownRepId} limits={limits} customers={customers ?? []} warehouses={warehouses ?? []} products={productOptions} representatives={representatives ?? []} restrictedRep={restrictedRep} />
+      <SalesForm canAssignAnyRep={canAssignAnyRep} ownRepId={ownRepId} limits={limits} warehouses={warehouses ?? []} representatives={representatives ?? []} restrictedRep={restrictedRep} />
 
       <div className="mb-4 mt-9 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-medium text-charcoal/40">فواتير البيع</span>

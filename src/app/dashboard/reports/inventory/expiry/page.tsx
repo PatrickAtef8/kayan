@@ -8,6 +8,7 @@ import { ParamSelect } from "@/components/reports/param-select";
 import { ExpiryWindowCustom } from "@/components/reports/expiry-window-custom";
 import { MAX_WINDOW_DAYS, WINDOW_PRESETS, spanLabel, windowLabel } from "@/lib/expiry-window";
 import { DisposeBatchButton } from "./dispose-batch-button";
+import { cairoDate } from "@/lib/report-period";
 
 type ExpiryRow = {
   batch_id: string;
@@ -89,9 +90,9 @@ export default async function ExpiryReportPage(props: { searchParams: Promise<{ 
         {canExport ? (
           <ExportButtons
             title="صلاحية المنتجات"
-            subtitle={`بتاريخ ${new Date().toISOString().slice(0, 10)}`}
+            subtitle={`بتاريخ ${cairoDate()}`}
             kinds={["text", "code", "code", "text", "date", "qty", "int", "text", "text"]}
-            filename={`صلاحية-المنتجات-${new Date().toISOString().slice(0, 10)}`}
+            filename={`صلاحية-المنتجات-${cairoDate()}`}
             headers={["المنتج", "الكود", "الباركود", "المخزن", "تاريخ الصلاحية", "الكمية", "الأيام المتبقية", "المدة المتبقية", "الحالة"]}
             rows={exportRows.map((r) => [r.product_name, r.sku ?? "", r.barcode ?? "", r.warehouse_name, r.expiry_date ?? NO_EXPIRY_LABEL, r.quantity, r.days_to_expiry ?? "", r.days_to_expiry === null ? "" : (r.days_to_expiry < 0 ? "منتهي منذ " : "") + spanLabel(r.days_to_expiry), STATUS_LABEL[r.status]])}
           />

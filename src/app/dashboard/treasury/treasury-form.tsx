@@ -6,11 +6,12 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModernSelect } from "@/components/ui/select";
 import { recordTreasuryMovement } from "./actions";
+import { cairoDate } from "@/lib/report-period";
 
 export function TreasuryForm() {
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [amount, setAmount] = useState(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => cairoDate());
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

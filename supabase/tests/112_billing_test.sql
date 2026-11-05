@@ -288,7 +288,9 @@ select t.as_user('11200000-0000-0000-0000-000000000004');
 select t.eq((t.affected(format($q$insert into organization_modules (organization_id, module_key, enabled) values (%L, 'partners', true)$q$, :'oth_id'))), 1, 'no license: any module can be enabled');
 select t.eq((t.affected(format($q$insert into warehouses (organization_id, name) select %L, 'w' || g from generate_series(1, 6) g$q$, :'oth_id'))), 6, 'no license: any number of warehouses');
 select t.as_owner();
+alter table organization_users disable trigger zz_one_active_company;   -- this test deliberately puts members of other companies into this one
 insert into organization_users (organization_id, user_id, role_id, status)
 select :'oth_id', u, r.id, 'active' from unnest(array['11200000-0000-0000-0000-000000000002', '11200000-0000-0000-0000-000000000003', '11200000-0000-0000-0000-000000000006']::uuid[]) u
 join roles r on r.key = 'warehouse' and r.organization_id is null;
+alter table organization_users enable trigger zz_one_active_company;
 select t.ok(true, 'no license: any number of members');

@@ -127,38 +127,57 @@ against anything that looks like a real database name.
 
 ## Setup
 
-1. **Create a Supabase project** at supabase.com.
-2. **Run the migrations in order** against your project (Supabase SQL
-   Editor, or the Supabase CLI): `0001` through `0011`, in numeric order.
-   Skipping the number gap is not allowed — each migration assumes the
-   previous ones already ran.
-3. **Copy `.env.example` to `.env.local`** and fill in your project's URL
-   and anon key (Project Settings → API). Add the service role key too if
-   you want to invite brand-new team members (see Phase 8 above).
+Requirements: Node 22 (see `.nvmrc`), a Supabase project, a Vercel project (production), a Resend account (email), an XPay account (payments).
+
+1. **Create a Supabase project.** Pick its region deliberately and put Vercel's function region next to it (`docs/PERFORMANCE.md`).
+2. **Apply the migrations in numeric order**, `supabase/migrations/0001` … `0072`, with no gaps (SQL Editor or Supabase CLI). Never edit a migration that
+   has already been applied; changes ship as a new number. The order and the two newest ones (`0071` Cairo dates + email log, `0072` company guards)
+   are described in `PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
+3. **Environment:** copy `.env.example` to `.env.local` and fill it in. Every variable is explained there (required / production / optional).
 4. **Install and run:**
    ```bash
    npm install
    npm run dev
    ```
-5. Open `http://localhost:3000/signup`, create a company, pick modules,
-   and you land on `/dashboard`.
+5. Open `http://localhost:3000/signup`, create a company, pick modules, and you land on `/dashboard`.
+6. **Dashboard settings that cannot be set from code** (Supabase Auth, SMTP via Resend, backups/PITR, Vercel region, XPay webhook, DNS):
+   `docs/SUPABASE_AUTH_SETTINGS.md`, `docs/EMAIL.md`, `docs/BACKUP_AND_RECOVERY.md`, `docs/BILLING.md`.
 
-See `DESIGN.md` and `REDESIGN_NOTES.md` for the visual design system and
-the reasoning behind the current UI — the templates there are
-intentional; don't revert to shadcn/ui defaults.
+## Checks
 
-## Known open items (not gaps introduced by this work, but worth knowing)
+```bash
+npm run typecheck     # tsc --noEmit
+npm run lint
+npm test              # all unit tests (no database needed)
+npm run test:db       # SQL tests — needs a local PostgreSQL (supabase/tests/run.sh creates and drops a scratch database)
+npm audit --omit=dev
+npm run build         # needs network access to Google Fonts (next/font/google)
+```
 
-A few things flagged in the SRS re-audit were intentionally left for a
-later pass, since they were out of scope for what was asked:
+## Documentation map
 
-- **No search, filtering, or pagination** on any list page (§44, §57) —
-  every list fetches all rows unbounded. Fine at today's data volume,
-  will need attention before a business accumulates thousands of records.
-- **No password-reset flow** (§12) — only login and signup exist.
+| Topic | File |
+|---|---|
+| Email (Resend, Supabase SMTP, templates, domain switch) | `docs/EMAIL.md` |
+| Payments, XPay, production guards | `docs/BILLING.md` |
+| Supabase Auth settings (password length 8, CAPTCHA off, …) | `docs/SUPABASE_AUTH_SETTINGS.md` |
+| Backups / PITR / company deletion | `docs/BACKUP_AND_RECOVERY.md` |
+| CSP (nonce, report-only) and robots | `docs/SECURITY_HEADERS.md` |
+| Performance, regions, JWT signing keys | `docs/PERFORMANCE.md` |
+| Legal texts and what a lawyer must review | `docs/LEGAL_REVIEW.md`, `docs/LEGAL_OPEN_ITEMS.md` |
+| Excel / PDF exports | `docs/EXPORTS.md` |
+| Super Admin dashboard | `docs/SUPER_ADMIN.md` |
 
-Monthly Market Offers (§35), file attachments (§55), import/export (§56),
-by contrast, are correctly out of scope: none of them are in §68's Final
-MVP Scope, and §35 is explicitly gated on a business decision that was
-never made (§65). The `/dashboard/offers` page is a placeholder saying so
-rather than a 404.
+## Rules worth knowing
+
+* **One company per account.** The app resolves a user's company as their oldest active membership everywhere; a database trigger (migration 0072) refuses to
+  activate a second one. A company switcher was not built (too many call sites to change safely).
+* **Cairo business dates.** Use `cairoDate()` (`src/lib/report-period.ts`) for "today", never `toISOString().slice(0, 10)`.
+* **Large catalogues.** Pickers use server-side search (`src/app/dashboard/lookup-actions.ts`); never load a whole customer/supplier/product table into a form.
+* **Email.** Send everything through `sendEmail()` (`src/lib/email/service.server.ts`); add new emails as templates in `src/lib/email/templates.ts`.
+* **Hidden module.** Offers is unfinished and hidden (`HIDDEN_MODULE_KEYS` in `src/lib/modules.ts`).
+* No CSV anywhere: Excel or PDF only.
+
+## Known open items
+
+See the "Deferred" section of `PRODUCTION_HARDENING_REPORT.md` for the current list.

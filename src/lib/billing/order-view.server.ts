@@ -3,6 +3,7 @@ import { getSupabase } from "@/lib/org-context";
 import { reconcileSession, type Outcome } from "./reconcile";
 import { createSupabaseBillingStore } from "./store.server";
 import { getXpay } from "./xpay.server";
+import { notifyPaymentRecorded } from "./notify.server";
 import { checkoutView, type CheckoutView } from "./checkout-state";
 import { rateLimit, RATE_POLICIES } from "@/lib/rate-limit.server";
 
@@ -30,7 +31,7 @@ export async function loadAndVerifyOrder(orderId: string, organizationId: string
     const limit = await rateLimit(RATE_POLICIES.checkoutVerify, organizationId);
     if (!limit.allowed) return { order, view: checkoutView({ status: order.status, returnedAs, checking: true, outcome: null }), checking: true, outcome: null };
     try {
-      outcome = await reconcileSession(order.xpay_session_id, { store: createSupabaseBillingStore(), xpay: getXpay(), log: (m, meta) => console.error(m, meta ?? {}) });
+      outcome = await reconcileSession(order.xpay_session_id, { store: createSupabaseBillingStore(), xpay: getXpay(), log: (m, meta) => console.error(m, meta ?? {}), onPaymentRecorded: notifyPaymentRecorded });
       order = (await load()) ?? order;
     } catch (e) {
       console.error("checkout: could not verify with XPay yet —", e instanceof Error ? e.message : e);

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { updatePartner, deletePartner, recordPartnerWithdrawal } from "./actions";
 import type { Partner } from "./page";
+import { cairoDate } from "@/lib/report-period";
 
 export function PartnersTable({ partners }: { partners: Partner[] }) {
   const [editing, setEditing] = useState<Partner | null>(null);
@@ -93,7 +94,7 @@ export function PartnersTable({ partners }: { partners: Partner[] }) {
 
 function WithdrawalModal({ partner, onClose }: { partner: Partner | null; onClose: () => void }) {
   const [amount, setAmount] = useState(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => cairoDate());
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);

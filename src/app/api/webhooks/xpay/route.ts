@@ -3,6 +3,7 @@ import { verifyWebhookSignature } from "@/lib/billing/webhook-signature";
 import { handleXpayEvent, isHandledEventType, type XpayEvent } from "@/lib/billing/reconcile";
 import { createSupabaseBillingStore } from "@/lib/billing/store.server";
 import { getXpay, xpayWebhookSecret } from "@/lib/billing/xpay.server";
+import { notifyPaymentRecorded } from "@/lib/billing/notify.server";
 
 // XPay → Kayan. https://docs.xpay.app/en/integrate/integration-patterns/hosted-checkout#confirm-with-a-webhook
 //
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       store: createSupabaseBillingStore(),
       xpay: getXpay(),
       log: (msg, meta) => console.error(msg, meta ?? {}),
+      onPaymentRecorded: notifyPaymentRecorded,
     });
   } catch (e) {
     // the store or the XPay client could not even be created (missing service-role key / secret key): retry later

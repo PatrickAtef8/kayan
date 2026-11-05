@@ -3,16 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, MailCheck, Mail } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { translateAuthError } from "@/lib/auth-errors";
+import { requestPasswordReset } from "./actions";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthAlert, AuthField, AuthInput, SubmitButton } from "@/components/auth/auth-fields";
 
-// §12: "Password reset" — request step. Supabase emails a link that lands
-// on /reset-password with a recovery session already attached; that page
-// does the actual password change.
+// §12: "Password reset" — request step. The server action sends the reset email (Resend) with a link to
+// /reset-password; that page does the actual password change.
 export function ForgotPasswordForm({ initialEmail = "" }: { initialEmail?: string }) {
-  const supabase = createClient();
   const [email, setEmail] = useState(initialEmail);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -23,13 +20,11 @@ export function ForgotPasswordForm({ initialEmail = "" }: { initialEmail?: strin
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const result = await requestPasswordReset(email.trim()).catch(() => ({ error: "تعذّر إرسال الطلب. حاول مرة أخرى." }));
 
     setLoading(false);
-    if (error) {
-      setError(translateAuthError(error.message, (error as { code?: string }).code));
+    if (result.error) {
+      setError(result.error);
       return;
     }
     setSent(true);

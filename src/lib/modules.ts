@@ -19,6 +19,11 @@ export const MODULES = [
   { key: "reports", label: "التقارير", href: "/dashboard/reports", icon: "BarChart3", core: true },
 ] as const;
 
+// Modules that exist in the database but are not finished: hidden from the sidebar and the settings screen, and their pages return 404.
+// To launch one, remove its key here (the page itself still has to be built).
+export const HIDDEN_MODULE_KEYS: readonly string[] = ["offers"];
+export const VISIBLE_MODULES = MODULES.filter((m) => !HIDDEN_MODULE_KEYS.includes(m.key));
+
 export type ModuleKey = (typeof MODULES)[number]["key"];
 
 export const DEFAULT_ENABLED_MODULES: ModuleKey[] = [

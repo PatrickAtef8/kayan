@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/db-errors";
+import { cairoDate } from "@/lib/report-period";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -102,7 +103,7 @@ export async function createSalesReturn(input: {
   const { error } = await supabase.rpc("create_sales_return", {
     org_id: membership.organization_id,
     p_sales_invoice_id: input.sales_invoice_id,
-    p_return_date: input.return_date || new Date().toISOString().slice(0, 10),
+    p_return_date: input.return_date || cairoDate(),
     items,
     p_cash_refund: input.cash_refund || 0,
     p_notes: input.notes || null,

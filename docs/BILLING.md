@@ -153,3 +153,11 @@ and `supabase/tests/112_billing_test.sql` (RLS, service-role-only functions, exa
 Sign-up no longer asks for modules. The moment a license is created (verified payment or complimentary grant) the database switches on the
 modules of its package; a later widening of the package switches the new ones on; nothing is ever switched off by a later change.
 Settings → Modules shows modules outside the package locked. See `CHANGES-package-controls-modules.md`.
+
+## Production guards (added in the hardening release)
+* `XPAY_SECRET_KEY` starting with `sk_test_` is **refused in real production** (NODE_ENV=production and not a Vercel preview) — checkout and verification fail closed with a clear message. Preview deployments and local development may use test keys. Logic and tests: `src/lib/billing/xpay-guard.ts`.
+* `XPAY_WEBHOOK_SECRET` must be set (the readiness report flags a missing or non-`whsec_` value); checkout stays closed in production until `BILLING_PRICES_CONFIRMED=true`.
+* The Super Admin home shows a **production readiness** card (XPay mode, blockers, email configuration, payments needing review) and `/admin/review` lists orders with `needs_review` across all companies (paginated, Super Admin only).
+* Payment emails: the owner gets one receipt per paid order (and one "under review" notice when an order is parked) — from the webhook or the return page, whichever records the payment first.
+* **Renewal is manual.** Nothing here (or in the reminder emails) charges automatically; XPay recurring payments are not used.
+* Subscription reminders: daily Vercel Cron (`vercel.json`) → `/api/cron/subscription-reminders`, authenticated with `CRON_SECRET`.

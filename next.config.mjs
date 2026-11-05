@@ -1,24 +1,8 @@
 /** @type {import('next').NextConfig} */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseWs = supabaseUrl.replace(/^http/, "ws");
-const isDev = process.env.NODE_ENV !== "production";
 
-// Enforced: clickjacking, MIME sniffing, referrer leakage, HSTS.
-// Full CSP ships as Report-Only first so a missed origin can't break the app;
-// check the browser console, then rename the header to Content-Security-Policy.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${supabaseUrl}`,
-  "font-src 'self' data:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
-
+// Enforced here: clickjacking, MIME sniffing, referrer leakage, HSTS, and the directives that cannot break a page.
+// The full script/style/connect policy is NOT static any more: it carries a per-request nonce, so src/proxy.ts builds it
+// (src/lib/security/csp.ts) and sends it as Content-Security-Policy-Report-Only. Enforcing it is a deliberate, tested step — docs/SECURITY_HEADERS.md.
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   // Enforced: the directives that cannot break a page (no framing, no <base> hijack, no plugins). The script/style/connect policy
@@ -29,13 +13,16 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
-  { key: "Content-Security-Policy-Report-Only", value: csp },
 ];
 
 const nextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // belt and braces next to the <meta robots> of those layouts: private areas are never indexed
+      ...["/admin/:path*", "/dashboard/:path*", "/checkout/:path*", "/api/:path*", "/auth/:path*", "/reset-password"].map((source) => ({ source, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] })),
+    ];
   },
 };
 

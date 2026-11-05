@@ -52,7 +52,7 @@
 ### H6 · Email ownership never proven; weak passwords — **FAIL (by design) / UNKNOWN setting · HIGH**
 - **Where:** `src/app/(auth)/signup/page.tsx` (requires `signUp()` to return a session ⇒ "Confirm email" must be OFF), `dashboard/layout.tsx` (never checks `email_confirmed_at`), password min 6 enforced client-side.
 - **Attack:** pre-register `ceo@victim.com`; when an admin later adds/invites that address (`add_team_member` matches by email) the attacker's account gets the role. Also signup returns "already registered" ⇒ enumeration.
-- **Fix:** turn on email confirmation; add `/auth/callback` code exchange; block the dashboard until `email_confirmed_at`; server-side min length ≥ 12 + leaked-password protection in Supabase Auth; CAPTCHA/rate limits on signup/login.
+- **Fix:** turn on email confirmation; add `/auth/callback` code exchange; block the dashboard until `email_confirmed_at`; server-side min length (the app enforces 8; see docs/SUPABASE_AUTH_SETTINGS.md) + leaked-password protection in Supabase Auth; CAPTCHA/rate limits on signup/login.
 
 ### H7 · No commercial authority controls on invoices (insider loss) — **FAIL · HIGH (business) · EXPLOITED**
 - **Where:** `create_sales_invoice` (0029) / `_pricing`.
@@ -105,7 +105,7 @@
 1. **Today:** apply `0030` §1 (C1) and §2 (H1). Two statements, zero UI impact.
 2. **This week:** `0030` §3 (NaN), §4 (invites; plus the 3 app changes), §5 (finance gates — verify screens), §6–§8.
 3. **This week:** upgrade Next.js and re-run `npm audit`.
-4. **This week:** Supabase Auth settings — confirm email, strong passwords + leaked-password check, redirect allow-list, CAPTCHA/rate limits; then ship the callback + `email_confirmed_at` gate.
+4. **This week:** Supabase Auth settings — confirm email, strong passwords + leaked-password check, redirect allow-list, rate limits (CAPTCHA stays off until captchaToken support exists); then ship the callback + `email_confirmed_at` gate.
 5. **Next sprint:** commercial controls (H7); move `cost`/`avg_cost` into gated companion tables; opening-balance RPC.
 6. **Next sprint:** security headers + CSP; CSV injection fix; attachment permissions + path/uploaded_by checks; abuse limits.
 7. **Hygiene:** L1–L6, add `supabase/tests` that run as `anon`/`authenticated` **with Supabase default privileges** (your current stub grants nothing by default, which is why the suite never caught C1/H1).

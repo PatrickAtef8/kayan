@@ -53,8 +53,7 @@ actions authenticate (authorisation is in RLS / permission functions), uploads (
    After applying, this should return no row for `anon` other than the three public tables:
    `select table_name, privilege_type from information_schema.role_table_grants where grantee='anon' and table_schema='public';`
 2. **Supabase → Authentication**: minimum password length ≥ 8 (10+ preferred) and leaked-password protection (if your plan has it);
-   **require e-mail confirmation** (the Super Admin e-mail allow-list trusts the address — prefer `SUPER_ADMIN_USER_IDS`); enable CAPTCHA on
-   sign-up; keep the Auth rate limits for sign-in / sign-up / OTP / e-mail at their defaults or tighter; restrict *Site URL* and the
+   **require e-mail confirmation** (the Super Admin e-mail allow-list trusts the address — prefer `SUPER_ADMIN_USER_IDS`); (CAPTCHA: **leave OFF** until the forms send a `captchaToken` — see docs/SUPABASE_AUTH_SETTINGS.md); keep the Auth rate limits for sign-in / sign-up / OTP / e-mail at their defaults or tighter; restrict *Site URL* and the
    *Redirect URLs* allow-list to your domain. Password rules are enforced by Supabase Auth, not by this code.
 3. Vercel env (server only): `SUPABASE_SERVICE_ROLE_KEY`, `XPAY_SECRET_KEY`, `XPAY_WEBHOOK_SECRET`, `BILLING_PRICES_CONFIRMED`,
    `SUPER_ADMIN_USER_IDS`. Nothing secret may use a `NEXT_PUBLIC_` name. Leave `XPAY_API_BASE_URL` unset unless XPay tells you otherwise.

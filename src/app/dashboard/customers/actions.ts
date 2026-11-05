@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AUTH_ERROR, NAME_REQUIRED } from "@/lib/action-result";
 import { setOpeningBalance, canEditOpeningBalance } from "@/lib/opening-balance";
 import { insertChunked, upsertChunked, type BulkItem } from "@/lib/bulk";
+import { cairoDate } from "@/lib/report-period";
 
 // Customers are created, assigned to reps and deleted by the OWNER only. The database enforces this
 // (policies + triggers); the check here gives a clear message before the request is even sent.
@@ -139,7 +140,7 @@ export async function recordCustomerCollection(input: {
     p_customer_id: input.customer_id,
     p_sales_invoice_id: null,
     p_amount: input.amount,
-    p_collection_date: input.collection_date || new Date().toISOString().slice(0, 10),
+    p_collection_date: input.collection_date || cairoDate(),
     p_payment_method: input.payment_method,
     p_reference: input.reference,
     p_notes: input.notes,

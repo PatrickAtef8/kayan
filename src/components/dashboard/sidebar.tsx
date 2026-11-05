@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { usePendingPath } from "./navigation-progress";
 import { SignOutForm } from "./sign-out-form";
 import { ClipboardCheck, PackageX, Package, Warehouse, Users, Truck, ShoppingCart, ShoppingBag, Boxes, Receipt, Wallet, UserCheck, Handshake, Tag, BarChart3, LayoutGrid, X, Settings2, Globe, CreditCard } from "lucide-react";
-import { MODULES } from "@/lib/modules";
+import { VISIBLE_MODULES as MODULES } from "@/lib/modules";
 
 const ICONS = { Package, Warehouse, Users, Truck, ShoppingCart, ShoppingBag, Boxes, Receipt, Wallet, UserCheck, Handshake, Tag, BarChart3 } as const;
 

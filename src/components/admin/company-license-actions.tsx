@@ -6,8 +6,8 @@ import { grantComplimentary, revokeComplimentary, deleteCompany } from "@/app/ad
 export function CompanyLicenseActions({ orgId, name, complimentary, hasPaidLicense }: { orgId: string; name: string; complimentary: boolean; hasPaidLicense: boolean }) {
   const del = (
     <ConfirmAction label="حذف الشركة نهائيًا" tone="danger" redirectTo="/admin/companies" title="حذف الشركة نهائيًا؟"
-      description={`ستُحذف «${name}» وكل بياناتها (الفواتير والمخزون والخزنة والأعضاء والسجلات) ولا يمكن التراجع. حسابات أعضائها تبقى موجودة بلا شركة.`}
-      confirmLabel="حذف الشركة" run={() => deleteCompany(orgId)} />
+      description={`ستُحذف «${name}» وكل بياناتها (الفواتير والمخزون والخزنة والأعضاء والسجلات) ولا يمكن التراجع. يُحفظ سجل المراجعة وسجل المدفوعات في أرشيف قبل الحذف، وتُحذف مرفقاتها من التخزين. حسابات أعضائها تبقى موجودة بلا شركة. تأكد من وجود نسخة احتياطية حديثة لقاعدة البيانات.`}
+      confirmLabel="حذف الشركة" requireText={name} run={(typed) => deleteCompany(orgId, typed)} />
   );
   return (
     <div className="space-y-3">

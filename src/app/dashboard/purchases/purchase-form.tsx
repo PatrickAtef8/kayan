@@ -8,11 +8,15 @@ import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ModernSelect } from "@/components/ui/select";
+import { AsyncSearchSelect } from "@/components/ui/async-search-select";
+import { useKnownPicks } from "@/components/ui/use-known-picks";
+import { searchSupplierPicks, searchPurchaseProductPicks } from "../lookup-actions";
 import { PricingSummary, usePricingPreview } from "@/components/sales/pricing-summary";
 import { BonusEditor, type BonusRow } from "@/components/sales/bonus-editor";
 import { PAYMENT_METHODS, DEFAULT_PAYMENT_METHOD } from "@/lib/payment-methods";
 import { createPurchaseInvoice, type PurchaseItemInput } from "./actions";
 import type { ProductOption } from "./page";
+import { cairoDate } from "@/lib/report-period";
 
 type Row = PurchaseItemInput & { key: number };
 
@@ -36,21 +40,23 @@ function emptyRow(): Row {
 }
 
 export function PurchaseForm({
-  suppliers,
   warehouses,
-  products,
   prefill,
+  prefillProducts = [],
 }: {
-  suppliers: { id: string; name: string; payment_terms_days: number | null }[];
   warehouses: { id: string; name: string }[];
-  products: ProductOption[];
   prefill?: ShortagePrefill;
+  /** the product a stock-shortage link pre-selects, loaded by id (everything else is searched on the server) */
+  prefillProducts?: ProductOption[];
 }) {
+  // Suppliers and products are searched on the server as the person types (no full catalogue → no 1000-row cap).
+  const { known: supplierMap, search: searchSuppliers } = useKnownPicks<{ id: string; name: string; payment_terms_days: number | null }>(searchSupplierPicks);
+  const { known: productMap, search: searchProducts } = useKnownPicks<ProductOption>(searchPurchaseProductPicks, prefillProducts);
   const router = useRouter();
   const [supplierId, setSupplierId] = useState("");
   const [warehouseId, setWarehouseId] = useState(prefill?.warehouseId ?? warehouses[0]?.id ?? "");
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(() => cairoDate());
   const [dueDate, setDueDate] = useState("");
   const [discountPct, setDiscountPct] = useState(0);
   const [cashDiscountPct, setCashDiscountPct] = useState(0);
@@ -61,7 +67,7 @@ export function PurchaseForm({
   const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<Row[]>(() =>
     prefill
-      ? [{ ...emptyRow(), product_id: prefill.productId, quantity: prefill.suggestedQty ?? 1, unit_cost: products.find((p) => p.id === prefill.productId)?.cost ?? 0 }]
+      ? [{ ...emptyRow(), product_id: prefill.productId, quantity: prefill.suggestedQty ?? 1, unit_cost: prefillProducts.find((p) => p.id === prefill.productId)?.cost ?? 0 }]
       : [emptyRow()]
   );
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +75,7 @@ export function PurchaseForm({
   const [confirmAdditional, setConfirmAdditional] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const productById = (id: string) => products.find((p) => p.id === id);
+  const productById = (id: string) => productMap.get(id);
   const { preview, error: previewError } = usePricingPreview({
     applies_to: "purchases",
     items: rows.map(({ key, ...r }) => r),
@@ -89,7 +95,7 @@ export function PurchaseForm({
     updateRow(key, { product_id: productId, unit_cost: product?.cost ?? 0 });
   }
 
-  const terms = suppliers.find((s) => s.id === supplierId)?.payment_terms_days ?? null;
+  const terms = supplierMap.get(supplierId)?.payment_terms_days ?? null;
   const termsDueText = (() => {
     if (terms === null || !invoiceDate) return "";
     const d = new Date(invoiceDate + "T00:00:00");
@@ -168,7 +174,7 @@ export function PurchaseForm({
       )}
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-5">
         <Field label="المورد">
-          <ModernSelect value={supplierId} onChange={setSupplierId} allowClear={false} placeholder="اختر موردًا" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
+          <AsyncSearchSelect value={supplierId} selectedLabel={supplierMap.get(supplierId)?.name} onChange={(id) => setSupplierId(id)} search={searchSuppliers} placeholder="اختر موردًا" searchPlaceholder="ابحث بالاسم أو الهاتف..." />
         </Field>
         <Field label="المخزن">
           <ModernSelect value={warehouseId} onChange={setWarehouseId} allowClear={false} placeholder="اختر مخزنًا" options={warehouses.map((w) => ({ value: w.id, label: w.name }))} />
@@ -194,7 +200,7 @@ export function PurchaseForm({
           return (
             <div key={row.key} className="grid grid-cols-1 gap-2.5 rounded-xl border border-borderSoft bg-paper/40 p-3 sm:grid-cols-[1.6fr_0.8fr_0.9fr_0.8fr_1fr_auto] sm:items-end">
               <Field label="المنتج">
-                <ModernSelect value={row.product_id} onChange={(id) => setProduct(row.key, id)} allowClear={false} placeholder="اختر منتجًا" options={products.map((p) => ({ value: p.id, label: p.name }))} />
+                <AsyncSearchSelect value={row.product_id} selectedLabel={productMap.get(row.product_id)?.name} onChange={(id) => setProduct(row.key, id)} search={searchProducts} placeholder="اختر منتجًا" searchPlaceholder="ابحث باسم المنتج أو الكود..." />
               </Field>
               <Field label={`الكمية${product ? ` (${product.unit})` : ""}`}>
                 <Input type="number" step="0.001" min="0" dir="ltr" value={row.quantity} onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) })} />
@@ -222,7 +228,7 @@ export function PurchaseForm({
         تاريخ الصلاحية اختياري. لنفس الصنف بتواريخ مختلفة أضِف سطرًا لكل تاريخ.
       </p>
 
-      <BonusEditor products={products} rows={bonusRows} onChange={setBonusRows} />
+      <BonusEditor search={searchProducts} known={productMap} rows={bonusRows} onChange={setBonusRows} />
 
       <div className="mt-6 grid grid-cols-1 gap-4 border-t border-borderSoft pt-5 sm:grid-cols-5">
         <Field label="خصم على إجمالي الفاتورة (%)">

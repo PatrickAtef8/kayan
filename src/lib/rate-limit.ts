@@ -14,10 +14,14 @@ export type RatePolicy = { readonly name: string; readonly windowSeconds: number
 export const RATE_POLICIES = {
   /** Starting a payment (each one calls XPay and writes an order). Per user. */
   checkoutStart: { name: "checkout-start", windowSeconds: 600, max: 10 },
+  /** Downloading the full company data export (reads every table). Per organization. */
+  companyExport: { name: "company-export", windowSeconds: 3600, max: 3 },
   /** Asking XPay "was this paid?" while the return page is open (it polls). Per organization. */
   checkoutVerify: { name: "checkout-verify", windowSeconds: 60, max: 30 },
   /** Adding a team member — may send a real e-mail to an arbitrary address. Per organization. */
   teamInvite: { name: "team-invite", windowSeconds: 3600, max: 30 },
+  /** Asking for a password-reset email. Keyed by the TARGET address (hashed), so nobody can mail-bomb one person; it cannot be dodged by changing IP. */
+  passwordReset: { name: "password-reset", windowSeconds: 3600, max: 5 },
 } as const satisfies Record<string, RatePolicy>;
 
 export type RateLimitResult = {

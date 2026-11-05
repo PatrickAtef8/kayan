@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/db-errors";
+import { cairoDate } from "@/lib/report-period";
 
 async function getMembership(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
@@ -117,7 +118,7 @@ export async function createStockTransfer(input: {
     org_id: membership.organization_id,
     p_from_warehouse_id: input.from_warehouse_id,
     p_to_warehouse_id: input.to_warehouse_id,
-    p_transfer_date: input.transfer_date || new Date().toISOString().slice(0, 10),
+    p_transfer_date: input.transfer_date || cairoDate(),
     items,
     p_notes: input.notes || null,
   });

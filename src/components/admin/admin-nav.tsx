@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/admin", label: "نظرة عامة", exact: true },
   { href: "/admin/companies", label: "الشركات" },
   { href: "/admin/users", label: "المستخدمون" },
+  { href: "/admin/review", label: "مدفوعات للمراجعة" },
   { href: "/admin/packages", label: "الباقات والأسعار" },
   { href: "/admin/legal", label: "الصفحات القانونية" },
 ];

@@ -1,7 +1,7 @@
 import { getSettingsContext } from "@/lib/settings-context";
 import { NoSettingsAccess } from "@/components/settings/no-settings-access";
 import { Card } from "@/components/ui/card";
-import { MODULES } from "@/lib/modules";
+import { VISIBLE_MODULES as MODULES } from "@/lib/modules";
 import { ModuleToggleRow } from "./module-toggle-row";
 
 export default async function ModulesSettingsPage() {

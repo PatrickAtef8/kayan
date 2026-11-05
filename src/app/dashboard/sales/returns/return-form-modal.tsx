@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getReturnableItems, createSalesReturn, type ReturnableItem, type ReturnReason } from "./actions";
+import { cairoDate } from "@/lib/report-period";
 
 function money(n: number) {
   return formatMoney(n);
@@ -35,7 +36,7 @@ export function ReturnFormModal({
 }) {
   const [items, setItems] = useState<ReturnableItem[]>([]);
   const [lines, setLines] = useState<Record<string, LineState>>({});
-  const [returnDate, setReturnDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [returnDate, setReturnDate] = useState(() => cairoDate());
   const [cashRefund, setCashRefund] = useState(0);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);

@@ -2,7 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { Field, Input } from "@/components/ui/input";
-import { ModernSelect } from "@/components/ui/select";
+import { AsyncSearchSelect, type SearchOption } from "@/components/ui/async-search-select";
 
 export type BonusRow = { key: number; product_id: string; quantity: number };
 
@@ -15,11 +15,14 @@ export function emptyBonusRow(): BonusRow {
 // A bonus of a product that is also a paid line lowers that line's effective price;
 // any other product becomes its own zero-value line (stock and cost still move).
 export function BonusEditor({
-  products,
+  search,
+  known,
   rows,
   onChange,
 }: {
-  products: { id: string; name: string; unit?: string }[];
+  /** server-side product search (catalogues of any size) and the records found so far, by id */
+  search: (query: string) => Promise<SearchOption[]>;
+  known: Map<string, { id: string; name: string; unit?: string }>;
   rows: BonusRow[];
   onChange: (rows: BonusRow[]) => void;
 }) {
@@ -29,11 +32,11 @@ export function BonusEditor({
       <div className="mb-1 text-xs font-medium text-charcoal/45">بونص (أصناف مجانية)</div>
       <div className="space-y-2.5">
         {rows.map((row) => {
-          const product = products.find((p) => p.id === row.product_id);
+          const product = known.get(row.product_id);
           return (
             <div key={row.key} className="grid grid-cols-1 gap-2.5 rounded-xl border border-borderSoft bg-sageSoft/20 p-3 sm:grid-cols-[1.6fr_0.8fr_auto] sm:items-end">
               <Field label="الصنف">
-                <ModernSelect value={row.product_id} onChange={(id) => update(row.key, { product_id: id })} placeholder="اختر صنف البونص" options={products.map((p) => ({ value: p.id, label: p.name }))} />
+                <AsyncSearchSelect value={row.product_id} selectedLabel={product?.name} onChange={(id) => update(row.key, { product_id: id })} search={search} placeholder="اختر صنف البونص" searchPlaceholder="ابحث باسم الصنف أو الكود..." />
               </Field>
               <Field label={`الكمية${product?.unit ? ` (${product.unit})` : ""}`}>
                 <Input type="number" step="0.001" min="0" dir="ltr" value={row.quantity} onChange={(e) => update(row.key, { quantity: Number(e.target.value) })} />
