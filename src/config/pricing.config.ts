@@ -1,20 +1,24 @@
 // ---------------------------------------------------------------------------------------------------------------------
-// Kayan pricing — the ONE place that decides what each package contains, what it costs and how it is paid for.
-// Change a price, a limit, a module or a sentence of the terms here; the public /pricing page, the checkout in
-// /dashboard/billing, the amounts sent to XPay and the limits written into a license all read from this file.
+// Kayan pricing — the ONE place that decides what each plan contains, what it costs and how it is paid for.
+// There are exactly TWO plans, and a plan IS a way of paying:
+//      • "monthly"   — one all-inclusive price every month (access + hosting + basic maintenance);
+//      • "one_time"  — a perpetual license paid once, plus hosting & maintenance paid separately every month.
+// There are no tiers (no basic / professional / complete). Each plan has its own prices, limits and modules, and the Super Admin edits
+// all of them under /admin/packages. Change the SHIPPED defaults here; the public /pricing page, the checkout in /dashboard/billing,
+// the amounts sent to XPay and the limits written into a license all read from this file (with the admin's edits laid over it).
 //
 // !! THE NUMBERS BELOW ARE PLACEHOLDERS !!
 //    Nobody has told the code what Kayan actually charges. They exist so the screens and the payment flow can be built
 //    and tested end to end. In production, checkout stays CLOSED until BILLING_PRICES_CONFIRMED=true is set (see
 //    docs/BILLING.md) — set it only after you have replaced these with your real prices.
 //
-// WHAT A PACKAGE IS MADE OF (and why it contains nothing else)
-//    A package is exactly the things Kayan can really enforce today:
+// WHAT A PLAN IS MADE OF (and why it contains nothing else)
+//    A plan is exactly the things Kayan can really enforce today:
 //      • `modules`  — which optional modules the organization may switch on. Enforced by a database trigger
 //                      (organization_modules), not only hidden in the menu.
 //      • `limits`   — how many active team members and active warehouses. Enforced by database triggers.
 //    Everything else a customer gets (products, warehouses, reports, Excel/PDF export, attachments, search, the audit log,
-//    the three roles) is the same in every package and is listed once under INCLUDED_IN_EVERY_PACKAGE.
+//    the three roles) is the same in both plans and is listed once under INCLUDED_IN_EVERY_PACKAGE.
 //    The "Offers" module is intentionally absent: it is a placeholder page with no function yet.
 //
 // MONEY
@@ -23,68 +27,49 @@
 // ---------------------------------------------------------------------------------------------------------------------
 import type { ModuleKey } from "../lib/modules.ts";
 
-export type PackageKey = "basic" | "professional" | "complete";
-export type PaymentOption = "one_time" | "monthly";
+/** The two plans. A plan key is also its payment option: "monthly" is paid monthly, "one_time" is a perpetual license. */
+export type PackageKey = "monthly" | "one_time";
+export type PaymentOption = PackageKey;
+export const PLAN_KEYS: readonly PackageKey[] = ["one_time", "monthly"];
 
-/** Modules a package can switch on. The three core modules (products, warehouses, reports) are in every package. */
+/** Modules a plan can switch on. The three core modules (products, warehouses, reports) are in every plan. */
 export type PackageModuleKey = Exclude<ModuleKey, "products" | "warehouses" | "reports" | "offers">;
 
-export type PackageConfig = {
-  key: PackageKey;
+type PlanBase = {
   name: string;
   tagline: string;
-  /** shown as the recommended card */
-  highlighted?: boolean;
-  badge?: string;
   modules: PackageModuleKey[];
   /** null = unlimited */
   limits: { maxMembers: number | null; maxWarehouses: number | null };
-  pricing: {
-    /** Option A: a perpetual license paid once + hosting & maintenance charged separately each month */
-    oneTime: { licenseEgp: number; hostingMonthlyEgp: number };
-    /** Option B: one monthly price that includes access, hosting and basic maintenance */
-    monthly: { subscriptionMonthlyEgp: number };
-  };
 };
+/** One monthly price that includes access, hosting and basic maintenance. */
+export type MonthlyPlan = PlanBase & { key: "monthly"; pricing: { subscriptionMonthlyEgp: number } };
+/** A perpetual license paid once + hosting & maintenance charged separately each month. */
+export type OneTimePlan = PlanBase & { key: "one_time"; pricing: { licenseEgp: number; hostingMonthlyEgp: number } };
+export type PackageConfig = MonthlyPlan | OneTimePlan;
+
+const ALL_MODULES: PackageModuleKey[] = ["customers", "suppliers", "sales", "purchases", "inventory", "expenses", "treasury", "representatives", "partners"];
 
 export const PRICING_CONFIG = {
   currency: "EGP" as const,
 
+  // Order = order on the page: the perpetual license first, the monthly subscription second.
   packages: [
     {
-      key: "basic",
-      name: "الأساسية",
-      tagline: "للأنشطة التي تبدأ: مبيعات ومشتريات ومخزون وخزنة في نظام واحد.",
-      modules: ["customers", "suppliers", "sales", "purchases", "inventory", "expenses", "treasury"],
-      limits: { maxMembers: 3, maxWarehouses: 2 },
-      pricing: {
-        oneTime: { licenseEgp: 12000, hostingMonthlyEgp: 450 },
-        monthly: { subscriptionMonthlyEgp: 650 },
-      },
-    },
-    {
-      key: "professional",
-      name: "الاحترافية",
-      tagline: "لفريق مبيعات متنامٍ: تضيف المناديب والعمولات وفريقًا ومخازن أكثر.",
-      highlighted: true,
-      badge: "الأكثر اختيارًا",
-      modules: ["customers", "suppliers", "sales", "purchases", "inventory", "expenses", "treasury", "representatives"],
-      limits: { maxMembers: 10, maxWarehouses: 5 },
-      pricing: {
-        oneTime: { licenseEgp: 24000, hostingMonthlyEgp: 750 },
-        monthly: { subscriptionMonthlyEgp: 1150 },
-      },
-    },
-    {
-      key: "complete",
-      name: "الكاملة",
-      tagline: "كل وحدات كيان بلا حدود للفريق أو المخازن، شاملةً الشركاء وسحوباتهم.",
-      modules: ["customers", "suppliers", "sales", "purchases", "inventory", "expenses", "treasury", "representatives", "partners"],
+      key: "one_time",
+      name: "الرخصة الدائمة",
+      tagline: "ادفع الرخصة مرة واحدة لتملك النظام، والاستضافة والصيانة تُدفعان شهريًا بشكل منفصل.",
+      modules: [...ALL_MODULES],
       limits: { maxMembers: null, maxWarehouses: null },
-      pricing: {
-        oneTime: { licenseEgp: 42000, hostingMonthlyEgp: 1150 },
-        monthly: { subscriptionMonthlyEgp: 1850 },
-      },
+      pricing: { licenseEgp: 24000, hostingMonthlyEgp: 750 },
+    },
+    {
+      key: "monthly",
+      name: "الاشتراك الشهري",
+      tagline: "سعر شهري واحد يشمل الدخول للنظام والاستضافة والصيانة الأساسية.",
+      modules: [...ALL_MODULES],
+      limits: { maxMembers: null, maxWarehouses: null },
+      pricing: { subscriptionMonthlyEgp: 1150 },
     },
   ] satisfies PackageConfig[],
 
@@ -129,7 +114,7 @@ export const PRICING_CONFIG = {
   },
 };
 
-/** What every package gives, whatever its price. Each line below exists in the product today. */
+/** What both plans give, whatever their price. Each line below exists in the product today. */
 export const INCLUDED_IN_EVERY_PACKAGE: string[] = [
   "الأصناف والمخازن الأساسية",
   "تقارير الأرباح والخسائر والديون والمركز المالي",

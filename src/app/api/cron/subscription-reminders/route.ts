@@ -5,6 +5,8 @@ import { getSiteUrl } from "@/lib/site-url";
 import { sendEmail, isEmailConfigured } from "@/lib/email/service.server";
 import { ownerEmails, packageLabel } from "@/lib/billing/notify.server";
 import { planReminder } from "@/lib/billing/reminders";
+import { loadPricingConfig } from "@/lib/billing/config";
+import { isHostingFree } from "@/lib/billing/pricing";
 
 // Daily job (vercel.json → crons): emails each company's owner(s) before the subscription ends (7, 3, 1 days, the day itself) and once after.
 // Renewal stays MANUAL — the email only links to the billing page; nothing is charged. Authenticated with CRON_SECRET (Vercel sends it as
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
   const to = new Date(now.getTime() + 9 * 86_400_000).toISOString();
   const { data, error } = await admin
     .from("organization_licenses")
-    .select("organization_id, package_key, access_paid_through, complimentary, organizations(name)")
+    .select("organization_id, package_key, payment_option, access_paid_through, complimentary, organizations(name)")
     .eq("complimentary", false)
     .not("access_paid_through", "is", null)
     .gte("access_paid_through", from)
@@ -49,9 +51,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "query failed" }, { status: 500 });
   }
 
+  // free hosting & maintenance: a perpetual license has nothing to renew, so no reminder is sent for it
+  const hostingFree = isHostingFree((await loadPricingConfig(admin)).config);
   const stats = { checked: 0, due: 0, sent: 0, duplicate: 0, failed: 0, no_owner: 0 };
-  for (const row of (data ?? []) as unknown as { organization_id: string; package_key: string; access_paid_through: string; organizations: { name: string } | { name: string }[] | null }[]) {
+  for (const row of (data ?? []) as unknown as { organization_id: string; package_key: string; payment_option: string; access_paid_through: string; organizations: { name: string } | { name: string }[] | null }[]) {
     stats.checked++;
+    if (hostingFree && row.payment_option === "one_time") continue;
     const plan = planReminder(row.organization_id, row.access_paid_through, now);
     if (!plan) continue;
     stats.due++;

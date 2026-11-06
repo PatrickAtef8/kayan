@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { requireSuperAdminPage } from "@/lib/admin/auth.server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fmtDate, paymentStatus, PKG_NAME, OPTION_NAME, TONE } from "@/lib/admin/format";
+import { fmtDate, paymentStatus, PKG_NAME, TONE } from "@/lib/admin/format";
 
 const PAGE = 25;
 type Row = { id: string; name: string; created_at: string; owner_id: string | null; owner_confirmed: boolean; access_state: string | null; owner_email: string | null; owner_name: string | null; reps: number; keepers: number; others: number; members: number; invited: number; warehouses: number; package_key: string | null; payment_option: string | null; complimentary: boolean | null; access_paid_through: string | null; last_order_status: string | null };
@@ -39,7 +39,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                       <td className="px-3 py-3 text-charcoal/70"><span className="block">{r.owner_name ?? "—"}</span><span dir="ltr" className="block text-xs text-charcoal/45">{r.owner_email ?? ""}</span></td>
                       <td className="px-3 py-3 text-charcoal/60">{fmtDate(r.created_at)}</td>
                       <td className="num px-3 py-3">{r.reps}</td><td className="num px-3 py-3">{r.keepers}</td><td className="num px-3 py-3">{r.others}</td><td className="num px-3 py-3">{r.warehouses}</td>
-                      <td className="px-3 py-3 text-charcoal/70">{r.package_key ? <>{PKG_NAME[r.package_key] ?? r.package_key}<span className="block text-xs text-charcoal/40">{r.complimentary ? "مجانية" : OPTION_NAME[r.payment_option ?? ""]}</span></> : "—"}</td>
+                      <td className="px-3 py-3 text-charcoal/70">{r.package_key ? <>{PKG_NAME[r.package_key] ?? r.package_key}{r.complimentary ? <span className="block text-xs text-charcoal/40">مجانية</span> : null}</> : "—"}</td>
                       <td className="px-3 py-3"><span className={`inline-block px-2 py-0.5 text-xs font-medium ${TONE[st.tone]}`}>{st.text}</span></td>
                     </tr>
                   );

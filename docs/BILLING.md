@@ -1,3 +1,5 @@
+> **Update:** Kayan now has exactly two plans (`one_time` and `monthly`) instead of three packages. See `CHANGES-two-plans.md`. References below to basic/professional/complete are historical.
+
 # Pricing, packages and XPay payments
 
 Everything the customer sees (`/pricing`, `/dashboard/billing`) and everything that is charged comes from **one file**:
@@ -161,3 +163,6 @@ Settings → Modules shows modules outside the package locked. See `CHANGES-pack
 * Payment emails: the owner gets one receipt per paid order (and one "under review" notice when an order is parked) — from the webhook or the return page, whichever records the payment first.
 * **Renewal is manual.** Nothing here (or in the reminder emails) charges automatically; XPay recurring payments are not used.
 * Subscription reminders: daily Vercel Cron (`vercel.json`) → `/api/cron/subscription-reminders`, authenticated with `CRON_SECRET`.
+
+## Free trial and free hosting (migration 0074)
+See `CHANGES-free-trial-and-free-hosting.md`. States added: `trial` (open) and `trial_expired` (closed). The trial applies only while a company has no license; hosting price 0 makes a perpetual license `license_only` (open, no end date).

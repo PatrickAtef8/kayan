@@ -11,20 +11,20 @@ import { ScrollProgress } from "./scroll-progress";
 import { SmoothScroll } from "./smooth-scroll";
 import { MotionProvider } from "../motion-provider";
 
-export function LandingPage({ signedIn = false }: { signedIn?: boolean }) {
+export function LandingPage({ signedIn = false, trialDays = null }: { signedIn?: boolean; trialDays?: number | null }) {
   return (
     <SmoothScroll>
       <MotionProvider>
       <div className="min-h-screen bg-ivory text-charcoal" dir="rtl">
         <ScrollProgress />
-        <Navbar signedIn={signedIn} />
-        <Hero signedIn={signedIn} />
+        <Navbar signedIn={signedIn} trialDays={trialDays} />
+        <Hero signedIn={signedIn} trialDays={trialDays} />
         <Stats />
         <SignalSurface />
         <Features />
         <Roles />
         <HowItWorks />
-        <FinalCta signedIn={signedIn} />
+        <FinalCta signedIn={signedIn} trialDays={trialDays} />
         <MarketingFooter signedIn={signedIn} />
       </div>
       </MotionProvider>

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { PRICING_CONFIG } from "../../config/pricing.config.ts";
+import { PRICING_CONFIG, type OneTimePlan, type MonthlyPlan } from "../../config/pricing.config.ts";
 import { buildQuote, validatePricingConfig, toPiasters, describeFitViolations, type PricingConfig } from "./pricing.ts";
 import { evaluateAccess, daysUntil } from "./license-status.ts";
 import { verifyWebhookSignature } from "./webhook-signature.ts";
@@ -9,76 +9,96 @@ import { buildCheckoutSessionBody, createXpayClient, parseSession, XpayError } f
 import { handleXpayEvent, reconcileSession, type BillingStore, type OrderRef, type ApplyResultCode } from "./reconcile.ts";
 
 const cfg = PRICING_CONFIG as PricingConfig;
+const oneTimePlan = cfg.packages.find((p) => p.key === "one_time") as OneTimePlan;
+const monthlyPlan = cfg.packages.find((p) => p.key === "monthly") as MonthlyPlan;
 
 // ---------------------------------------------------------------- pricing
 test("the shipped pricing config is valid", () => assert.deepEqual(validatePricingConfig(cfg), []));
 
+test("there are exactly two plans — a perpetual license and a monthly subscription — and no tiers", () => {
+  assert.deepEqual(cfg.packages.map((p) => p.key).sort(), ["monthly", "one_time"]);
+  assert.ok(oneTimePlan && monthlyPlan);
+  for (const old of ["basic", "professional", "complete"]) assert.equal(cfg.packages.some((p) => (p.key as string) === old), false);
+});
+
 test("config validation catches bad prices, limits, keys and modules", () => {
   const bad = structuredClone(cfg);
-  bad.packages[0].pricing.monthly.subscriptionMonthlyEgp = 0;
-  bad.packages[1].pricing.oneTime.licenseEgp = 10.005;
-  bad.packages[1].limits.maxMembers = 0;
-  bad.packages[2].key = "Bad Key" as never;
-  bad.packages[2].modules = ["sales", "nonsense" as never];
+  (bad.packages.find((p) => p.key === "monthly") as MonthlyPlan).pricing.subscriptionMonthlyEgp = 0;
+  const one = bad.packages.find((p) => p.key === "one_time") as OneTimePlan;
+  one.pricing.licenseEgp = 10.005;
+  one.limits.maxMembers = 0;
+  one.modules = ["sales", "nonsense" as never];
   const errors = validatePricingConfig(bad).join("\n");
   assert.match(errors, /subscriptionMonthlyEgp must be greater than zero/);
   assert.match(errors, /more than two decimals/);
   assert.match(errors, /maxMembers must be a whole number/);
-  assert.match(errors, /not allowed/);
   assert.match(errors, /unknown module "nonsense"/);
 });
 
-test("no package contains the placeholder 'offers' module, and every package includes the one before it", () => {
-  for (const p of cfg.packages) assert.ok(!(p.modules as string[]).includes("offers"));
-  for (let i = 1; i < cfg.packages.length; i++) for (const m of cfg.packages[i - 1].modules) assert.ok(cfg.packages[i].modules.includes(m), `${cfg.packages[i].key} lacks ${m}`);
+test("a configuration must contain BOTH plans and nothing else", () => {
+  const onlyOne = { ...cfg, packages: cfg.packages.filter((p) => p.key === "monthly") };
+  assert.match(validatePricingConfig(onlyOne).join("\n"), /plan "one_time" is missing/);
+  const tiered = structuredClone(cfg); (tiered.packages[0] as { key: string }).key = "professional";
+  assert.match(validatePricingConfig(tiered).join("\n"), /not allowed/);
+  const dup = { ...cfg, packages: [cfg.packages[0], cfg.packages[0], cfg.packages[1]] };
+  assert.match(validatePricingConfig(dup).join("\n"), /duplicated/);
 });
 
-test("option A, first payment: license + first hosting month today, hosting is the recurring charge", () => {
-  const q = buildQuote({ packageKey: "basic", option: "one_time", purpose: "initial" });
-  const p = cfg.packages[0].pricing.oneTime;
+test("no plan contains the placeholder 'offers' module", () => {
+  for (const p of cfg.packages) assert.ok(!(p.modules as string[]).includes("offers"));
+});
+
+test("one_time, first payment: license + first hosting month today, hosting is the recurring charge", () => {
+  const q = buildQuote({ plan: "one_time", purpose: "initial" });
+  const p = oneTimePlan.pricing;
   assert.deepEqual(q.lines.map((l) => l.id), ["license", "hosting"]);
   assert.equal(q.dueToday, toPiasters(p.licenseEgp) + toPiasters(p.hostingMonthlyEgp));
   assert.equal(q.recurring?.amount, toPiasters(p.hostingMonthlyEgp));
   assert.equal(q.grantsMonths, 1);
+  assert.equal(q.option, "one_time"); assert.equal(q.packageKey, "one_time");   // a plan is its payment option
 });
 
-test("option A without the bundled first hosting month charges the license only and grants no access time", () => {
+test("one_time without the bundled first hosting month charges the license only and grants no access time", () => {
   const c = structuredClone(cfg); c.terms.includeFirstHostingWithLicense = false;
-  const q = buildQuote({ packageKey: "basic", option: "one_time", purpose: "initial" }, c);
+  const q = buildQuote({ plan: "one_time", purpose: "initial" }, c);
   assert.deepEqual(q.lines.map((l) => l.id), ["license"]);
   assert.equal(q.grantsMonths, 0);
   assert.ok(q.recurring && q.recurring.amount > 0);
 });
 
-test("option A renewal is hosting only", () => {
-  const q = buildQuote({ packageKey: "complete", option: "one_time", purpose: "renewal" });
+test("one_time renewal is hosting only", () => {
+  const q = buildQuote({ plan: "one_time", purpose: "renewal" });
   assert.deepEqual(q.lines.map((l) => l.id), ["hosting"]);
-  assert.equal(q.dueToday, toPiasters(cfg.packages[2].pricing.oneTime.hostingMonthlyEgp));
+  assert.equal(q.dueToday, toPiasters(oneTimePlan.pricing.hostingMonthlyEgp));
 });
 
-test("option B: one subscription month today and the same amount recurring", () => {
-  const q = buildQuote({ packageKey: "professional", option: "monthly", purpose: "initial" });
+test("monthly: one subscription month today and the same amount recurring", () => {
+  const q = buildQuote({ plan: "monthly", purpose: "initial" });
   assert.deepEqual(q.lines.map((l) => l.id), ["subscription"]);
-  assert.equal(q.dueToday, toPiasters(cfg.packages[1].pricing.monthly.subscriptionMonthlyEgp));
+  assert.equal(q.dueToday, toPiasters(monthlyPlan.pricing.subscriptionMonthlyEgp));
   assert.equal(q.recurring?.amount, q.dueToday);
+  assert.equal(q.option, "monthly");
 });
 
 test("recurring charges are NEVER presented as automatic while XPay cannot do it", () => {
-  for (const o of ["one_time", "monthly"]) assert.equal(buildQuote({ packageKey: "basic", option: o, purpose: "initial" }).recurring?.autoCharged, false);
+  for (const o of ["one_time", "monthly"]) assert.equal(buildQuote({ plan: o, purpose: "initial" }).recurring?.autoCharged, false);
   assert.equal(cfg.terms.automaticRenewal, false);
 });
 
 test("the quote carries the entitlements written into the license; unlimited is null", () => {
-  assert.deepEqual(buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }).entitlements.max_members, 3);
-  const c = buildQuote({ packageKey: "complete", option: "monthly", purpose: "initial" }).entitlements;
-  assert.equal(c.max_members, null); assert.equal(c.max_warehouses, null);
+  const c = structuredClone(cfg);
+  (c.packages.find((p) => p.key === "monthly") as MonthlyPlan).limits = { maxMembers: 3, maxWarehouses: 2 };
+  const q = buildQuote({ plan: "monthly", purpose: "initial" }, c).entitlements;
+  assert.equal(q.max_members, 3); assert.equal(q.max_warehouses, 2);
+  const free = buildQuote({ plan: "one_time", purpose: "initial" }).entitlements;
+  assert.equal(free.max_members, null); assert.equal(free.max_warehouses, null);
+  assert.ok(free.modules.length > 0);
 });
 
-test("unknown package or option is rejected, amounts are integers", () => {
-  assert.throws(() => buildQuote({ packageKey: "gold", option: "monthly", purpose: "initial" }));
-  assert.throws(() => buildQuote({ packageKey: "basic", option: "yearly", purpose: "initial" }));
+test("unknown plan is rejected (the old three package names and the old option names included), amounts are integers", () => {
+  for (const bad of ["gold", "basic", "professional", "complete", "yearly", "", "__proto__"]) assert.throws(() => buildQuote({ plan: bad, purpose: "initial" }), bad);
   assert.equal(toPiasters(1499.99), 149999);
-  assert.ok(Number.isInteger(buildQuote({ packageKey: "basic", option: "one_time", purpose: "initial" }).dueToday));
+  assert.ok(Number.isInteger(buildQuote({ plan: "one_time", purpose: "initial" }).dueToday));
 });
 
 test("fit violations read as Arabic sentences naming the modules", () => {
@@ -101,29 +121,29 @@ test("access state: none / license_only / active / grace / expired", () => {
 
 // ---------------------------------------------------------------- checkout: what the customer sends is never what is charged
 test("the quote ignores any price, discount, duration or total supplied by the browser", () => {
-  const honest = buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }, cfg);
-  const tampered = buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial", amount: 1, dueToday: 1, price: 1, discount: 99, months: 36, grantsMonths: 36, lines: [] } as never, cfg);
+  const honest = buildQuote({ plan: "monthly", purpose: "initial" }, cfg);
+  const tampered = buildQuote({ plan: "monthly", purpose: "initial", amount: 1, dueToday: 1, price: 1, discount: 99, months: 36, grantsMonths: 36, lines: [] } as never, cfg);
   assert.deepEqual(tampered, honest);
   assert.ok(honest.dueToday > 100);
   assert.equal(honest.grantsMonths, 1);
 });
 
-test("a renewal and a first purchase are quoted from the same configuration, and a bad package or option is refused", () => {
-  const first = buildQuote({ packageKey: "basic", option: "one_time", purpose: "initial" }, cfg);
-  const renew = buildQuote({ packageKey: "basic", option: "one_time", purpose: "renewal" }, cfg);
+test("a renewal and a first purchase are quoted from the same configuration, and a bad plan is refused", () => {
+  const first = buildQuote({ plan: "one_time", purpose: "initial" }, cfg);
+  const renew = buildQuote({ plan: "one_time", purpose: "renewal" }, cfg);
   assert.ok(first.dueToday > renew.dueToday, "the license is charged once; a renewal is hosting only");
   assert.equal(renew.grantsMonths, 1);
-  assert.throws(() => buildQuote({ packageKey: "nope", option: "monthly", purpose: "initial" }, cfg));
-  assert.throws(() => buildQuote({ packageKey: "basic", option: "yearly", purpose: "initial" }, cfg));
+  assert.throws(() => buildQuote({ plan: "nope", purpose: "initial" }, cfg));
+  assert.throws(() => buildQuote({ plan: "yearly", purpose: "initial" }, cfg));
 });
 
-test("a changed package price changes NEW quotes only (an order stores its own lines and amount)", () => {
+test("a changed plan price changes NEW quotes only (an order stores its own lines and amount)", () => {
   const edited = structuredClone(cfg);
-  edited.packages.find((p) => p.key === "basic")!.pricing.monthly.subscriptionMonthlyEgp += 100;
-  const before = buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }, cfg);
-  const after = buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }, edited);
+  (edited.packages.find((p) => p.key === "monthly") as MonthlyPlan).pricing.subscriptionMonthlyEgp += 100;
+  const before = buildQuote({ plan: "monthly", purpose: "initial" }, cfg);
+  const after = buildQuote({ plan: "monthly", purpose: "initial" }, edited);
   assert.equal(after.dueToday, before.dueToday + 10000);
-  assert.equal(before.dueToday, buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }, cfg).dueToday);
+  assert.equal(before.dueToday, buildQuote({ plan: "monthly", purpose: "initial" }, cfg).dueToday);
 });
 
 // ---------------------------------------------------------------- webhook signature
@@ -321,35 +341,59 @@ test("saving the shipped values unchanged is still 'not custom'", () => {
 });
 test("an override changes prices, limits and modules — and checkout maths follows it", () => {
   const all = Object.fromEntries(cfg.packages.map((p) => [p.key, toEditable(p)]));
-  all.basic.licenseEgp = 9999.5; all.basic.maxMembers = null; all.basic.modules = ["sales", "customers"];
+  all.one_time.licenseEgp = 9999.5; all.one_time.maxMembers = 4; all.one_time.modules = ["sales", "customers"];
   const r = resolvePricingConfig(overridesFromEditable(all));
   assert.equal(r.custom, true);
-  const q = buildQuote({ packageKey: "basic", option: "one_time", purpose: "initial" }, r.config);
+  const q = buildQuote({ plan: "one_time", purpose: "initial" }, r.config);
   assert.equal(q.lines[0].amount, 999950);
-  assert.equal(q.entitlements.max_members, null);
+  assert.equal(q.entitlements.max_members, 4);
   assert.deepEqual(q.entitlements.modules, ["customers", "sales"]);
-  // the other packages are untouched
-  assert.deepEqual(r.config.packages[1], cfg.packages[1]);
+  // the OTHER plan is untouched
+  assert.deepEqual(r.config.packages.find((p) => p.key === "monthly"), monthlyPlan);
+});
+test("both plans are editable independently from the admin", () => {
+  const all = Object.fromEntries(cfg.packages.map((p) => [p.key, toEditable(p)]));
+  all.monthly.subscriptionMonthlyEgp = 777; all.one_time.hostingMonthlyEgp = 321.5;
+  const r = resolvePricingConfig(overridesFromEditable(all));
+  assert.equal(buildQuote({ plan: "monthly", purpose: "initial" }, r.config).dueToday, 77700);
+  assert.equal(buildQuote({ plan: "one_time", purpose: "renewal" }, r.config).dueToday, 32150);
+});
+test("an editable plan carries only the prices that belong to it", () => {
+  const m = toEditable(monthlyPlan), o = toEditable(oneTimePlan);
+  assert.equal(m.licenseEgp, null); assert.equal(m.hostingMonthlyEgp, null); assert.ok(m.subscriptionMonthlyEgp! > 0);
+  assert.equal(o.subscriptionMonthlyEgp, null); assert.ok(o.licenseEgp! > 0 && o.hostingMonthlyEgp! > 0);
+  const stored = overridesFromEditable({ monthly: m, one_time: o });
+  assert.deepEqual(Object.keys(stored.packages.monthly.pricing), ["subscriptionMonthlyEgp"]);
+  assert.deepEqual(Object.keys(stored.packages.one_time.pricing).sort(), ["hostingMonthlyEgp", "licenseEgp"]);
 });
 test("a broken override (bad price, junk, unknown module) is ignored as a whole: the defaults win", () => {
-  const bad = { packages: { basic: { pricing: { oneTime: { licenseEgp: -5 } } } } };
+  const bad = { packages: { one_time: { pricing: { licenseEgp: -5 } } } };
   assert.deepEqual(resolvePricingConfig(bad).config, cfg);
-  assert.deepEqual(resolvePricingConfig({ packages: { basic: { limits: { maxMembers: 0 } } } }).config, cfg);
-  const junk = resolvePricingConfig({ packages: { basic: { modules: ["sales", "hack"], limits: { maxMembers: "many" } } } });
-  assert.deepEqual(junk.config.packages[0].modules, ["sales"]);       // unknown module dropped, bad limit ignored
-  assert.equal(junk.config.packages[0].limits.maxMembers, cfg.packages[0].limits.maxMembers);
+  assert.deepEqual(resolvePricingConfig({ packages: { one_time: { limits: { maxMembers: 0 } } } }).config, cfg);
+  const junk = resolvePricingConfig({ packages: { one_time: { modules: ["sales", "hack"], limits: { maxMembers: "many" } } } });
+  const one = junk.config.packages.find((p) => p.key === "one_time")!;
+  assert.deepEqual(one.modules, ["sales"]);       // unknown module dropped, bad limit ignored
+  assert.equal(one.limits.maxMembers, oneTimePlan.limits.maxMembers);
 });
-test("an unknown package key in an override is ignored", () => {
+test("an unknown key in an override — including the old basic/professional/complete — is ignored", () => {
   assert.deepEqual(resolvePricingConfig({ packages: { gold: { limits: { maxMembers: 1 } } } }).config.packages, cfg.packages);
+  const legacy = { packages: { basic: { pricing: { oneTime: { licenseEgp: 1, hostingMonthlyEgp: 1 }, monthly: { subscriptionMonthlyEgp: 1 } }, modules: ["sales"], limits: { maxMembers: 1, maxWarehouses: 1 } } } };
+  const r = resolvePricingConfig(legacy);
+  assert.equal(r.custom, false); assert.deepEqual(r.config.packages, cfg.packages);
 });
 test("what an admin types is validated, in Arabic", () => {
-  const ok = toEditable(cfg.packages[0]);
-  assert.deepEqual(validateEditable("basic", "الأساسية", ok), []);
-  assert.match(validateEditable("basic", "الأساسية", { ...ok, licenseEgp: 0 })[0], /أكبر من صفر/);
-  assert.match(validateEditable("basic", "الأساسية", { ...ok, hostingMonthlyEgp: 1.234 })[0], /خانتين/);
-  assert.match(validateEditable("basic", "الأساسية", { ...ok, maxMembers: 0 })[0], /≥ 1/);
-  assert.equal(validateEditable("basic", "x", { ...ok, maxMembers: null, maxWarehouses: null }).length, 0);
-  assert.match(validateEditable("basic", "x", { ...ok, modules: ["sales", "sales"] })[0], /الوحدات/);
+  const ok = toEditable(oneTimePlan);
+  assert.deepEqual(validateEditable("one_time", "الرخصة الدائمة", ok), []);
+  assert.match(validateEditable("one_time", "الرخصة الدائمة", { ...ok, licenseEgp: 0 })[0], /أكبر من صفر/);
+  assert.match(validateEditable("one_time", "الرخصة الدائمة", { ...ok, hostingMonthlyEgp: 1.234 })[0], /خانتين/);
+  assert.match(validateEditable("one_time", "الرخصة الدائمة", { ...ok, maxMembers: 0 })[0], /≥ 1/);
+  assert.equal(validateEditable("one_time", "x", { ...ok, maxMembers: null, maxWarehouses: null }).length, 0);
+  assert.match(validateEditable("one_time", "x", { ...ok, modules: ["sales", "sales"] })[0], /الوحدات/);
+  // monthly needs its own price, and a missing one is an error
+  const m = toEditable(monthlyPlan);
+  assert.deepEqual(validateEditable("monthly", "الاشتراك الشهري", m), []);
+  assert.match(validateEditable("monthly", "الاشتراك الشهري", { ...m, subscriptionMonthlyEgp: null })[0], /أكبر من صفر/);
+  assert.match(validateEditable("basic", "x", m)[0], /غير معروفة/);
 });
 
 // ---------------------------------------------------------------- super admin allow-list

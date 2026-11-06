@@ -14,7 +14,7 @@ export default async function AdminHome() {
   const admins = configuredAdmins();
   const readiness = billingReadiness();
   const mail = loadEmailConfig();
-  const [stats, pricing, audit, unpaid, review] = await Promise.all([
+  const [stats, pricing, audit, unpaid, review, trials] = await Promise.all([
     // ONE query for the four counters (companies, users, paid, free). Before: the companies function, an Auth-API call and a download
     // of every license row. If it fails the cards show «—», never a silent 0.
     admin.rpc("admin_overview_stats"),
@@ -22,7 +22,9 @@ export default async function AdminHome() {
     admin.from("admin_audit_log").select("action, created_at, details").order("created_at", { ascending: false }).limit(8),
     admin.rpc("admin_unpaid_company_count", { p_exclude_users: admins.ids, p_exclude_emails: admins.emails }),
     admin.from("billing_orders").select("id", { count: "exact", head: true }).eq("needs_review", true),
+    admin.rpc("admin_trial_stats"),
   ]);
+  const tr = (trials.error ? null : trials.data) as { active?: number; expired?: number } | null;
   const s = (stats.error ? null : stats.data) as { companies?: number; users?: number; paid?: number; complimentary?: number } | null;
   const num = (v: number | undefined) => (s && typeof v === "number" ? v : "—");
   const stat = (label: string, value: string | number, href?: string) => (
@@ -35,12 +37,13 @@ export default async function AdminHome() {
   return (
     <div>
       <AdminHeader title="نظرة عامة" subtitle="صورة سريعة عن المنصة. التعديلات من صفحات الشركات والمستخدمين والباقات." />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stat("الشركات", num(s?.companies), "/admin/companies")}
         {stat("المستخدمون", num(s?.users), "/admin/users")}
         {stat("شركات دفعت", num(s?.paid))}
         {stat("بانتظار الدفع", typeof unpaid.data === "number" ? unpaid.data : "—", "/admin/companies")}
         {stat("وصول مجاني", num(s?.complimentary))}
+        {stat("في تجربة مجانية", tr && typeof tr.active === "number" ? tr.active : "—", "/admin/companies")}
       </div>
       <Card className="mt-4 p-5">
         <p className="text-sm font-medium">جاهزية الإنتاج</p>

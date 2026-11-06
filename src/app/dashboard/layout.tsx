@@ -10,6 +10,8 @@ import { OwnerPaywallBody } from "@/components/dashboard/owner-paywall-body";
 import { isSuperAdminSession } from "@/lib/admin/auth.server";
 import { COMPLIMENTARY_ENTITLEMENTS } from "@/lib/billing/complimentary";
 import { GraceBanner } from "@/components/dashboard/grace-banner";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
+import { startTrialForOwner } from "@/lib/billing/trial.server";
 import { decideAccess, isBillingPath, parseAccess, type GateDecision } from "@/lib/billing/access-gate";
 
 export const metadata = { robots: { index: false, follow: false, nocache: true } };
@@ -43,8 +45,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
         if (error) console.error("dashboard: pending organization creation failed", error);
         else {
           created = true;
+          // "Start for free" was chosen at sign-up and the email had to be confirmed first: the trial starts now, once, for the company just
+          // created. (The database re-checks everything: owner, trials on, no license, one trial per account.)
+          const wantsTrial = user.user_metadata?.start_trial === true && !isAdmin;
+          if (wantsTrial) {
+            try {
+              const { data: m } = await supabase.from("organization_users").select("organization_id").eq("user_id", user.id).eq("status", "active").limit(1).maybeSingle();
+              if (m?.organization_id) await startTrialForOwner({ userId: user.id, organizationId: m.organization_id as string });
+            } catch (e) { console.error("dashboard: could not start the requested free trial", e instanceof Error ? e.message : e); }
+          }
           try {
-            await createAdminClient().auth.admin.updateUserById(user.id, { user_metadata: { ...user.user_metadata, pending_org: null } });
+            await createAdminClient().auth.admin.updateUserById(user.id, { user_metadata: { ...user.user_metadata, pending_org: null, start_trial: null } });
           } catch { /* best effort: the membership now exists, so the stored details are never used again */ }
         }
       }
@@ -80,7 +91,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     const a = parseAccess(adminAccess.data);
     if (a && !a.license && a.owners.some((o) => o.id === user.id)) {
       try {
-        await createAdminClient().rpc("admin_grant_complimentary_license", { p_admin: user.id, p_org: orgId, p_package: "complete", p_entitlements: COMPLIMENTARY_ENTITLEMENTS });
+        await createAdminClient().rpc("admin_grant_complimentary_license", { p_admin: user.id, p_org: orgId, p_package: "one_time", p_entitlements: COMPLIMENTARY_ENTITLEMENTS });
         adminAccess = await supabase.rpc("my_org_access", { target_org: orgId });
       } catch (e) { console.error("dashboard: could not give the administrator's company free access", e instanceof Error ? e.message : e); }
     }
@@ -113,11 +124,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const decision: GateDecision = decideAccess({ isPlatformAdmin: isAdmin, access: access.access });
   if (!decision.open) {
     const lapsed = decision.reason === "expired";
-    if (roleKey !== "owner") return <PaywallShell orgName={orgName} userEmail={user.email}><WorkspaceNotActive lapsed={lapsed} /></PaywallShell>;
+    const trialEnded = decision.reason === "trial_expired";
+    if (roleKey !== "owner") return <PaywallShell orgName={orgName} userEmail={user.email}><WorkspaceNotActive lapsed={lapsed} trialEnded={trialEnded} /></PaywallShell>;
     // The owner is NOT redirected: they see the "activate your account" card and press its button to open the billing page. The layout
     // is not re-rendered when the owner clicks around (Next.js keeps it mounted), so the billing-or-prompt decision is handed to a
     // client component that follows the browser's current path — otherwise the card stayed on screen on /dashboard/billing itself.
-    return <PaywallShell orgName={orgName} userEmail={user.email}><OwnerPaywallBody>{children}</OwnerPaywallBody></PaywallShell>;
+    const promptReason = trialEnded ? "trial_ended" : lapsed ? "expired" : "never_paid";
+    return <PaywallShell orgName={orgName} userEmail={user.email}><OwnerPaywallBody reason={promptReason} trial={{ eligible: access.trialOffer.eligible, days: access.trialOffer.days }}>{children}</OwnerPaywallBody></PaywallShell>;
   }
 
   const pending = (pendingRes?.data as { sales: number; purchases: number } | null) ?? { sales: 0, purchases: 0 };
@@ -135,6 +148,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <DashboardShell isAdmin={isAdmin} orgId={orgId} userId={user.id} orgName={org?.name} enabledKeys={enabledKeys} userEmail={user.email ?? undefined} roleName={roleName} initialNotifications={notifications} initialUnread={unread} role={roleKey ?? "owner"} pendingOrders={pendingOrders} shortageBadge={shortageBadge}>
       {!isAdmin && access.access.state === "grace" && access.access.secondsLeft !== null ? <GraceBanner secondsLeft={access.access.secondsLeft} isOwner={roleKey === "owner"} monthly={access.license?.payment_option === "monthly"} /> : null}
+      {!isAdmin && access.access.state === "trial" && access.access.secondsLeft !== null ? <TrialBanner secondsLeft={access.access.secondsLeft} isOwner={roleKey === "owner"} /> : null}
       {!isAdmin && roleKey === "owner" ? <BillingBanner access={access.access} /> : null}
       {children}
     </DashboardShell>

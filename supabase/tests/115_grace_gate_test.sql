@@ -45,7 +45,7 @@ select t.eq((select count(*) from billing_orders), 0, 'the billing tables stay r
 -- ============================================================
 select t.as_owner();
 insert into organization_licenses (organization_id, package_key, payment_option, entitlements, access_paid_through)
-values (:'a_id', 'basic', 'monthly', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', now() + interval '1 hour');
+values (:'a_id', 'monthly', 'monthly', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', now() + interval '1 hour');
 select t.as_user('11500000-0000-0000-0000-000000000001');
 select t.eq((select count(*) from customers), 1, 'active: the company sees its data');
 select t.eq_text(my_org_access(:'a_id') -> 'access' ->> 'state', 'active', 'state active');
@@ -112,7 +112,7 @@ update platform_billing_settings set grace_enabled = true, grace_hours = 24;
 -- ============================================================
 update organization_licenses set access_paid_through = now() - interval '30 hours' where organization_id = :'a_id';
 set role service_role;
-select billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 65000, 65000,
+select billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', 1) as j \gset
 reset role;
 select (:'j'::jsonb -> 'order' ->> 'id') as ro \gset
@@ -129,15 +129,15 @@ select t.eq_text((select status from billing_orders where id = :'ro'), 'failed',
 select t.eq_text(billing_access_state(:'a_id', now()) ->> 'state', 'expired', 'a FAILED payment does not restore access');
 
 set role service_role;
-select billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 65000, 65000,
+select billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', 1) ->> 'result' as again \gset
-select (billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 65000, 65000,
+select (billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', 1) -> 'order' ->> 'id') as ro2 \gset
 select billing_mark_order(:'ro2', 'canceled', 'customer_canceled') as cc \gset
 reset role;
 select t.eq_text(billing_access_state(:'a_id', now()) ->> 'state', 'expired', 'a CANCELED order does not restore access');
 set role service_role;
-select (billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 65000, 65000,
+select (billing_begin_order(:'a_id', '11500000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers","sales"],"max_members":5,"max_warehouses":2}', 1) -> 'order' ->> 'id') as ro3 \gset
 select billing_apply_payment(:'ro3', 'cs_test_r3', 'pi_r3', 65000, 'EGP') ->> 'result' as ok1 \gset
 select billing_apply_payment(:'ro3', 'cs_test_r3', 'pi_r3', 65000, 'EGP') ->> 'result' as ok2 \gset
@@ -157,7 +157,7 @@ select t.ok(is_org_member(:'a_id'), 'and so does the member');
 -- ============================================================
 select t.as_user('11500000-0000-0000-0000-000000000001');
 select t.throws(format($q$update organization_licenses set access_paid_through = now() + interval '10 years' where organization_id = %L$q$, :'a_id'), 'permission denied', 'cannot extend the subscription');
-select t.throws(format($q$insert into organization_licenses (organization_id, package_key, payment_option, entitlements) values (%L, 'basic', 'monthly', '{}')$q$, :'b_id'), 'permission denied', 'cannot create a license');
+select t.throws(format($q$insert into organization_licenses (organization_id, package_key, payment_option, entitlements) values (%L, 'monthly', 'monthly', '{}')$q$, :'b_id'), 'permission denied', 'cannot create a license');
 select t.throws($q$update billing_orders set status = 'paid'$q$, 'permission denied', 'cannot mark an order paid');
 select t.throws($q$select * from platform_billing_settings$q$, 'permission denied', 'cannot read the grace settings table');
 select t.throws($q$update platform_billing_settings set grace_hours = 9999, gate_enforced = false$q$, 'permission denied', 'cannot change the grace settings or switch the gate off');
@@ -178,7 +178,7 @@ select t.as_user('11500000-0000-0000-0000-000000000005');
 select t.ok(not is_org_member(:'c_id'), 'a member of a demo company with no subscription is NOT let in just because the owner is an administrator');
 select t.as_owner();
 set role service_role;
-select admin_grant_complimentary_license('11500000-0000-0000-0000-000000000009', :'c_id', 'complete', '{"modules":["customers","sales"],"max_members":null,"max_warehouses":null}') as gr \gset
+select admin_grant_complimentary_license('11500000-0000-0000-0000-000000000009', :'c_id', 'one_time', '{"modules":["customers","sales"],"max_members":null,"max_warehouses":null}') as gr \gset
 reset role;
 select t.as_user('11500000-0000-0000-0000-000000000005');
 select t.ok(is_org_member(:'c_id'), 'once the platform grants the company free access, the member is in');

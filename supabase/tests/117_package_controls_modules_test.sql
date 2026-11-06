@@ -28,8 +28,8 @@ select t.eq((select count(*) from organization_modules where organization_id = :
 select t.eq_text((billing_fit_report(:'b_id', :'basic'::jsonb) ->> 'ok'), 'true', 'before the first license, modules never block a package');
 
 insert into organization_licenses (organization_id, package_key, payment_option, entitlements, licensed_at, access_paid_through)
-values (:'a_id', 'basic', 'one_time', :'basic'::jsonb, now(), now() + interval '30 days'),
-       (:'b_id', 'basic', 'one_time', :'basic'::jsonb, now(), now() + interval '30 days');
+values (:'a_id', 'one_time', 'one_time', :'basic'::jsonb, now(), now() + interval '30 days'),
+       (:'b_id', 'one_time', 'one_time', :'basic'::jsonb, now(), now() + interval '30 days');
 
 select t.eq((select count(*) from organization_modules where organization_id = :'a_id' and enabled and module_key in ('customers','suppliers','sales')), 3, 'the license switched on exactly the package modules');
 select t.eq((select count(*) from organization_modules where organization_id = :'a_id' and enabled and module_key = 'partners'), 0, 'and nothing outside the package');

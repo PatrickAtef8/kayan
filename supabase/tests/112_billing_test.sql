@@ -40,7 +40,7 @@ join roles r on r.key = u.k and r.organization_id is null;
 -- 1. Nobody but the service role can call the billing functions
 -- ============================================================
 select t.as_user('11200000-0000-0000-0000-000000000001');
-select t.throws(format($q$select billing_begin_order(%L::uuid, %L::uuid, 'basic', 'one_time', 'initial', 'EGP', 1245000, 45000, %L::jsonb, %L::jsonb, 1)$q$,
+select t.throws(format($q$select billing_begin_order(%L::uuid, %L::uuid, 'one_time', 'one_time', 'initial', 'EGP', 1245000, 45000, %L::jsonb, %L::jsonb, 1)$q$,
   :'org_id', '11200000-0000-0000-0000-000000000001', :'lines', :'basic'), 'permission denied', 'the owner (signed-in browser session) cannot start an order directly');
 select t.throws(format($q$select billing_apply_payment(gen_random_uuid(), 'cs_test_x', 'pi_x', 1245000, 'EGP')$q$), 'permission denied', 'nobody can activate a payment from a browser session');
 select t.throws($q$select billing_mark_order(gen_random_uuid(), 'failed', 'x')$q$, 'permission denied', 'nobody can close an order from a browser session');
@@ -54,7 +54,7 @@ select t.throws($q$select billing_apply_payment(gen_random_uuid(), 'cs_test_x', 
 -- ============================================================
 select t.as_owner();
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000002', 'basic', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000002', 'one_time', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'not_owner', 'a sales member cannot start a purchase');
 
@@ -67,7 +67,7 @@ select t.ok(:'j'::jsonb -> 'report' -> 'violations' @> '[{"kind":"members","curr
 select t.eq((select count(*) from billing_orders where organization_id = :'org_id'), 0, 'a refused order leaves no row behind');
 
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) as j \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'one_time', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) as j \gset
 reset role;
 select t.eq_text(:'j'::jsonb ->> 'result', 'created', 'the owner can start an order');
 select (:'j'::jsonb -> 'order' ->> 'id') as o1 \gset
@@ -75,7 +75,7 @@ select t.eq_text((select status from billing_orders where id = :'o1'), 'pending'
 select t.eq((select amount_total from billing_orders where id = :'o1'), 1245000, 'the amount is stored in piasters');
 
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) as j \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'one_time', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) as j \gset
 reset role;
 select t.eq_text(:'j'::jsonb ->> 'result', 'reused', 'clicking pay again re-uses the open checkout');
 select t.eq_text(:'j'::jsonb -> 'order' ->> 'id', :'o1', 'and it is the same order');
@@ -91,7 +91,7 @@ select t.ok(not :'a2'::boolean, 'a different session can never replace the attac
 
 -- a DIFFERENT checkout replaces the open one and tells the server which XPay session to expire
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'monthly', 'initial', 'EGP', 165000, 165000,
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'initial', 'EGP', 165000, 165000,
   '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) as j \gset
 reset role;
 select t.eq_text(:'j'::jsonb ->> 'result', 'created', 'switching to the monthly option opens a new order');
@@ -99,7 +99,7 @@ select t.eq_text(:'j'::jsonb ->> 'superseded_session_id', 'cs_test_one', 'and re
 select t.eq_text((select status || '/' || failure_reason from billing_orders where id = :'o1'), 'canceled/superseded', 'the replaced order is closed');
 select (:'j'::jsonb -> 'order' ->> 'id') as o2 \gset
 select t.eq((select count(*) from billing_orders where organization_id = :'org_id' and status = 'pending'), 1, 'exactly one open checkout');
-select t.throws(format($q$insert into billing_orders (organization_id, package_key, payment_option, purpose, amount_total, lines, entitlements) values (%L, 'basic', 'monthly', 'initial', 5, '[]', '{}')$q$, :'org_id'),
+select t.throws(format($q$insert into billing_orders (organization_id, package_key, payment_option, purpose, amount_total, lines, entitlements) values (%L, 'monthly', 'monthly', 'initial', 5, '[]', '{}')$q$, :'org_id'),
   'billing_orders_one_pending', 'the database itself refuses a second open checkout');
 
 -- ============================================================
@@ -116,7 +116,7 @@ select t.ok((select needs_review from billing_orders where id = :'o2'), 'it is f
 select t.eq_text((select status from billing_orders where id = :'o2'), 'failed', 'and closed');
 
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'monthly', 'initial', 'EGP', 165000, 165000,
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'initial', 'EGP', 165000, 165000,
   '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'created', 'after a failed attempt the owner can start a fresh checkout');
@@ -133,7 +133,7 @@ set role service_role;
 select billing_apply_payment(:'o3', 'cs_test_three', 'pi_three', 165000, 'EGP') ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'applied', 'the verified payment activates the license');
-select t.eq_text((select package_key || '/' || payment_option from organization_licenses where organization_id = :'org_id'), 'basic/monthly', 'with the package and option that were bought');
+select t.eq_text((select package_key || '/' || payment_option from organization_licenses where organization_id = :'org_id'), 'monthly/monthly', 'with the package and option that were bought');
 select t.ok((select access_paid_through between now() + interval '1 month' - interval '1 minute' and now() + interval '1 month' + interval '1 minute' from organization_licenses where organization_id = :'org_id'), 'paid through one month from now');
 select t.eq_text((select status || '/' || xpay_payment_intent_id from billing_orders where id = :'o3'), 'paid/pi_three', 'the order is paid and remembers the XPay payment intent');
 select access_paid_through as pt1 from organization_licenses where organization_id = :'org_id' \gset
@@ -157,7 +157,7 @@ select t.eq_text((select status from billing_orders where id = :'o3'), 'paid', '
 
 -- a new initial purchase once a license exists is refused
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'one_time', 'one_time', 'initial', 'EGP', 1245000, 45000, :'lines', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'license_exists', 'an organization that holds a license cannot buy a second one');
 
@@ -165,12 +165,12 @@ select t.eq_text(:'r', 'license_exists', 'an organization that holds a license c
 -- 4. Renewals
 -- ============================================================
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'one_time', 'renewal', 'EGP', 45000, 45000, '[{"id":"hosting","label":"h","amount":45000}]', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'one_time', 'one_time', 'renewal', 'EGP', 45000, 45000, '[{"id":"hosting","label":"h","amount":45000}]', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'mismatch', 'a renewal must be for the package and option the organization actually holds');
 
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select t.eq_text(:'r', 'created', 'the owner can renew');
 select id as o4 from billing_orders where organization_id = :'org_id' and status = 'pending' \gset
@@ -185,7 +185,7 @@ select t.eq_text((select period_start = :'pt1'::timestamptz and period_end = :'p
 -- a lapsed license renews from TODAY, not from the long-gone paid-through date
 update organization_licenses set access_paid_through = now() - interval '40 days' where organization_id = :'org_id';
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select id as o5 from billing_orders where organization_id = :'org_id' and status = 'pending' \gset
 set role service_role;
@@ -196,7 +196,7 @@ select t.ok((select access_paid_through between now() + interval '1 month' - int
 
 -- unpaid ends: expired / failed, never touching a paid order
 set role service_role;
-select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'basic', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
+select billing_begin_order(:'org_id', '11200000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'renewal', 'EGP', 165000, 165000, '[{"id":"subscription","label":"s","amount":165000}]', :'basic', 1) ->> 'result' as r \gset
 reset role;
 select id as o6 from billing_orders where organization_id = :'org_id' and status = 'pending' \gset
 set role service_role;
@@ -234,8 +234,8 @@ select t.eq((select attempts from billing_webhook_events where event_id = 'evt_a
 select t.as_user('11200000-0000-0000-0000-000000000001');
 select t.ok((select count(*) from organization_licenses) = 1, 'the owner sees the license of their organization');
 select t.ok((select count(*) from billing_orders) >= 5, 'and its orders');
-select t.throws($q$insert into billing_orders (organization_id, package_key, payment_option, purpose, amount_total, lines, entitlements) values (gen_random_uuid(), 'basic', 'monthly', 'initial', 5, '[]', '{}')$q$, 'permission denied', 'the owner cannot write an order');
-select t.throws(format($q$update organization_licenses set package_key = 'complete' where organization_id = %L$q$, :'org_id'), 'permission denied', 'the owner cannot edit their own license');
+select t.throws($q$insert into billing_orders (organization_id, package_key, payment_option, purpose, amount_total, lines, entitlements) values (gen_random_uuid(), 'monthly', 'monthly', 'initial', 5, '[]', '{}')$q$, 'permission denied', 'the owner cannot write an order');
+select t.throws(format($q$update organization_licenses set package_key = 'monthly' where organization_id = %L$q$, :'org_id'), 'permission denied', 'the owner cannot edit their own license');
 select t.throws(format($q$delete from billing_orders where organization_id = %L$q$, :'org_id'), 'permission denied', 'or delete an order');
 select t.throws($q$select * from billing_webhook_events$q$, 'permission denied', 'webhook events are invisible');
 select t.as_user('11200000-0000-0000-0000-000000000004');

@@ -2,30 +2,43 @@
 // by the database clock); this file only (a) reads that answer safely and (b) mirrors the same rules in pure form so the tests can
 // pin the boundaries and the UI can count down without asking again.
 //
-//   none          never paid                                     closed
+//   none          never paid, no trial                           closed
+//   trial         no license, free trial running                 open  (the dashboard shows the days left)
+//   trial_expired no license, free trial over                    closed ("subscribe to continue"; nothing is deleted)
 //   free          complimentary access granted by the platform    open
 //   license_only  a license with no end date                      open
 //   active        now <= paid_through                             open
 //   grace         paid_through < now <= paid_through + grace      open  (the dashboard shows a warning with the time left)
 //   expired       now >  paid_through + grace                     closed
 // grace = grace_hours when the grace period is enabled, else 0 (0 hours also means "lock immediately").
-export type AccessState = "none" | "free" | "license_only" | "active" | "grace" | "expired";
+// A license always wins over a trial. A perpetual license whose hosting & maintenance price is 0 is `license_only` (never closed for a missing payment).
+export type AccessState = "none" | "trial" | "trial_expired" | "free" | "license_only" | "active" | "grace" | "expired";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
-export const OPEN_STATES: readonly AccessState[] = ["free", "license_only", "active", "grace"];
+export const OPEN_STATES: readonly AccessState[] = ["trial", "free", "license_only", "active", "grace"];
 export const isOpenState = (s: AccessState) => OPEN_STATES.includes(s);
 
 export type GraceSettings = { graceEnabled: boolean; graceHours: number };
 
-/** Pure mirror of the SQL judgement (used by tests and by display code that has no database answer at hand). */
+/** Pure mirror of the SQL judgement (used by tests and by display code that has no database answer at hand).
+ *  `trialEndsAt` is the end of the company's free trial (null = it never started one); it is only looked at when there is no license.
+ *  `hostingFree` = the perpetual-license plan's hosting & maintenance price is 0. */
 export function evaluateAccess(
-  license: { complimentary?: boolean | null; access_paid_through: string | null } | null,
+  license: { complimentary?: boolean | null; access_paid_through: string | null; payment_option?: string | null } | null,
   now: Date,
   grace: GraceSettings,
+  trialEndsAt: string | null = null,
+  hostingFree = false,
 ): AccessState {
-  if (!license) return "none";
+  if (!license) {
+    if (!trialEndsAt) return "none";
+    const end = new Date(trialEndsAt).getTime();
+    if (Number.isNaN(end)) return "none";
+    return now.getTime() <= end ? "trial" : "trial_expired";
+  }
   if (license.complimentary) return "free";
+  if (hostingFree && license.payment_option === "one_time") return "license_only";
   if (!license.access_paid_through) return "license_only";
   const through = new Date(license.access_paid_through).getTime();
   if (Number.isNaN(through)) return "license_only";
@@ -45,9 +58,14 @@ export type DbAccess = {
   graceEnabled: boolean;
   graceHours: number;
   serverNow: string | null;
+  /** the free trial (only while there is no license): when it started / ends */
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  /** the perpetual license's hosting & maintenance is free (price 0): nothing to renew */
+  hostingFree: boolean;
 };
 
-const STATES: readonly string[] = ["none", "free", "license_only", "active", "grace", "expired"];
+const STATES: readonly string[] = ["none", "trial", "trial_expired", "free", "license_only", "active", "grace", "expired"];
 
 export function parseDbAccess(raw: unknown): DbAccess | null {
   if (!raw || typeof raw !== "object") return null;
@@ -63,6 +81,9 @@ export function parseDbAccess(raw: unknown): DbAccess | null {
     graceEnabled: r.grace_enabled !== false,
     graceHours: typeof r.grace_hours === "number" ? r.grace_hours : 24,
     serverNow: str(r.server_now),
+    trialStartedAt: str(r.trial_started_at),
+    trialEndsAt: str(r.trial_ends_at),
+    hostingFree: r.hosting_free === true,
   };
 }
 

@@ -13,7 +13,7 @@ const word = {
   show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
-export function Hero({ signedIn = false }: { signedIn?: boolean }) {
+export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolean; trialDays?: number | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const pointerX = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
   const pointerY = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
@@ -76,10 +76,11 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
             transition={{ delay: 0.78, duration: 0.7 }}
             className="mt-9 flex flex-wrap items-center justify-end gap-3"
           >
-            <PrimaryButton href={signedIn ? "/dashboard" : "/signup"} className="rounded-[4px] px-6 py-3.5">
-              {signedIn ? "افتح لوحة التحكم" : "ابدأ الآن"}
+            <PrimaryButton href={signedIn ? "/dashboard" : trialDays ? "/signup?trial=1" : "/signup"} className="rounded-[4px] px-6 py-3.5">
+              {signedIn ? "افتح لوحة التحكم" : trialDays ? "ابدأ مجانًا" : "ابدأ الآن"}
               <ArrowLeft size={19} strokeWidth={2} />
             </PrimaryButton>
+            {!signedIn && trialDays ? <p className="w-full text-xs text-charcoal/45">تجربة مجانية {trialDays === 1 ? "ليوم واحد" : `لمدة ${trialDays} يومًا`} · بدون بطاقة ائتمان</p> : null}
             <SecondaryLink href="#how" className="rounded-[4px] border border-borderSoft px-5 py-3.5 hover:border-charcoal">
               شاهد كيف يعمل
               <MoveUpLeft size={19} strokeWidth={1.8} />

@@ -10,7 +10,7 @@ import type { LegalVersions } from "../legal/acceptance.ts";
 import { rateLimit, RATE_POLICIES, tooManyRequestsMessage } from "@/lib/rate-limit.server";
 
 // Starts (or resumes) a checkout for an organization whose OWNER has already been verified by the caller.
-// What is charged is decided HERE, from the package key + payment option, never from an amount sent by the browser.
+// What is charged is decided HERE, from the plan ("monthly" or "one_time"), never from an amount sent by the browser.
 
 export type StartResult = { ok: true; url: string; orderId: string } | { ok: false; error: string };
 
@@ -33,8 +33,7 @@ export type Acceptance = { versions: LegalVersions; locale: "ar" | "en"; ip: str
 export async function startCheckout(input: {
   userId: string;
   organizationId: string;
-  packageKey: string;
-  option: string;
+  plan: string;
   purpose: Purpose;
   /** REQUIRED: no payment page is opened for an order without a recorded acceptance. */
   acceptance: Acceptance;
@@ -59,7 +58,7 @@ export async function startCheckout(input: {
   let quote;
   try {
     const { config } = await loadPricingConfig(admin);
-    quote = buildQuote({ packageKey: input.packageKey, option: input.option, purpose: input.purpose }, config);
+    quote = buildQuote({ plan: input.plan, purpose: input.purpose }, config);
   } catch {
     return { ok: false, error: MSG.invalid };
   }

@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { isBillingPath } from "@/lib/billing/access-gate";
-import { OwnerPayPrompt } from "@/components/dashboard/paywall";
+import { OwnerPayPrompt, type PromptReason, type PromptTrial } from "@/components/dashboard/paywall";
 
 // The dashboard LAYOUT is not rendered again when the owner moves between pages (Next.js keeps layouts mounted and only swaps the
 // page), so a decision made there from the URL goes stale: the "activate your account" card stayed on screen after clicking its
@@ -14,7 +14,7 @@ import { OwnerPayPrompt } from "@/components/dashboard/paywall";
 // the card rendered, so it flashed by and the billing page appeared on its own.)
 // This is only the friendly front door. The payment gate itself (layout on every render + the database on every table and RPC)
 // is unchanged, so skipping this component would open nothing.
-export function OwnerPaywallBody({ children }: { children: React.ReactNode }) {
+export function OwnerPaywallBody({ children, reason, trial }: { children: React.ReactNode; reason?: PromptReason; trial?: PromptTrial }) {
   const pathname = usePathname();
-  return isBillingPath(pathname) ? <>{children}</> : <OwnerPayPrompt />;
+  return isBillingPath(pathname) ? <>{children}</> : <OwnerPayPrompt reason={reason} trial={trial} />;
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-export function Navbar({ signedIn = false }: { signedIn?: boolean }) {
+export function Navbar({ signedIn = false, trialDays = null }: { signedIn?: boolean; trialDays?: number | null }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -31,7 +31,8 @@ export function Navbar({ signedIn = false }: { signedIn?: boolean }) {
           ) : (
             <>
               <Link href="/login" className="hidden text-xs text-charcoal/60 transition-colors hover:text-charcoal sm:block">تسجيل الدخول</Link>
-              <Link href="/signup" className="bg-charcoal px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-sage">ابدأ الآن</Link>
+              {trialDays ? <Link href="/signup?trial=1" className="bg-sage px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-charcoal">ابدأ مجانًا</Link>
+                : <Link href="/signup" className="bg-charcoal px-4 py-2.5 text-xs font-medium text-ivory transition-colors hover:bg-sage">ابدأ الآن</Link>}
             </>
           )}
         </div>

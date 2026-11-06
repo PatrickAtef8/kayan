@@ -17,6 +17,9 @@ type HistoryRow = { id: number; action: string; created_at: string; applied_to_e
 type Draft = { license: string; hosting: string; monthly: string; maxMembers: string; maxWarehouses: string; modules: PackageModuleKey[] };
 
 const toText = (n: number | null) => (n === null ? "" : String(n));
+const numOrNull = (t: string) => (t.trim() === "" ? null : Number(t));
+// a price field left EMPTY is invalid (NaN), never silently 0 — only a typed "0" means free
+const priceOf = (t: string) => (t.trim() === "" ? Number.NaN : Number(t));
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const limitOf = (text: string, fallback: number | null): number | null => {
   if (text.trim() === "") return null;
@@ -41,7 +44,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; history: HistoryRow[]; custom: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<Record<string, Draft>>(
-    Object.fromEntries(packages.map((p) => [p.key, { license: String(p.current.licenseEgp), hosting: String(p.current.hostingMonthlyEgp), monthly: String(p.current.subscriptionMonthlyEgp), maxMembers: toText(p.current.maxMembers), maxWarehouses: toText(p.current.maxWarehouses), modules: [...p.current.modules] }])),
+    Object.fromEntries(packages.map((p) => [p.key, { license: toText(p.current.licenseEgp), hosting: toText(p.current.hostingMonthlyEgp), monthly: toText(p.current.subscriptionMonthlyEgp), maxMembers: toText(p.current.maxMembers), maxWarehouses: toText(p.current.maxWarehouses), modules: [...p.current.modules] }])),
   );
   const [applyExisting, setApplyExisting] = useState(false);
   const [note, setNote] = useState("");
@@ -51,7 +54,8 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
 
   const collected = useMemo<Record<string, EditablePackage>>(() => Object.fromEntries(packages.map((p) => {
     const s = state[p.key];
-    return [p.key, { licenseEgp: Number(s.license), hostingMonthlyEgp: Number(s.hosting), subscriptionMonthlyEgp: Number(s.monthly), maxMembers: s.maxMembers.trim() === "" ? null : Number(s.maxMembers), maxWarehouses: s.maxWarehouses.trim() === "" ? null : Number(s.maxWarehouses), modules: PACKAGE_MODULE_ORDER.filter((m) => s.modules.includes(m)) }];
+    const oneTime = p.key === "one_time";
+    return [p.key, { licenseEgp: oneTime ? priceOf(s.license) : null, hostingMonthlyEgp: oneTime ? priceOf(s.hosting) : null, subscriptionMonthlyEgp: oneTime ? null : priceOf(s.monthly), maxMembers: numOrNull(s.maxMembers), maxWarehouses: numOrNull(s.maxWarehouses), modules: PACKAGE_MODULE_ORDER.filter((m) => s.modules.includes(m)) }];
   })), [packages, state]);
 
   const dirty = packages.some((p) => !same(collected[p.key], { ...p.current, modules: PACKAGE_MODULE_ORDER.filter((m) => p.current.modules.includes(m)) }));
@@ -79,8 +83,8 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
 
   return (
     <div className="space-y-6">
-      {/* ---- one card per package: prices, limits, modules ------------------------------------------------ */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* ---- one card per plan (the perpetual license, the monthly subscription): prices, limits, modules ------------------------------------------------ */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {packages.map((p) => {
           const s = state[p.key];
           const edited = !same(collected[p.key], { ...p.shipped, modules: PACKAGE_MODULE_ORDER.filter((m) => p.shipped.modules.includes(m)) });
@@ -89,7 +93,7 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
               <div className="flex items-start justify-between gap-3 border-b border-borderSoft pb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-charcoal">{p.name}</h2>
-                  <p className="mt-0.5 text-xs text-charcoal/45">{p.licensees === 0 ? "لا توجد شركات على هذه الباقة" : `${p.licensees} شركة تملكها`}</p>
+                  <p className="mt-0.5 text-xs text-charcoal/45">{p.licensees === 0 ? "لا توجد شركات على هذه الباقة" : `${p.licensees} شركة عليها`}</p>
                 </div>
                 {edited && <span className="shrink-0 bg-amber-50 px-2 py-1 text-[0.6875rem] font-medium text-amber-800">معدّلة عن الأصلية</span>}
               </div>
@@ -97,15 +101,23 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
               <fieldset className="border-b border-borderSoft py-4">
                 <legend className="mb-3 text-xs font-semibold text-charcoal">الأسعار (ج.م)</legend>
                 <div className="space-y-3">
-                <Field label="الرخصة الدائمة" hint="تُدفع مرة واحدة">
-                  <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.license} onChange={(e) => set(p.key, { license: e.target.value })} />
-                </Field>
-                <Field label="الاستضافة والصيانة شهريًا" hint="مع الرخصة الدائمة. بند واحد شهريًا، لا يوجد بندان منفصلان">
-                  <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.hosting} onChange={(e) => set(p.key, { hosting: e.target.value })} />
-                </Field>
-                <Field label="الاشتراك الشهري الشامل" hint="بديل الرخصة: يشمل الدخول والاستضافة والصيانة">
-                  <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.monthly} onChange={(e) => set(p.key, { monthly: e.target.value })} />
-                </Field>
+                {p.key === "one_time" ? (
+                  <>
+                    <Field label="الرخصة الدائمة" hint="تُدفع مرة واحدة">
+                      <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.license} onChange={(e) => set(p.key, { license: e.target.value })} />
+                    </Field>
+                    <Field label="الاستضافة والصيانة شهريًا" hint="مع الرخصة الدائمة. بند واحد شهريًا، يُدفع بشكل منفصل. اكتب 0 لجعل الاستضافة والصيانة مجانية.">
+                      <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.hosting} onChange={(e) => set(p.key, { hosting: e.target.value })} />
+                    </Field>
+                    {s.hosting.trim() !== "" && Number(s.hosting) === 0 && (
+                      <p className="rounded-xl bg-sageSoft/60 p-3 text-xs leading-5 text-charcoal/70">الاستضافة والصيانة <b>مجانية</b>: من يشتري الرخصة يدفع سعرها فقط ولا يدفع أي استضافة أو صيانة، ولا يظهر له تجديد. وأصحاب الرخصة الحاليون لا يُغلق عليهم الدخول بسبب الاستضافة طالما بقي السعر 0.</p>
+                    )}
+                  </>
+                ) : (
+                  <Field label="الاشتراك الشهري الشامل" hint="سعر واحد كل شهر: يشمل الدخول والاستضافة والصيانة">
+                    <input inputMode="decimal" className={clsx(field, "num mt-1")} value={s.monthly} onChange={(e) => set(p.key, { monthly: e.target.value })} />
+                  </Field>
+                )}
                 </div>
               </fieldset>
 
@@ -142,7 +154,7 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
         <label className="flex items-start gap-2.5 text-sm">
           <input type="checkbox" checked={applyExisting} onChange={(e) => setApplyExisting(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#344E41]" />
           <span>
-            <span className="font-medium">طبّق الحدود والوحدات على الشركات التي اشترت الباقة بالفعل</span>
+            <span className="font-medium">طبّق الحدود والوحدات على الشركات التي اشترت هذه الباقة بالفعل</span>
             <span className="mt-1 block text-xs leading-5 text-charcoal/50">
               افتراضيًا تسري التغييرات على الشراء الجديد فقط. عند التفعيل تُحدَّث الشركات الحالية{affected ? ` (حتى ${affected} شركة)` : ""}، ولا يُعطَّل شيء تستخدمه: تُمنع الإضافات الجديدة فقط. الأسعار لا تؤثر على من اشترى.
             </span>
@@ -152,14 +164,14 @@ export function PackageEditor({ packages, history, custom }: { packages: Pkg[]; 
         {msg && <p role="alert" className={clsx("mt-3 flex items-start gap-2 text-sm", msg.ok ? "text-sage" : "text-rose")}>{msg.ok ? <Check size={16} className="mt-0.5 shrink-0" /> : <TriangleAlert size={16} className="mt-0.5 shrink-0" />}{msg.text}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" onClick={save} disabled={pending || !dirty} className="inline-flex items-center gap-2 rounded-xl bg-charcoal px-6 py-2.5 text-sm font-medium text-ivory hover:bg-sage disabled:cursor-not-allowed disabled:opacity-50">{pending ? <><Spinner />جارٍ الحفظ…</> : "حفظ التغييرات"}</button>
-          <ConfirmAction label="استعادة الإعدادات الأصلية" title="استعادة الإعدادات الأصلية؟" description="ستعود كل الأسعار والحدود والوحدات إلى القيم المكتوبة في النظام عند الشحن. لا يتأثر أي عميل اشترى بالفعل، ويبقى سجل النسخ محفوظًا." confirmLabel="استعادة" run={resetPricing} disabled={!custom} />
+          <ConfirmAction label="استعادة الإعدادات الأصلية" title="استعادة الإعدادات الأصلية؟" description="ستعود أسعار الخيارين وحدودهما ووحداتهما إلى القيم المكتوبة في النظام عند الشحن. لا يتأثر أي عميل اشترى بالفعل، ويبقى سجل النسخ محفوظًا." confirmLabel="استعادة" run={resetPricing} disabled={!custom} />
           <span className="text-xs text-charcoal/40">{dirty ? "لديك تغييرات غير محفوظة." : "لا توجد تغييرات غير محفوظة."}</span>
         </div>
       </Card>
 
       {/* ---- what the customer sees (live, no prices) ------------------------------------------------------- */}
       <div>
-        <div className="mb-3 flex items-center gap-2 text-sm text-charcoal/55"><Eye size={16} className="shrink-0" /><span>هكذا تظهر الباقات للعميل في صفحة الأسعار وصفحة الدفع{dirty ? " — تتحدّث مباشرة مع ما تعدّله هنا قبل الحفظ" : ""}.</span></div>
+        <div className="mb-3 flex items-center gap-2 text-sm text-charcoal/55"><Eye size={16} className="shrink-0" /><span>هكذا يظهر الخياران للعميل في صفحة الأسعار وصفحة الدفع{dirty ? " — تتحدّث مباشرة مع ما تعدّله هنا قبل الحفظ" : ""}.</span></div>
         <FeatureMatrix packages={preview} sq="rounded-2xl" />
       </div>
 

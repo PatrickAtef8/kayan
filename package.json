@@ -11,7 +11,7 @@
     "test:notifications": "node --test --experimental-strip-types src/lib/notifications.test.ts",
     "test:db": "bash supabase/tests/run.sh",
     "test:unit": "node --test --experimental-strip-types src/lib/stock-requirements.test.ts src/lib/site-url.test.ts src/lib/auth-link.test.ts src/lib/auth-errors.test.ts src/lib/password-strength.test.ts src/lib/doc-search.test.ts src/lib/entity-search.test.ts src/lib/money.test.ts src/lib/security.test.ts src/lib/report-period.test.ts",
-    "test:billing": "node --test --experimental-strip-types src/lib/billing/billing.test.ts src/lib/billing/access-gate.test.ts src/lib/legal/legal.test.ts src/lib/billing/reminders.test.ts src/lib/billing/xpay-guard.test.ts",
+    "test:billing": "node --test --experimental-strip-types src/lib/billing/billing.test.ts src/lib/billing/access-gate.test.ts src/lib/legal/legal.test.ts src/lib/billing/reminders.test.ts src/lib/billing/xpay-guard.test.ts src/lib/billing/trial.test.ts",
     "test:email": "node --test --experimental-strip-types src/lib/email/email.test.ts",
     "test:platform": "node --test --experimental-strip-types src/lib/admin/admin.test.ts src/lib/monitoring/scrub.test.ts src/lib/security/csp.test.ts src/lib/export/company-export.test.ts",
     "test": "npm run test:unit && npm run test:billing && npm run test:notifications && npm run test:email && npm run test:platform"

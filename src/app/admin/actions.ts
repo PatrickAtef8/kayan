@@ -2,6 +2,7 @@
 
 import { COMPLIMENTARY_ENTITLEMENTS } from "@/lib/billing/complimentary";
 import { revalidatePath } from "next/cache";
+import { validateTrialSettings, isValidTrialDays } from "@/lib/billing/trial";
 import { namesMatch } from "@/lib/admin/confirm-name";
 import { removeCompanyFiles } from "@/lib/admin/storage-cleanup";
 import { requireSuperAdminAction } from "@/lib/admin/auth.server";
@@ -92,7 +93,7 @@ export async function grantComplimentary(orgId: string): Promise<AdminResult> {
   if (typeof orgId !== "string" || !UUID.test(orgId)) return { error: "طلب غير صالح." };
   // free access = every module, no limits (whatever the paid packages currently say)
   const entitlements = COMPLIMENTARY_ENTITLEMENTS;
-  const { data, error } = await ctx.admin.rpc("admin_grant_complimentary_license", { p_admin: ctx.userId, p_org: orgId, p_package: "complete", p_entitlements: entitlements });
+  const { data, error } = await ctx.admin.rpc("admin_grant_complimentary_license", { p_admin: ctx.userId, p_org: orgId, p_package: "one_time", p_entitlements: entitlements });
   if (error) return { error: "تعذّر تنفيذ العملية." };
   revalidatePath(`/admin/companies/${orgId}`); revalidatePath("/admin/companies");
   if (data === "has_paid_license") return { error: "هذه الشركة تملك باقة مدفوعة ولن نستبدلها بباقة مجانية." };
@@ -135,8 +136,10 @@ export async function savePricing(input: { packages: Record<string, EditablePack
   for (const p of base.packages) {
     const e = input?.packages?.[p.key];
     if (!e) return { error: "طلب غير صالح." };
+    const price = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+    // only the prices that belong to this plan are read; the others are dropped (monthly has no license price, one_time no subscription price)
     const clean: EditablePackage = {
-      licenseEgp: Number(e.licenseEgp), hostingMonthlyEgp: Number(e.hostingMonthlyEgp), subscriptionMonthlyEgp: Number(e.subscriptionMonthlyEgp),
+      licenseEgp: p.key === "one_time" ? price(e.licenseEgp) : null, hostingMonthlyEgp: p.key === "one_time" ? price(e.hostingMonthlyEgp) : null, subscriptionMonthlyEgp: p.key === "monthly" ? price(e.subscriptionMonthlyEgp) : null,
       maxMembers: e.maxMembers === null ? null : Number(e.maxMembers), maxWarehouses: e.maxWarehouses === null ? null : Number(e.maxWarehouses),
       modules: Array.isArray(e.modules) ? e.modules : [],
     };
@@ -178,6 +181,34 @@ export async function saveGraceSettings(input: { enabled: boolean; hours: number
   if (error) { console.error("admin: could not save grace settings", error.message); return { error: "تعذّر حفظ الإعدادات. تأكّد من تطبيق ترحيل قاعدة البيانات 0063." }; }
   revalidatePath("/admin/packages"); revalidatePath("/dashboard", "layout");
   return { error: null, message: input.enabled && hours > 0 ? `حُفظت فترة السماح: ${hours} ساعة بعد انتهاء الاشتراك.` : "حُفظ الإعداد: يُغلق الوصول لحظة انتهاء الاشتراك." };
+}
+
+// ------------------------------------------------------------------------------------------------ free trial
+/** The free trial: on/off + length in days. Applies to trials that START afterwards; a running trial keeps the length it began with. */
+export async function saveTrialSettings(input: { enabled: boolean; days: number }): Promise<AdminResult> {
+  const ctx = await requireSuperAdminAction();
+  if (!ctx.ok) return { error: ctx.error };
+  const errs = validateTrialSettings({ enabled: input?.enabled, days: input?.days });
+  if (errs.length) return { error: errs.join(" ") };
+  const { error } = await ctx.admin.rpc("admin_save_trial_settings", { p_admin: ctx.userId, p_enabled: input.enabled, p_days: input.days });
+  if (error) { console.error("admin: could not save trial settings", error.message); return { error: "تعذّر حفظ الإعدادات. تأكّد من تطبيق ترحيل قاعدة البيانات 0074." }; }
+  revalidatePath("/admin/packages"); revalidatePath("/"); revalidatePath("/pricing"); revalidatePath("/signup"); revalidatePath("/dashboard", "layout");
+  return { error: null, message: input.enabled ? `حُفظت: التجربة المجانية ${input.days} يومًا للتجارب التي تبدأ من الآن.` : "أُوقفت التجربة المجانية: لن يظهر زر «ابدأ مجانًا» ولن تبدأ تجارب جديدة. التجارب الجارية تكمل مدتها." };
+}
+
+/** Give ONE company more trial time (from today if its trial already ended — which also re-opens it). */
+export async function extendTrial(orgId: string, days: number): Promise<AdminResult> {
+  const ctx = await requireSuperAdminAction();
+  if (!ctx.ok) return { error: ctx.error };
+  if (typeof orgId !== "string" || !UUID.test(orgId) || !isValidTrialDays(days)) return { error: "طلب غير صالح." };
+  const { data, error } = await ctx.admin.rpc("admin_extend_trial", { p_admin: ctx.userId, p_org: orgId, p_days: days });
+  if (error) return { error: "تعذّر تنفيذ العملية." };
+  revalidatePath(`/admin/companies/${orgId}`); revalidatePath("/admin/companies");
+  const r = (data as { result?: string } | null)?.result;
+  if (r === "has_license") return { error: "هذه الشركة لديها باقة بالفعل، فلا تحتاج إلى تمديد." };
+  if (r === "no_trial") return { error: "هذه الشركة لم تبدأ تجربة مجانية بعد." };
+  if (r === "not_found") return { error: "الشركة غير موجودة." };
+  return { error: null, message: `مُدّدت التجربة ${days} يومًا.` };
 }
 
 // ------------------------------------------------------------------------------------------------ legal pages

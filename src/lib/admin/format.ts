@@ -14,6 +14,8 @@ export function paymentStatus(
   opts: { ownerless?: boolean } = {},
 ): { text: string; tone: "ok" | "warn" | "bad" | "none" } {
   if (!l.package_key) {
+    if (l.access_state === "trial") return { text: "تجربة مجانية", tone: "ok" };
+    if (l.access_state === "trial_expired") return { text: "انتهت التجربة — مغلق", tone: "bad" };
     if (opts.ownerless) return { text: "بلا مالك", tone: "none" };
     // a company that has not paid cannot open its dashboard (the payment gate)
     return lastOrderStatus === "pending" ? { text: "دفع قيد الإتمام", tone: "warn" } : { text: "بانتظار الدفع", tone: "warn" };
@@ -36,6 +38,8 @@ export const ADMIN_ACTION_LABEL: Record<string, string> = {
   "license.grant_complimentary": "منح وصول مجاني لشركة",
   "license.revoke_complimentary": "إلغاء وصول مجاني لشركة",
   "billing.grace_settings": "تعديل فترة السماح",
+  "billing.trial_settings": "تعديل إعدادات التجربة المجانية",
+  "trial.extend": "تمديد تجربة مجانية لشركة",
   "legal.document": "تعديل نص قانوني (إصدار جديد)",
   "legal.settings": "تعديل بيانات التواصل القانونية",
   "pricing.save": "حفظ إعدادات الباقات",

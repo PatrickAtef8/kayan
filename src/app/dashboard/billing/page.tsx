@@ -5,13 +5,14 @@ import { getMembership, getSupabase, getOrgAccess } from "@/lib/org-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PRICING_CONFIG } from "@/config/pricing.config";
 import { loadPricingConfig } from "@/lib/billing/config";
-import { buildQuote, describeFitViolations, getPackage, getPackages, isPaymentOption, type FitViolation, type PricingConfig } from "@/lib/billing/pricing";
-import { selectionFromMetadata } from "@/lib/billing/selection";
+import { buildQuote, describeFitViolations, getPackage, getPackages, type FitViolation, type PricingConfig } from "@/lib/billing/pricing";
+import { parseSelection, selectionFromMetadata } from "@/lib/billing/selection";
 import { daysUntil, parseDbAccess, type AccessState } from "@/lib/billing/license-status";
-import { STATUS_LABEL, PURPOSE_LABEL, OPTION_LABEL } from "@/lib/billing/labels";
+import { STATUS_LABEL, PURPOSE_LABEL } from "@/lib/billing/labels";
 import { pricesConfirmed, xpayIsConfigured, xpayIsTestMode } from "@/lib/billing/xpay.server";
 import { formatMoney } from "@/lib/money";
-import { CalendarClock, CircleCheck, ShieldCheck, TriangleAlert } from "lucide-react";
+import { CalendarClock, CircleCheck, Gift, ShieldCheck, TriangleAlert } from "lucide-react";
+import { trialDaysLeft, daysText } from "@/lib/billing/trial";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/org-context";
 import { isSuperAdminSession } from "@/lib/admin/auth.server";
@@ -23,7 +24,7 @@ const egp = (piasters: number) => `${formatMoney(piasters / 100, piasters % 100 
 type License = { complimentary: boolean; package_key: string; payment_option: string; licensed_at: string; access_paid_through: string | null };
 type Order = { id: string; package_key: string; payment_option: string; purpose: string; status: string; amount_total: number; created_at: string; paid_at: string | null; needs_review: boolean };
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ package?: string; option?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ plan?: string; package?: string; option?: string }> }) {
   const sp = await searchParams;
   const supabase = await getSupabase();
   const membership = await getMembership();
@@ -60,6 +61,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   // A package chosen on /pricing before the account existed (remembered with the account) is only PRE-SELECTED below: the page opens
   // normally and the owner presses the button to go on. (It used to redirect straight to the order page, so this page flashed by.)
   const remembered = !license && me ? selectionFromMetadata(me.user_metadata, cfg) : null;
+  const requested = parseSelection(sp, cfg);
   const orders = (orderRows ?? []) as Order[];
 
   const configured = xpayIsConfigured();
@@ -67,13 +69,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     : !configured ? "بوابة الدفع غير مفعّلة بعد. تواصل مع فريق كيان لإتمام التفعيل." : null;
   const testMode = xpayIsTestMode();
 
-  // Before anyone pays: does this organization already outgrow a package? (the database answers, from live data)
+  // Before anyone pays: does this organization already outgrow a plan? (the database answers, from live data)
   const fit: Record<string, string[]> = {};
   if (!license) {
     try {
       const admin = createAdminClient();
       await Promise.all(getPackages(cfg).map(async (p) => {
-        const q = buildQuote({ packageKey: p.key, option: "monthly", purpose: "initial" }, cfg);
+        const q = buildQuote({ plan: p.key, purpose: "initial" }, cfg);
         const { data } = await admin.rpc("billing_fit_report", { p_org: orgId, p_entitlements: q.entitlements });
         const v = ((data as { violations?: FitViolation[] } | null)?.violations ?? []);
         if (v.length) fit[p.key] = describeFitViolations(v);
@@ -83,9 +85,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
   const dbAccess = parseDbAccess((accessJson as { access?: unknown } | null)?.access);
   const state: AccessState = dbAccess?.state ?? "none";
-  const pkg = license ? getPackage(license.package_key, cfg) : null;
+  const pkg = license ? getPackage(license.payment_option, cfg) : null;   // the payment option IS the plan
   const left = daysUntil(license?.access_paid_through ?? null);
   const pending = orders.find((o) => o.status === "pending");
+  // perpetual license with free hosting & maintenance (price 0): nothing to pay after the license, nothing to renew
+  const hostingFree = !!license && !license.complimentary && license.payment_option === "one_time" && !!dbAccess?.hostingFree;
 
   return (
     <div>
@@ -97,25 +101,27 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <div>
               <p className="text-xs text-charcoal/45">باقتك الحالية</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight text-charcoal">{pkg.name}</h2>
-              <p className="mt-1 text-sm text-charcoal/55">{OPTION_LABEL[license.payment_option] ?? license.payment_option} — منذ {date(license.licensed_at)}</p>
+              <p className="mt-1 text-sm text-charcoal/55">منذ {date(license.licensed_at)}</p>
             </div>
-            <StateBadge state={state} />
+            <StateBadge state={state} hostingFree={hostingFree} />
           </div>
           <dl className="mt-5 grid gap-4 border-t border-borderSoft pt-5 text-sm sm:grid-cols-3">
-            <div><dt className="text-charcoal/45">{license.payment_option === "monthly" ? "الاشتراك مدفوع حتى" : "الاستضافة والصيانة مدفوعتان حتى"}</dt><dd className="mt-1 font-medium text-charcoal">{license.complimentary ? "بلا انتهاء" : license.access_paid_through ? date(license.access_paid_through) : "لم تُدفع بعد"}</dd></div>
-            <div><dt className="text-charcoal/45">المتبقي</dt><dd className="mt-1 font-medium text-charcoal">{license.complimentary ? "—" : left === null ? "—" : left >= 0 ? `${formatMoney(left, 0)} يومًا` : `انتهى منذ ${formatMoney(-left, 0)} يومًا`}</dd></div>
+            <div><dt className="text-charcoal/45">{license.payment_option === "monthly" ? "الاشتراك مدفوع حتى" : hostingFree ? "الاستضافة والصيانة" : "الاستضافة والصيانة مدفوعتان حتى"}</dt><dd className="mt-1 font-medium text-charcoal">{license.complimentary ? "بلا انتهاء" : hostingFree ? "مجانية — بلا رسوم شهرية" : license.access_paid_through ? date(license.access_paid_through) : "لم تُدفع بعد"}</dd></div>
+            <div><dt className="text-charcoal/45">المتبقي</dt><dd className="mt-1 font-medium text-charcoal">{license.complimentary || hostingFree ? "—" : left === null ? "—" : left >= 0 ? `${formatMoney(left, 0)} يومًا` : `انتهى منذ ${formatMoney(-left, 0)} يومًا`}</dd></div>
             <div><dt className="text-charcoal/45">الرخصة</dt><dd className="mt-1 font-medium text-charcoal">{license.complimentary ? "مجانية من إدارة المنصة" : license.payment_option === "one_time" ? "دائمة" : "سارية ما دام الاشتراك مدفوعًا"}</dd></div>
           </dl>
           <div className="mt-6 flex flex-col gap-3 border-t border-borderSoft pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-6 text-charcoal/55">
               {license.complimentary
                 ? "هذه الباقة مجانية ولا تحتاج إلى أي دفع."
+                : hostingFree
+                ? "رخصتك دائمة والاستضافة والصيانة مجانيتان: لا يوجد ما تدفعه شهريًا ولا تجديد مطلوب."
                 : <>لا يُسحب أي مبلغ تلقائيًا. جدّد قبل الموعد لتبقى الفترة متصلة — الشهر المدفوع يُضاف إلى تاريخ انتهاء الفترة الحالية ولا يضيع منه شيء. لتغيير الباقة تواصل مع فريق كيان.</>}
             </p>
-            {license.complimentary ? null : closedReason ? <p className="text-sm text-rose">{closedReason}</p> : (
+            {license.complimentary || hostingFree ? null : closedReason ? <p className="text-sm text-rose">{closedReason}</p> : (
               <Link href="/checkout?renew=1" className="inline-flex items-center justify-center rounded-xl bg-charcoal px-6 py-3 text-sm font-medium text-ivory hover:bg-sage">{license.payment_option === "monthly"
-                ? `جدّد الاشتراك — ${egp(buildQuote({ packageKey: license.package_key, option: "monthly", purpose: "renewal" }, cfg).dueToday)}`
-                : `جدّد الاستضافة — ${egp(buildQuote({ packageKey: license.package_key, option: "one_time", purpose: "renewal" }, cfg).dueToday)}`}</Link>
+                ? `جدّد الاشتراك — ${egp(buildQuote({ plan: "monthly", purpose: "renewal" }, cfg).dueToday)}`
+                : `جدّد الاستضافة — ${egp(buildQuote({ plan: "one_time", purpose: "renewal" }, cfg).dueToday)}`}</Link>
             )}
           </div>
         </Card>
@@ -124,12 +130,24 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           {pending && (
             <Card className="mb-6 flex flex-col gap-3 border-sage/40 bg-sageSoft/40 p-5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm leading-6 text-charcoal/70">لديك عملية دفع مفتوحة بقيمة <span className="num font-medium text-charcoal">{egp(pending.amount_total)}</span>. إن كنت دفعت للتو فسيُفعَّل حسابك خلال لحظات، وإلا يمكنك استكمالها.</p>
-              <Link href={pending.purpose === "renewal" ? "/checkout?renew=1" : `/checkout?package=${encodeURIComponent(pending.package_key)}&option=${encodeURIComponent(pending.payment_option)}`} className="inline-flex items-center justify-center rounded-xl border border-borderSoft bg-white px-5 py-2.5 text-sm font-medium text-charcoal hover:border-sage">استكمل الدفع</Link>
+              <Link href={pending.purpose === "renewal" ? "/checkout?renew=1" : `/checkout?plan=${encodeURIComponent(pending.payment_option)}`} className="inline-flex items-center justify-center rounded-xl border border-borderSoft bg-white px-5 py-2.5 text-sm font-medium text-charcoal hover:border-sage">استكمل الدفع</Link>
             </Card>
           )}
-          <p className="mb-6 max-w-2xl text-sm leading-7 text-charcoal/55">لتفعيل حسابك اختر الباقة وطريقة الدفع. بعد تأكيد الدفع تُفتح لك لوحة التحكم مباشرة، وتحدد الباقة الوحدات وحجم الفريق والمخازن المتاحة لك.</p>
+          {state === "trial" && dbAccess?.trialEndsAt && (
+            <Card className="mb-6 flex items-start gap-3 border-sage/40 bg-sageSoft/40 p-5">
+              <Gift size={20} className="mt-0.5 shrink-0 text-sage" />
+              <p className="text-sm leading-7 text-charcoal/75"><span className="font-medium text-charcoal">أنت الآن في الفترة التجريبية المجانية.</span> تنتهي في {date(dbAccess.trialEndsAt)} (يتبقى {daysText(trialDaysLeft(dbAccess.trialEndsAt))}). اشترك في أي وقت لتواصل العمل، وكل بياناتك الحالية تبقى كما هي.</p>
+            </Card>
+          )}
+          {state === "trial_expired" && (
+            <Card className="mb-6 flex items-start gap-3 border-rose/30 bg-rose/5 p-5">
+              <TriangleAlert size={20} className="mt-0.5 shrink-0 text-rose" />
+              <p className="text-sm leading-7 text-charcoal/75"><span className="font-medium text-rose">انتهت فترتك التجريبية</span>{dbAccess?.trialEndsAt ? ` بتاريخ ${date(dbAccess.trialEndsAt)}` : ""}. اشترك الآن للمتابعة: بياناتك كلها محفوظة وتعود لوحة التحكم للعمل فور تأكيد الدفع.</p>
+            </Card>
+          )}
+          <p className="mb-6 max-w-2xl text-sm leading-7 text-charcoal/55">لتفعيل حسابك اختر أحد الخيارين: رخصة دائمة أو اشتراك شهري. بعد تأكيد الدفع تُفتح لك لوحة التحكم مباشرة، وتحدد الباقة التي اخترتها الوحدات وحجم الفريق والمخازن المتاحة لك.</p>
           <PricingExperience variant="checkout" fit={fit} testMode={testMode} checkoutClosedReason={closedReason}
-            packages={cfg.packages} initialPackage={sp.package ?? remembered?.packageKey} initialOption={sp.package ? (isPaymentOption(sp.option) ? sp.option : undefined) : remembered?.option} />
+            packages={cfg.packages} initialPlan={requested?.plan ?? remembered?.plan} />
         </>
       )}
 
@@ -143,7 +161,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 {orders.map((o) => (
                   <tr key={o.id}>
                     <td className="px-5 py-3 text-charcoal/65">{date(o.paid_at ?? o.created_at)}</td>
-                    <td className="px-3 py-3 text-charcoal">{PURPOSE_LABEL[o.purpose]} — {getPackage(o.package_key, cfg)?.name ?? o.package_key} <span className="text-charcoal/40">({OPTION_LABEL[o.payment_option]})</span></td>
+                    <td className="px-3 py-3 text-charcoal">{PURPOSE_LABEL[o.purpose]} — {getPackage(o.payment_option, cfg)?.name ?? o.package_key}</td>
                     <td className="num px-3 py-3 font-medium text-charcoal">{egp(o.amount_total)}</td>
                     <td className="px-5 py-3"><span className={`inline-block px-2 py-0.5 text-xs font-medium ${o.status === "paid" ? "bg-sageSoft text-sage" : o.status === "pending" ? "bg-amber-50 text-amber-800" : "bg-rose/10 text-rose"}`}>{STATUS_LABEL[o.status] ?? o.status}</span>{o.needs_review && <span className="mr-2 text-xs text-charcoal/45">قيد المراجعة</span>}</td>
                   </tr>
@@ -157,11 +175,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   );
 }
 
-function StateBadge({ state }: { state: AccessState }) {
+function StateBadge({ state, hostingFree = false }: { state: AccessState; hostingFree?: boolean }) {
   const map = {
+    trial: { t: "فترة تجريبية", c: "bg-sageSoft text-sage", I: Gift },
+    trial_expired: { t: "انتهت الفترة التجريبية", c: "bg-rose/10 text-rose", I: TriangleAlert },
     active: { t: "سارية", c: "bg-sageSoft text-sage", I: CircleCheck },
     free: { t: "مجانية", c: "bg-sageSoft text-sage", I: CircleCheck },
-    license_only: { t: "الاستضافة لم تُدفع بعد", c: "bg-amber-50 text-amber-800", I: CalendarClock },
+    license_only: hostingFree ? { t: "سارية — الاستضافة مجانية", c: "bg-sageSoft text-sage", I: CircleCheck } : { t: "الاستضافة لم تُدفع بعد", c: "bg-amber-50 text-amber-800", I: CalendarClock },
     grace: { t: "فترة سماح — جدّد الآن", c: "bg-amber-50 text-amber-800", I: CalendarClock },
     expired: { t: "منتهية — الوصول موقوف حتى التجديد", c: "bg-rose/10 text-rose", I: TriangleAlert },
     none: { t: "", c: "", I: CircleCheck },

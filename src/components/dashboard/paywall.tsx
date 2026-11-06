@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Lock, LogOut } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { NavigationProgress } from "./navigation-progress";
+import { StartTrialButton } from "./start-trial-button";
+import { daysText } from "@/lib/billing/trial";
 
 // What a company that has not paid (or whose paid period ended, when the configuration locks lapsed companies) sees instead
 // of the dashboard: a plain frame — no menu, no data — around the billing pages for its owner, and a notice for everyone else.
@@ -31,13 +33,14 @@ export function PaywallShell({ orgName, userEmail, children }: { orgName?: strin
 }
 
 /** For anyone who is not the owner (rep, storekeeper) of a company that is not active. */
-export function WorkspaceNotActive({ lapsed }: { lapsed: boolean }) {
+export function WorkspaceNotActive({ lapsed, trialEnded = false }: { lapsed: boolean; trialEnded?: boolean }) {
   return (
     <Card className="mx-auto mt-10 max-w-xl p-8 text-center">
       <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-800"><Lock size={22} /></span>
-      <h1 className="mt-4 text-xl font-semibold text-charcoal">{lapsed ? "اشتراك الشركة منتهٍ" : "حساب الشركة لم يُفعَّل بعد"}</h1>
+      <h1 className="mt-4 text-xl font-semibold text-charcoal">{trialEnded ? "انتهت الفترة التجريبية للشركة" : lapsed ? "اشتراك الشركة منتهٍ" : "حساب الشركة لم يُفعَّل بعد"}</h1>
       <p className="mt-2 text-sm leading-7 text-charcoal/55">
-        {lapsed ? "انتهت الفترة المدفوعة لهذه الشركة. يمكنك استخدام النظام فور تجديد مالك الحساب للاشتراك." : "لم يُكمل مالك الحساب الدفع بعد، لذلك لا تتوفر لوحة التحكم حاليًا. ستتمكن من الدخول فور إتمامه الدفع."}
+        {trialEnded ? "انتهت الفترة التجريبية المجانية لهذه الشركة. بياناتها محفوظة بالكامل، وتعود لوحة التحكم للعمل فور اشتراك مالك الحساب."
+          : lapsed ? "انتهت الفترة المدفوعة لهذه الشركة. يمكنك استخدام النظام فور تجديد مالك الحساب للاشتراك." : "لم يُكمل مالك الحساب الدفع بعد، لذلك لا تتوفر لوحة التحكم حاليًا. ستتمكن من الدخول فور إتمامه الدفع."}
       </p>
       <p className="mt-1 text-sm text-charcoal/45">يرجى التواصل مع مالك الحساب.</p>
     </Card>
@@ -55,14 +58,29 @@ export function GateUnavailable() {
   );
 }
 
+/** What the owner of a closed company is told. `trial_ended` = the free trial is over; `trial` = a trial can be started now. */
+export type PromptReason = "never_paid" | "expired" | "trial_ended";
+export type PromptTrial = { eligible: boolean; days: number };
+
 /** Owner of an unpaid company when the page could not be identified: never redirects (so it can never loop). */
-export function OwnerPayPrompt() {
+export function OwnerPayPrompt({ reason = "never_paid", trial }: { reason?: PromptReason; trial?: PromptTrial }) {
+  const offer = reason === "never_paid" && trial?.eligible ? trial : null;
+  const title = reason === "trial_ended" ? "انتهت فترتك التجريبية" : reason === "expired" ? "انتهى اشتراكك" : "فعّل حسابك لبدء الاستخدام";
+  const body = reason === "trial_ended"
+    ? "للاستمرار في استخدام لوحة التحكم اشترك الآن. بياناتك كلها محفوظة، وتجدها كما تركتها فور تأكيد الدفع."
+    : reason === "expired" ? "جدّد اشتراكك لتعود لوحة التحكم للعمل. بياناتك محفوظة كما هي."
+    : offer ? `جرّب كيان مجانًا لمدة ${daysText(offer.days)} بكل وحداته ودون أي دفع، أو اختر الباقة وأكمل الدفع مباشرة.`
+    : "اختر الباقة وأكمل الدفع، وتُفتح لك لوحة التحكم مباشرة.";
+  const cta = reason === "trial_ended" || reason === "expired" ? "اشترك الآن" : "اختيار الباقة والدفع";
   return (
     <Card className="mx-auto mt-10 max-w-xl p-8 text-center">
       <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-800"><Lock size={22} /></span>
-      <h1 className="mt-4 text-xl font-semibold text-charcoal">فعّل حسابك لبدء الاستخدام</h1>
-      <p className="mt-2 text-sm leading-7 text-charcoal/55">اختر الباقة وأكمل الدفع، وتُفتح لك لوحة التحكم مباشرة.</p>
-      <Link href="/dashboard/billing" className="mt-5 inline-block rounded-xl bg-charcoal px-5 py-2.5 text-sm font-medium text-ivory hover:bg-sage">اختيار الباقة والدفع</Link>
+      <h1 className="mt-4 text-xl font-semibold text-charcoal">{title}</h1>
+      <p className="mt-2 text-sm leading-7 text-charcoal/55">{body}</p>
+      <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        {offer && <StartTrialButton label={`ابدأ تجربة مجانية ${daysText(offer.days)}`} />}
+        <Link href="/dashboard/billing" className={offer ? "inline-block rounded-xl border border-borderSoft bg-white px-5 py-3 text-sm font-medium text-charcoal hover:border-sage" : "inline-block rounded-xl bg-charcoal px-5 py-2.5 text-sm font-medium text-ivory hover:bg-sage"}>{cta}</Link>
+      </div>
     </Card>
   );
 }

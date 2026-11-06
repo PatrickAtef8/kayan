@@ -7,12 +7,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { startPurchase, startRenewal, type CheckoutActionResult } from "@/app/dashboard/billing/actions";
 
 // «متابعة إلى الدفع». It asks the SERVER for a payment page and sends the browser there. What is bought is NOT decided here: only the
-// package key and option the customer picked are sent (a renewal sends neither — the server reads them from the company's own license).
+// plan the customer picked is sent (a renewal sends nothing — the server reads the plan from the company's own license).
 // The price, amount and duration are rebuilt on the server. The required checkbox sends the versions of the Terms / Privacy / Refund
 // policies that were DISPLAYED; the server compares them with the database, refuses stale ones, and records what it read.
 export type LegalVersionsProp = { terms: number; privacy: number; refund: number };
 type Props = { legal: LegalVersionsProp | null; disabled?: boolean; children: React.ReactNode } & (
-  | { kind: "purchase"; packageKey: string; option: string }
+  | { kind: "purchase"; plan: string }
   | { kind: "renew" }
 );
 
@@ -30,7 +30,7 @@ export function CheckoutButton(props: Props) {
     start(async () => {
       let r: CheckoutActionResult;
       try {
-        r = props.kind === "purchase" ? await startPurchase({ packageKey: props.packageKey, option: props.option, accept: props.legal })
+        r = props.kind === "purchase" ? await startPurchase({ plan: props.plan, accept: props.legal })
           : await startRenewal({ accept: props.legal });
       } catch { setError("تعذّر الاتصال بالخادم. لم يُخصم أي مبلغ — تحقّق من الاتصال وحاول مرة أخرى."); return; }
       if (r.error || !r.url) { setError(r.error ?? "تعذّر بدء عملية الدفع."); return; }

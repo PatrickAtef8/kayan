@@ -7,9 +7,10 @@ import { getCheckoutContext } from "@/lib/billing/checkout-context.server";
 import { getSupabase } from "@/lib/org-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadPricingConfig } from "@/lib/billing/config";
-import { buildQuote, describeFitViolations, getPackage, isPaymentOption, type FitViolation, type Quote } from "@/lib/billing/pricing";
+import { buildQuote, describeFitViolations, getPackage, type FitViolation, type Quote } from "@/lib/billing/pricing";
+import { parseSelection } from "@/lib/billing/selection";
 import { pricesConfirmed, xpayIsConfigured, xpayIsTestMode } from "@/lib/billing/xpay.server";
-import { OPTION_LABEL, PURPOSE_LABEL } from "@/lib/billing/labels";
+import { PURPOSE_LABEL } from "@/lib/billing/labels";
 import { MODULE_FEATURES, PACKAGE_MODULE_ORDER, INCLUDED_IN_EVERY_PACKAGE } from "@/config/pricing.config";
 import { formatMoney } from "@/lib/money";
 import { loadAcceptableVersions } from "@/lib/legal/legal.server";
@@ -18,9 +19,9 @@ const egp = (piasters: number) => `${formatMoney(piasters / 100, piasters % 100 
 const limit = (n: number | null) => (n === null ? "بلا حد" : formatMoney(n, 0));
 
 // Kayan's own order page: review what you are buying, then continue to XPay. Nothing here is a source of truth for money — the
-// quote shown is rebuilt on the server from the saved package configuration (or from the company's license for a renewal), and the
+// quote shown is rebuilt on the server from the saved plan configuration (or from the company's license for a renewal), and the
 // button's action rebuilds it AGAIN before an order is created, so what is displayed can never differ from what is charged.
-export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ package?: string; option?: string; renew?: string }> }) {
+export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ plan?: string; package?: string; option?: string; renew?: string }> }) {
   const sp = await searchParams;
   const ctx = await getCheckoutContext();
 
@@ -39,15 +40,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     loadAcceptableVersions(),   // the versions the checkbox will accept (null when the documents are not available)
   ]);
   const renewal = !!license;
-  let packageKey: string | undefined;
-  let option: string | undefined;
-  if (license) { packageKey = license.package_key ?? undefined; option = license.payment_option ?? undefined; }   // a renewal is of what the company already has
-  else { packageKey = sp.package; option = sp.option; }
-  const pkg = packageKey ? getPackage(packageKey, cfg) : null;
-  if (!pkg || !isPaymentOption(option)) redirect("/dashboard/billing");
+  // a renewal is of what the company already has (its payment option IS its plan); a first purchase is the plan asked for in the link, validated
+  const planKey = license ? license.payment_option : parseSelection(sp, cfg)?.plan;
+  const pkg = planKey ? getPackage(planKey, cfg) : null;
+  if (!pkg) redirect("/dashboard/billing");
 
   let quote: Quote;
-  try { quote = buildQuote({ packageKey: pkg.key, option, purpose: renewal ? "renewal" : "initial" }, cfg); } catch { redirect("/dashboard/billing"); }
+  try { quote = buildQuote({ plan: pkg.key, purpose: renewal ? "renewal" : "initial" }, cfg); } catch { redirect("/dashboard/billing"); }
 
   // before the first payment: does the company already outgrow this package? (the database answers from live data)
   let misfit: string[] = [];
@@ -74,7 +73,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         <Card className="p-5 sm:p-7">
           <p className="text-xs text-charcoal/45">{renewal ? "الباقة الحالية" : "الباقة المختارة"}</p>
           <h2 className="mt-1 text-2xl font-semibold text-charcoal">{pkg.name}</h2>
-          <p className="mt-1 text-sm text-charcoal/55">{OPTION_LABEL[option]}</p>
+          <p className="mt-1 text-sm leading-6 text-charcoal/55">{pkg.tagline}</p>
           <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-borderSoft pt-5 text-sm">
             <div><dt className="text-charcoal/45">أعضاء الفريق</dt><dd className="num mt-1 font-medium text-charcoal">{limit(pkg.limits.maxMembers)}</dd></div>
             <div><dt className="text-charcoal/45">المخازن</dt><dd className="num mt-1 font-medium text-charcoal">{limit(pkg.limits.maxWarehouses)}</dd></div>
@@ -83,11 +82,11 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <ul className="grid gap-x-6 gap-y-1.5 text-sm text-charcoal/75 sm:grid-cols-2">
             {PACKAGE_MODULE_ORDER.filter((m) => (pkg.modules as string[]).includes(m)).map((m) => <li key={m} className="flex items-start gap-2"><Check size={15} strokeWidth={2.2} className="mt-1 shrink-0 text-sage" />{MODULE_FEATURES[m].label}</li>)}
           </ul>
-          <p className="mb-2 mt-5 text-xs font-medium text-charcoal/60">في كل الباقات</p>
+          <p className="mb-2 mt-5 text-xs font-medium text-charcoal/60">في الخيارين</p>
           <ul className="grid gap-x-6 gap-y-1.5 text-sm text-charcoal/65 sm:grid-cols-2">
             {INCLUDED_IN_EVERY_PACKAGE.map((f) => <li key={f} className="flex items-start gap-2"><Check size={15} strokeWidth={2.2} className="mt-1 shrink-0 text-sage" />{f}</li>)}
           </ul>
-          {!renewal && <p className="mt-6 text-xs text-charcoal/45">لتغيير الباقة لاحقًا تواصل مع فريق كيان. <Link href="/pricing" className="underline underline-offset-4">قارن الباقات</Link></p>}
+          {!renewal && <p className="mt-6 text-xs text-charcoal/45">لتغيير الباقة لاحقًا تواصل مع فريق كيان. <Link href="/pricing" className="underline underline-offset-4">قارن الخيارين</Link></p>}
         </Card>
 
         {/* ---- the order ---------------------------------------------------------------------------------- */}
@@ -112,7 +111,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <div className="mt-5">
             {renewal
               ? <CheckoutButton kind="renew" legal={legalVersions} disabled={!!closedReason}>متابعة إلى الدفع</CheckoutButton>
-              : <CheckoutButton kind="purchase" legal={legalVersions} packageKey={pkg.key} option={option} disabled={!!closedReason || misfit.length > 0}>متابعة إلى الدفع</CheckoutButton>}
+              : <CheckoutButton kind="purchase" legal={legalVersions} plan={pkg.key} disabled={!!closedReason || misfit.length > 0}>متابعة إلى الدفع</CheckoutButton>}
           </div>
           <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-charcoal/45"><ShieldCheck size={14} className="mt-0.5 shrink-0" />يتم الدفع في صفحة XPay الآمنة؛ لا تمرّ بيانات بطاقتك بخوادم كيان.{xpayIsTestMode() ? " (وضع تجريبي)" : ""}</p>
           {legal.supportUrl && <p className="mt-3 text-xs text-charcoal/55"><a href={legal.supportUrl} className="underline underline-offset-4">تواصل مع الدعم</a></p>}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { CompanyLicenseActions } from "@/components/admin/company-license-actions";
+import { ExtendTrial } from "@/components/admin/extend-trial";
 import { requireSuperAdminPage } from "@/lib/admin/auth.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fmtDate, paymentStatus, PKG_NAME, OPTION_NAME, ROLE_NAME, TONE } from "@/lib/admin/format";
@@ -29,8 +30,11 @@ export default async function CompanyDetail({ params }: { params: Promise<{ id: 
   const team = (members.data ?? []) as Member[];
   const license = lic.data;
   const owners = team.filter((m) => m.role_key === "owner" && m.status === "active");
-  const accessState = (stateRes.data as { state?: string } | null)?.state ?? null;
+  const stateJson = stateRes.data as { state?: string; trial_ends_at?: string | null; hosting_free?: boolean } | null;
+  const accessState = stateJson?.state ?? null;
+  const trialEndsAt = !license ? stateJson?.trial_ends_at ?? null : null;
   const st = paymentStatus({ package_key: license?.package_key ?? null, payment_option: license?.payment_option, complimentary: license?.complimentary, access_paid_through: license?.access_paid_through, access_state: accessState }, orders.data?.[0]?.status, { ownerless: owners.length === 0 });
+  if (stateJson?.hosting_free && license && !license.complimentary && st.text === "رخصة بلا استضافة") { st.text = "رخصة — استضافة مجانية"; st.tone = "ok"; }
   const warehouses = wh.data ?? [];
   const ent = license?.entitlements as { max_members: number | null; max_warehouses: number | null; modules: string[] } | undefined;
   return (
@@ -48,6 +52,12 @@ export default async function CompanyDetail({ params }: { params: Promise<{ id: 
               <div className="flex justify-between gap-4"><dt className="text-charcoal/50">حد الفريق / المخازن</dt><dd>{ent ? `${ent.max_members ?? "بلا حد"} / ${ent.max_warehouses ?? "بلا حد"}` : "—"}</dd></div>
             </dl>
           ) : <p className="text-sm leading-6 text-charcoal/55">{owners.length === 0 ? "لا مالك لهذه الشركة (حُذف حسابه)، ولا يمكن لأحد الدخول إليها." : "لم تدفع الشركة بعد، فلا يمكن لمالكها ولا لفريقها فتح لوحة التحكم حتى يُكمل الدفع. يمكنك منحها وصولًا مجانيًا من الأسفل."}</p>}
+          {trialEndsAt && (
+            <div className="mt-4 border-t border-borderSoft pt-4 text-sm">
+              <p className="text-charcoal/60">التجربة المجانية {accessState === "trial" ? "تنتهي" : "انتهت"} في <b>{fmtDate(trialEndsAt)}</b>.</p>
+              <div className="mt-3"><ExtendTrial orgId={o.id} /></div>
+            </div>
+          )}
           <div className="mt-5 border-t border-borderSoft pt-4">{<CompanyLicenseActions orgId={o.id} name={o.name} complimentary={!!license?.complimentary} hasPaidLicense={!!license && !license.complimentary} />}</div>
         </Card>
         <Card className="p-5">

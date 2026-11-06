@@ -11,45 +11,55 @@ import type { PricingConfig } from "../billing/pricing.ts";
 const cfg = PRICING_CONFIG as PricingConfig;
 const VARS = { company_name: "كيان للبرمجيات", phone: "+20 100 000 0000", email: "hi@kayan.test", address: "القاهرة", commercial_register: "123", tax_registration: "456" };
 
-// ================================================================ package selection through signup
-test("a valid package and option from /pricing become a selection", () => {
-  assert.deepEqual(parseSelection({ package: "basic", option: "monthly" }, cfg), { packageKey: "basic", option: "monthly" });
-  assert.deepEqual(parseSelection({ package: "complete", option: "one_time" }, cfg), { packageKey: "complete", option: "one_time" });
+// ================================================================ plan selection through signup
+test("a valid plan from /pricing becomes a selection", () => {
+  assert.deepEqual(parseSelection({ plan: "monthly" }, cfg), { plan: "monthly" });
+  assert.deepEqual(parseSelection({ plan: "one_time" }, cfg), { plan: "one_time" });
 });
 
-test("an unknown package, an unknown option or a malformed value is NOT a selection", () => {
-  for (const raw of [{ package: "platinum", option: "monthly" }, { package: "basic", option: "yearly" }, { package: "basic" }, { option: "monthly" }, { package: ["basic"], option: "monthly" },
-    { package: "../../admin", option: "monthly" }, { package: "basic;drop", option: "monthly" }, { package: "x".repeat(100), option: "monthly" }, null, undefined, {}]) {
-    assert.equal(parseSelection(raw as never, cfg), null, JSON.stringify(raw));
+test("links and account metadata written before the change (package + option) still resolve to the plan, never to a tier", () => {
+  assert.deepEqual(parseSelection({ package: "basic", option: "monthly" }, cfg), { plan: "monthly" });
+  assert.deepEqual(parseSelection({ package: "complete", option: "one_time" }, cfg), { plan: "one_time" });
+  assert.deepEqual(parseSelection({ option: "monthly" }, cfg), { plan: "monthly" });
+});
+
+test("an unknown plan or a malformed value is NOT a selection", () => {
+  for (const raw of [{ plan: "platinum" }, { plan: "basic" }, { plan: "yearly" }, { plan: "" }, { plan: ["monthly"] }, { plan: 5 }, { option: "yearly" }, { package: "basic" },
+    { plan: "../../admin" }, { plan: "monthly;drop" }, { plan: "x".repeat(100) }, { plan: "monthly", option: "yearly" }, null, undefined, {}]) {
+    const r = parseSelection(raw as never, cfg);
+    // `{ plan: "monthly", option: "yearly" }` is a valid plan with a stray field: the plan wins and the stray field is ignored
+    if (JSON.stringify(raw) === JSON.stringify({ plan: "monthly", option: "yearly" })) assert.deepEqual(r, { plan: "monthly" });
+    else assert.equal(r, null, JSON.stringify(raw));
   }
 });
 
-test("a price, discount or total in the URL is ignored: a selection is only a package and an option", () => {
-  const sel = parseSelection({ package: "basic", option: "monthly", amount: 1, price: 1, dueToday: 1, discount: 99 } as never, cfg)!;
-  assert.deepEqual(Object.keys(sel).sort(), ["option", "packageKey"]);
-  assert.equal(checkoutPath(sel), "/checkout?package=basic&option=monthly");
+test("a price, discount or total in the URL is ignored: a selection is only a plan", () => {
+  const sel = parseSelection({ plan: "monthly", amount: 1, price: 1, dueToday: 1, discount: 99 } as never, cfg)!;
+  assert.deepEqual(Object.keys(sel), ["plan"]);
+  assert.equal(checkoutPath(sel), "/checkout?plan=monthly");
   // and what is charged comes from the server's configuration, whatever the selection carried
-  assert.deepEqual(buildQuote({ packageKey: sel.packageKey, option: sel.option, purpose: "initial", amount: 1 } as never, cfg), buildQuote({ packageKey: "basic", option: "monthly", purpose: "initial" }, cfg));
+  assert.deepEqual(buildQuote({ plan: sel.plan, purpose: "initial", amount: 1 } as never, cfg), buildQuote({ plan: "monthly", purpose: "initial" }, cfg));
 });
 
-test("a package that the Super Admin removed or renamed no longer validates", () => {
-  const edited = { packages: cfg.packages.filter((p) => p.key !== "basic") };
-  assert.equal(parseSelection({ package: "basic", option: "monthly" }, edited), null);
+test("a plan missing from the configuration no longer validates", () => {
+  const edited = { packages: cfg.packages.filter((p) => p.key !== "monthly") };
+  assert.equal(parseSelection({ plan: "monthly" }, edited), null);
 });
 
 test("the selection remembered in the account metadata is validated like any other input", () => {
-  assert.deepEqual(selectionFromMetadata({ plan_selection: { packageKey: "complete", option: "monthly" } }, cfg), { packageKey: "complete", option: "monthly" });
-  assert.equal(selectionFromMetadata({ plan_selection: { packageKey: "complete", option: "monthly", price: 1 } }, { packages: [] }), null);
-  assert.equal(selectionFromMetadata({ plan_selection: { packageKey: "nope", option: "monthly" } }, cfg), null);
+  assert.deepEqual(selectionFromMetadata({ plan_selection: { plan: "monthly" } }, cfg), { plan: "monthly" });
+  assert.deepEqual(selectionFromMetadata({ plan_selection: { packageKey: "complete", option: "monthly" } }, cfg), { plan: "monthly" });   // written by the old sign-up form
+  assert.equal(selectionFromMetadata({ plan_selection: { plan: "monthly", price: 1 } }, { packages: [] }), null);
+  assert.equal(selectionFromMetadata({ plan_selection: { plan: "nope" } }, cfg), null);
   assert.equal(selectionFromMetadata({ plan_selection: "basic" }, cfg), null);
   assert.equal(selectionFromMetadata({}, cfg), null);
   assert.equal(selectionFromMetadata(null, cfg), null);
 });
 
 test("signup and login links keep the selection; without one they are plain", () => {
-  const sel = { packageKey: "professional", option: "one_time" as const };
-  assert.equal(signupPath(sel), "/signup?package=professional&option=one_time");
-  assert.equal(loginPath(sel), "/login?package=professional&option=one_time");
+  const sel = { plan: "one_time" as const };
+  assert.equal(signupPath(sel), "/signup?plan=one_time");
+  assert.equal(loginPath(sel), "/login?plan=one_time");
   assert.equal(signupPath(null), "/signup");
   assert.equal(loginPath(null), "/login");
 });

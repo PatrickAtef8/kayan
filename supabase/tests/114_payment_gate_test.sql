@@ -31,7 +31,7 @@ select t.as_owner();
 insert into organization_users (organization_id, user_id, role_id, status)
 select :'a_id', '11400000-0000-0000-0000-000000000002', r.id, 'active' from roles r where r.key = 'sales' and r.organization_id is null;
 insert into organization_licenses (organization_id, package_key, payment_option, entitlements, access_paid_through)
-values (:'b_id', 'basic', 'monthly', '{"modules":["customers"],"max_members":3,"max_warehouses":2}', now() + interval '20 days');
+values (:'b_id', 'monthly', 'monthly', '{"modules":["customers"],"max_members":3,"max_warehouses":2}', now() + interval '20 days');
 delete from organization_users where organization_id = :'d_id';   -- what deleting its only user does to a company
 
 -- 1. who may ask -----------------------------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ select t.throws($q$select my_org_access(gen_random_uuid())$q$, 'permission denie
 -- 2. what it says after paying -----------------------------------------------------------------------------------------------
 select t.as_user('11400000-0000-0000-0000-000000000003');
 select my_org_access(:'b_id') as paid \gset
-select t.eq_text(:'paid'::jsonb -> 'license' ->> 'package_key', 'basic', 'a paid company shows its package');
+select t.eq_text(:'paid'::jsonb -> 'license' ->> 'package_key', 'monthly', 'a paid company shows its plan');
 select t.eq_text(:'paid'::jsonb -> 'license' ->> 'complimentary', 'false', 'not free');
 select t.ok((:'paid'::jsonb -> 'license' ->> 'access_paid_through')::timestamptz > now(), 'and how far it is paid');
 select t.ok(not (:'paid'::jsonb -> 'license' ? 'entitlements'), 'never the entitlements or any amount');
@@ -90,7 +90,7 @@ select t.eq(:'n_ex_unconfirmed'::int - :'n0'::int, 3, 'an email that was never c
 -- 4. a free license opens the gate's other door ---------------------------------------------------------------------------------
 select t.as_owner();
 set role service_role;
-select admin_grant_complimentary_license('11400000-0000-0000-0000-000000000009', :'a_id', 'complete', '{"modules":["sales"],"max_members":null,"max_warehouses":null}') as g \gset
+select admin_grant_complimentary_license('11400000-0000-0000-0000-000000000009', :'a_id', 'one_time', '{"modules":["sales"],"max_members":null,"max_warehouses":null}') as g \gset
 select admin_unpaid_company_count('{}'::uuid[], '{}'::text[]) as n_after \gset
 reset role;
 select t.eq(:'n_after'::int - :'n0'::int, 2, 'granting a company free access takes it off the waiting list');

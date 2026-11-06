@@ -10,16 +10,20 @@ import { isPasswordAcceptable } from "@/lib/password-strength";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { checkoutPath, loginPath, type PlanSelection } from "@/lib/billing/selection";
 import { AuthAlert, AuthField, AuthInput, PasswordInput, PasswordStrength, SubmitButton } from "@/components/auth/auth-fields";
+import { startFreeTrial } from "@/app/dashboard/billing/actions";
+import { daysText } from "@/lib/billing/trial";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 // Onboarding: company basics only. The modules a company gets are decided by the PACKAGE it pays for (they are switched on when the
 // payment is verified, migration 0066) — so sign-up no longer asks for them.
-export type SelectionSummary = { packageName: string; optionLabel: string; dueToday: string };
+export type SelectionSummary = { packageName: string; dueToday: string };
 
 // `selection` was validated on the SERVER (see page.tsx) against the live packages; `summary` is the server's own rendering of its
 // price. The browser never decides what is bought: /checkout rebuilds the quote again.
-export function SignupForm({ selection, summary }: { selection: PlanSelection | null; summary: SelectionSummary | null }) {
+// `trial` is set when the person came from «ابدأ مجانًا»: the free trial starts right after the company is created (or after the first login
+// when the email must be confirmed first). It is a REQUEST: the server and the database decide whether a trial may start.
+export function SignupForm({ selection, summary, trial = null }: { selection: PlanSelection | null; summary: SelectionSummary | null; trial?: { days: number } | null }) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -59,6 +63,7 @@ export function SignupForm({ selection, summary }: { selection: PlanSelection | 
           pending_org: { name: orgName.trim(), business_type: businessType },
           // remembered with the account so that the choice survives the "confirm your email" round trip (re-validated when used)
           ...(selection ? { plan_selection: selection } : {}),
+          ...(trial ? { start_trial: true } : {}),
         },
       },
     });
@@ -96,11 +101,21 @@ export function SignupForm({ selection, summary }: { selection: PlanSelection | 
       module_keys: [],   // the package they pay for decides the modules
     });
 
-    setLoading(false);
     if (rpcError) {
+      setLoading(false);
       setError(translateAuthError(rpcError.message, rpcError.code));
       return;
     }
+
+    // «ابدأ مجانًا»: start the trial now. If it cannot start (switched off meanwhile, …) the dashboard explains and offers the plans.
+    if (trial) {
+      try { await startFreeTrial(); } catch { /* the dashboard shows the right screen either way */ }
+      setLoading(false);
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+    setLoading(false);
 
     // a package was chosen on /pricing: go straight to its order page instead of asking again
     router.push(selection ? checkoutPath(selection) : "/dashboard/billing");   // no package yet: choose and pay first
@@ -124,6 +139,7 @@ export function SignupForm({ selection, summary }: { selection: PlanSelection | 
           </p>
           {resendMsg && <div className="mt-4 w-full"><AuthAlert tone="success">{resendMsg}</AuthAlert></div>}
           {selection && summary && <p className="mt-3 text-sm leading-7 text-charcoal/55">باقتك المختارة ({summary.packageName}) محفوظة، وسننقلك إلى صفحة الطلب بعد تسجيل الدخول.</p>}
+          {trial && <p className="mt-3 text-sm leading-7 text-charcoal/55">تجربتك المجانية ({daysText(trial.days)}) ستبدأ تلقائيًا عند أول تسجيل دخول بعد تأكيد بريدك.</p>}
           <Link href={loginPath(selection)} className="mt-6 flex w-full items-center justify-center rounded-xl bg-charcoal px-4 py-3 text-[0.9rem] font-medium text-ivory transition-colors hover:bg-sage">الذهاب لتسجيل الدخول</Link>
           <button type="button" onClick={resend} className="mt-3 cursor-pointer text-sm text-sage hover:underline">لم تصلك الرسالة؟ أعد الإرسال</button>
         </div>
@@ -133,17 +149,23 @@ export function SignupForm({ selection, summary }: { selection: PlanSelection | 
 
   return (
     <AuthShell>
+      {trial && (
+        <div className="mt-6 rounded-xl border border-sage/30 bg-sageSoft/40 px-4 py-3 text-sm" role="status">
+          <p className="font-medium text-charcoal">تجربة مجانية لمدة {daysText(trial.days)}</p>
+          <p className="mt-1 text-xs leading-5 text-charcoal/55">كل وحدات النظام، بدون بطاقة ائتمان. عند انتهائها تشترك لتتابع، وتبقى كل بياناتك كما هي.</p>
+        </div>
+      )}
       {selection && summary && (
         <div className="mt-6 rounded-xl border border-sage/30 bg-sageSoft/40 px-4 py-3 text-sm" role="status">
           <p className="text-xs text-charcoal/50">الباقة المختارة</p>
-          <p className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 font-medium text-charcoal"><span>{summary.packageName} — {summary.optionLabel}</span><span className="num">{summary.dueToday}</span></p>
+          <p className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-3 font-medium text-charcoal"><span>{summary.packageName}</span><span className="num">{summary.dueToday}</span></p>
           <p className="mt-1 text-xs leading-5 text-charcoal/50">لن تحتاج إلى اختيارها مرة أخرى: بعد إنشاء الحساب ننقلك إلى صفحة الطلب لمراجعتها قبل الدفع.</p>
         </div>
       )}
 
       <div className="mb-7">
         <h1 className="text-2xl font-semibold tracking-tight text-charcoal">أنشئ حساب شركتك</h1>
-        <p className="mt-1.5 text-sm text-charcoal/50">دقيقة واحدة — وتختار الباقة التي تحدد وحدات نظامك بعد إنشاء الحساب</p>
+        <p className="mt-1.5 text-sm text-charcoal/50">{trial ? "دقيقة واحدة — وتبدأ تجربتك المجانية فورًا" : "دقيقة واحدة — وتختار الباقة التي تحدد وحدات نظامك بعد إنشاء الحساب"}</p>
       </div>
 
       <form onSubmit={handleCreateAccount} className="space-y-5" noValidate>
@@ -164,7 +186,7 @@ export function SignupForm({ selection, summary }: { selection: PlanSelection | 
 
         {error && <AuthAlert>{error}</AuthAlert>}
 
-        <SubmitButton loading={loading} loadingText="جارٍ الإنشاء..." disabled={touched && !formOk}>إنشاء الحساب</SubmitButton>
+        <SubmitButton loading={loading} loadingText="جارٍ الإنشاء..." disabled={touched && !formOk}>{trial ? "ابدأ تجربتك المجانية" : "إنشاء الحساب"}</SubmitButton>
       </form>
 
       <p className="mt-7 text-center text-sm text-charcoal/50">

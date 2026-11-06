@@ -63,9 +63,9 @@ select t.throws($q$select admin_save_legal_settings(gen_random_uuid(), '', 'b', 
 
 -- ============================================================ 4. the acceptance record, against the order
 set role service_role;
-select billing_begin_order(:'a_id', '11600000-0000-0000-0000-000000000001', 'basic', 'monthly', 'initial', 'EGP', 65000, 65000,
+select billing_begin_order(:'a_id', '11600000-0000-0000-0000-000000000001', 'monthly', 'monthly', 'initial', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers"],"max_members":5,"max_warehouses":2}', 1) -> 'order' ->> 'id' as ord \gset
-select billing_begin_order(:'b_id', '11600000-0000-0000-0000-000000000003', 'basic', 'monthly', 'initial', 'EGP', 65000, 65000,
+select billing_begin_order(:'b_id', '11600000-0000-0000-0000-000000000003', 'monthly', 'monthly', 'initial', 'EGP', 65000, 65000,
   '[{"id":"sub","label":"sub","amount":65000}]', '{"modules":["customers"],"max_members":5,"max_warehouses":2}', 1) -> 'order' ->> 'id' as ordb \gset
 select billing_record_acceptance(:'ord', '11600000-0000-0000-0000-000000000001', '{"terms":2,"privacy":1,"refund":1}', 'ar', '203.0.113.7', 'Mozilla/5.0 test') as ok1 \gset
 select billing_record_acceptance(:'ord', '11600000-0000-0000-0000-000000000001', '{"terms":1,"privacy":1,"refund":1}', 'ar', null, null) as stale \gset
