@@ -53,3 +53,16 @@ export function trialLeftText(secondsLeft: number): string {
 
 /** A trial that is about to end (3 days or less) is shown as a warning, not as information. */
 export const trialIsUrgent = (secondsLeft: number): boolean => secondsLeft <= 3 * 86400;
+
+/** Live countdown text: «٩ أيام و٣ ساعات» / «٣ ساعات و١٢ دقيقة» / «٤٥ دقيقة» / «أقل من دقيقة». */
+export function trialCountdownText(secondsLeft: number): string {
+  const s = Math.max(0, Math.floor(secondsLeft));
+  const nf = new Intl.NumberFormat("ar-EG");
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  const hours = (n: number) => (n === 1 ? "ساعة" : n === 2 ? "ساعتان" : n <= 10 ? `${nf.format(n)} ساعات` : `${nf.format(n)} ساعة`);
+  const mins = (n: number) => (n === 1 ? "دقيقة" : n === 2 ? "دقيقتان" : n <= 10 ? `${nf.format(n)} دقائق` : `${nf.format(n)} دقيقة`);
+  if (d > 0) return h > 0 ? `${daysText(d)} و${hours(h)}` : daysText(d);
+  if (h > 0) return m > 0 ? `${hours(h)} و${mins(m)}` : hours(h);
+  if (m > 0) return mins(m);
+  return "أقل من دقيقة";
+}

@@ -4,7 +4,7 @@ import { decideAccess, parseAccess } from "./access-gate.ts";
 import { evaluateAccess, parseDbAccess, isOpenState, type GraceSettings } from "./license-status.ts";
 import { buildQuote, isHostingFree, resolvePricingConfig, validateEditable, validatePricingConfig, overridesFromEditable, toEditable, type PricingConfig } from "./pricing.ts";
 import { PRICING_CONFIG } from "../../config/pricing.config.ts";
-import { daysText, isValidTrialDays, trialDaysLeft, trialIsUrgent, trialLeftText, validateTrialSettings } from "./trial.ts";
+import { trialCountdownText, daysText, isValidTrialDays, trialDaysLeft, trialIsUrgent, trialLeftText, validateTrialSettings } from "./trial.ts";
 
 const base = PRICING_CONFIG as PricingConfig;
 const G24: GraceSettings = { graceEnabled: true, graceHours: 24 };
@@ -126,4 +126,15 @@ test("free hosting does not touch the monthly plan, nor the normal one-time quot
   assert.equal(normal.hostingFree, false);
   assert.deepEqual(normal.lines.map((l) => l.id), ["license", "hosting"]);
   assert.ok(buildQuote({ plan: "one_time", purpose: "renewal" }, base).dueToday > 0);
+});
+
+test("the live countdown wording", () => {
+  assert.match(trialCountdownText(9 * 86400 + 3 * 3600 + 59), /أيام/);
+  assert.match(trialCountdownText(9 * 86400 + 3 * 3600), /ساعات/);
+  assert.equal(trialCountdownText(86400), "يوم واحد");
+  assert.match(trialCountdownText(3 * 3600 + 12 * 60), /ساعات.*دقيقة/);
+  assert.equal(trialCountdownText(3600), "ساعة");
+  assert.match(trialCountdownText(45 * 60), /دقيقة/);
+  assert.equal(trialCountdownText(59), "أقل من دقيقة");
+  assert.equal(trialCountdownText(-5), "أقل من دقيقة");
 });

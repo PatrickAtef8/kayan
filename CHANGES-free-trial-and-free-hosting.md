@@ -2,7 +2,7 @@
 
 ## 1. Free trial («ابدأ مجانًا»)
 * Home page (navbar, hero, final banner) and /pricing show **ابدأ مجانًا** → `/signup?trial=1`. The button exists only while the trial is switched on.
-* The visitor creates an account normally; the trial starts right away (or at the first login after confirming the email) and the dashboard works with **all modules**, with a persistent banner showing the days left.
+* The visitor creates an account normally; the trial starts right away (or at the first login after confirming the email) and the dashboard works with **all modules**, with a persistent banner that counts the time left down live (days/hours/minutes, updating while the user works, amber in the last 3 days; re-synced with the server every 3 minutes so an admin extension appears without a reload; at zero the page re-checks with the server and shows the subscribe screen).
 * When the N days end, the dashboard is closed **by the database** (every table and RPC, same as an unpaid company) and the owner sees «انتهت فترتك التجريبية — اشترك الآن»; team members see a notice. **Nothing is deleted**: after a verified payment the company opens again with all its data.
 * **Admin → الباقات والأسعار → التجربة المجانية**: on/off and the number of days N (1–365, default 15). A new N applies to trials that start afterwards (a running trial keeps its own length). **Admin → company page** : «تمديد التجربة» adds days to one company (from today if it already ended).
 * One trial per account and per company (unique index). A license always wins: a lapsed paying company is never re-opened by a trial. An existing company that never paid is offered the trial from its «activate your account» screen.
