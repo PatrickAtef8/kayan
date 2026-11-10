@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ModernSelect } from "@/components/ui/select";
 import { DataTable } from "@/components/ui/data-table";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { addTier, deleteTier, toggleTier } from "./actions";
 import type { Tier } from "./page";
 
@@ -27,6 +28,18 @@ export function DiscountsManager({ tiers }: { tiers: Tier[] }) {
   const [tierSide, setTierSide] = useState<"sales" | "purchases">("sales");
   const [minAmount, setMinAmount] = useState(0);
   const [tierPct, setTierPct] = useState(0);
+  const [toDelete, setToDelete] = useState<Tier | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const confirmDelete = () => {
+    if (!toDelete) return;
+    setDeleteError(null);
+    startTransition(async () => {
+      const r = await deleteTier(toDelete.id);
+      if (r.error) setDeleteError(r.error);
+      else setToDelete(null);
+    });
+  };
 
   const run = (fn: () => Promise<{ error: string | null }>, after?: () => void) => {
     setError(null);
@@ -80,13 +93,23 @@ export function DiscountsManager({ tiers }: { tiers: Tier[] }) {
               render: (t) => (
                 <div className="flex justify-end gap-1">
                   <button disabled={pending} onClick={() => run(() => toggleTier(t.id, !t.is_active))} className="rounded-card p-1.5 text-ink/40 hover:bg-paper hover:text-ink" aria-label="تفعيل/إيقاف"><Power size={15} /></button>
-                  <button disabled={pending} onClick={() => run(() => deleteTier(t.id))} className="rounded-card p-1.5 text-ink/40 hover:bg-rose/10 hover:text-rose" aria-label="حذف"><Trash2 size={15} /></button>
+                  <button disabled={pending} onClick={() => { setDeleteError(null); setToDelete(t); }} className="rounded-card p-1.5 text-ink/40 hover:bg-rose/10 hover:text-rose" aria-label="حذف"><Trash2 size={15} /></button>
                 </div>
               ),
             },
           ]}
         />
       </section>
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        title="حذف الشريحة؟"
+        description={toDelete ? `سيتم حذف شريحة خصم ${SIDE_LABEL[toDelete.applies_to]} (الفاتورة ≥ ${money(toDelete.min_amount)} بخصم ${toDelete.discount_pct}%) نهائيًا. هل أنت متأكد؟` : ""}
+        loading={pending}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => { if (!pending) setToDelete(null); }}
+      />
     </div>
   );
 }

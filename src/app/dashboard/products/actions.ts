@@ -36,6 +36,31 @@ function readInventoryFields(formData: FormData) {
   return { barcode, reorder_level: reorderLevel, units_per_carton: unitsPerCarton };
 }
 
+// A repeated barcode / SKU: say exactly which box is repeated and which product already uses it,
+// instead of the generic "another record has the same data".
+async function duplicateProductMessage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  error: { code?: string; message?: string; details?: string | null } | null,
+  fields: { barcode: string | null; sku: string | null },
+  selfId?: string,
+): Promise<string> {
+  const generic = translateDbError(error, "products");
+  if (error?.code !== "23505") return generic;
+  const text = `${error.message ?? ""} ${error.details ?? ""}`;
+  const col = /barcode/i.test(text) ? "barcode" : /sku/i.test(text) ? "sku" : null;
+  if (!col) return generic;
+  const value = fields[col];
+  if (!value) return generic;
+  let q = supabase.from("products").select("name").eq("organization_id", orgId).eq(col, value).limit(1);
+  if (selfId) q = q.neq("id", selfId);
+  const { data } = await q.maybeSingle();
+  const label = col === "barcode" ? "الباركود" : "كود الصنف (SKU)";
+  return data?.name
+    ? `${label} "${value}" مستخدم بالفعل للمنتج «${data.name}» — غيّر ${label} في هذا المنتج أو عدّل المنتج الآخر.`
+    : generic;
+}
+
 export async function createProduct(formData: FormData) {
   const supabase = await createClient();
   const membership = await getMembership(supabase);
@@ -66,6 +91,7 @@ export async function createProduct(formData: FormData) {
   const wholesalePrice = wholesalePriceRaw ? Number(wholesalePriceRaw) : null;
   const distributorPrice = distributorPriceRaw ? Number(distributorPriceRaw) : null;
 
+  const inventoryFields = readInventoryFields(formData);
   const { data: product, error } = await supabase
     .from("products")
     .insert({
@@ -74,12 +100,14 @@ export async function createProduct(formData: FormData) {
       name,
       sku,
       unit,
-      ...readInventoryFields(formData),
+      ...inventoryFields,
     })
     .select("id")
     .single();
 
-  if (error || !product) return { error: translateDbError(error, "products") };
+  if (error || !product) {
+    return { error: await duplicateProductMessage(supabase, membership.organization_id, error, { barcode: inventoryFields.barcode, sku }) };
+  }
 
   const { error: priceError } = await supabase.from("product_prices").insert({
     organization_id: membership.organization_id,
@@ -129,11 +157,14 @@ export async function updateProduct(id: string, formData: FormData) {
   const wholesalePrice = wholesalePriceRaw ? Number(wholesalePriceRaw) : null;
   const distributorPrice = distributorPriceRaw ? Number(distributorPriceRaw) : null;
 
+  const inventoryFields = readInventoryFields(formData);
   const { error: updateError } = await supabase
     .from("products")
-    .update({ name, sku, unit, category_id: categoryId, ...readInventoryFields(formData) })
+    .update({ name, sku, unit, category_id: categoryId, ...inventoryFields })
     .eq("id", id);
-  if (updateError) return { error: translateDbError(updateError, "products") };
+  if (updateError) {
+    return { error: await duplicateProductMessage(supabase, membership.organization_id, updateError, { barcode: inventoryFields.barcode, sku }, id) };
+  }
 
   // One current price row per product (see 0004_master_data.sql) — upsert
   // rather than insert, since editing a product usually means changing a

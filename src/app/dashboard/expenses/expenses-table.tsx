@@ -2,8 +2,10 @@
 
 import { Money } from "@/components/ui/money";
 import { formatMoney } from "@/lib/money";
-import { useState } from "react";
-import { Paperclip } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Paperclip, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { deleteExpense } from "./actions";
 import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import dynamic from "next/dynamic";
@@ -24,6 +26,19 @@ function money(n: number) {
 export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseRow[]; organizationId: string }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const openExpense = expenses.find((e) => e.id === openId);
+  const [toDelete, setToDelete] = useState<ExpenseRow | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, startDelete] = useTransition();
+
+  const confirmDelete = () => {
+    if (!toDelete) return;
+    setDeleteError(null);
+    startDelete(async () => {
+      const r = await deleteExpense(toDelete.id);
+      if (r.error) setDeleteError(r.error);
+      else setToDelete(null);
+    });
+  };
 
   return (
     <>
@@ -55,6 +70,14 @@ export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseR
               </button>
             ),
           },
+          {
+            header: "",
+            render: (e) => (
+              <button type="button" onClick={() => { setDeleteError(null); setToDelete(e); }} aria-label="حذف المصروف" className="rounded-card p-1.5 text-charcoal/40 hover:bg-rose/10 hover:text-rose">
+                <Trash2 size={15} strokeWidth={1.8} />
+              </button>
+            ),
+          },
         ]}
       />
 
@@ -63,6 +86,16 @@ export function ExpensesTable({ expenses, organizationId }: { expenses: ExpenseR
           <AttachmentsPanel organizationId={organizationId} entityType="expense" entityId={openExpense.id} />
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        title="حذف المصروف؟"
+        description={toDelete ? `سيتم حذف مصروف بمبلغ ${money(toDelete.amount)} ج.م (${toDelete.description ?? toDelete.expense_date}) نهائيًا، وسيعود المبلغ إلى الخزنة وتتحدث التقارير تلقائيًا. يبقى الحذف مسجلًا في سجل العمليات.` : ""}
+        loading={deleting}
+        error={deleteError}
+        onConfirm={confirmDelete}
+        onCancel={() => { if (!deleting) setToDelete(null); }}
+      />
     </>
   );
 }

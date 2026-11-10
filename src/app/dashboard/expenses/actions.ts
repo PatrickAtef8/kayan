@@ -93,3 +93,22 @@ export async function createExpense(input: ExpenseInput) {
   revalidatePath("/dashboard");
   return { error: null };
 }
+
+// Deletes an expense for good: the database function removes its treasury movement and attachment records in the same transaction and writes
+// «expense.deleted» to the audit trail, so the treasury balance, the reports, the dashboard and rep balances all move back by themselves.
+export async function deleteExpense(id: string) {
+  const supabase = await createClient();
+  const membership = await getMembership(supabase);
+  if (!membership) return { error: "غير مصرح — يرجى تسجيل الدخول مجددًا" };
+
+  const { error } = await supabase.rpc("delete_expense", { org_id: membership.organization_id, p_expense_id: id });
+  if (error) return { error: safeErrorMessage(error) };
+
+  revalidatePath("/dashboard/expenses");
+  revalidatePath("/dashboard/reports", "layout");
+  revalidatePath("/dashboard/treasury");
+  revalidatePath("/dashboard/representatives");
+  revalidatePath("/dashboard/settings/audit");
+  revalidatePath("/dashboard");
+  return { error: null };
+}

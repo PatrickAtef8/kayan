@@ -9,7 +9,49 @@
 // nothing was wrong. This turns that error into something a person can
 // actually act on, tuned per-entity so it names what's actually
 // attached rather than a generic "can't delete this."
-type PostgrestErrorLike = { code?: string; message?: string } | null | undefined;
+type PostgrestErrorLike = { code?: string; message?: string; details?: string | null; hint?: string | null } | null | undefined;
+
+// Column / constraint names -> the label the person sees on the form. Used so a duplicate
+// error says WHICH box is repeated (and with which value) instead of a generic sentence.
+const FIELD_LABELS: Record<string, string> = {
+  barcode: "الباركود",
+  sku: "كود الصنف (SKU)",
+  name: "الاسم",
+  code: "الكود",
+  phone: "رقم الهاتف",
+  email: "البريد الإلكتروني",
+  min_amount: "الحد الأدنى للشريحة",
+  invoice_number: "رقم الفاتورة",
+  number: "الرقم",
+};
+
+/**
+ * Describes a unique-violation precisely, e.g. «الباركود "6221234" مستخدم بالفعل في سجل آخر».
+ * Postgres reports `Key (organization_id, barcode)=(<org>, 6221234) already exists.` in `details`
+ * and the constraint/index name in `message`; both are parsed here. Returns null when nothing can be identified.
+ */
+export function describeDuplicate(error: PostgrestErrorLike): string | null {
+  if (!error) return null;
+  const text = `${error.message ?? ""} ${error.details ?? ""}`;
+  let cols: string[] = [];
+  let vals: string[] = [];
+  const key = /Key \(([^)]+)\)=\((.+)\) already exists/s.exec(text);
+  if (key) {
+    cols = key[1].split(",").map((c) => c.trim());
+    vals = key[2].split(",").map((v) => v.trim());
+  }
+  // Drop the tenant column — the person doesn't need to see "organization_id".
+  const pairs = cols
+    .map((c, i) => ({ col: c, val: vals[i] ?? "" }))
+    .filter((p) => p.col !== "organization_id" && p.col !== "org_id");
+  if (pairs.length === 0) {
+    const constraint = /(?:constraint|index) "([^"]+)"/.exec(text)?.[1] ?? "";
+    const hit = Object.keys(FIELD_LABELS).find((k) => new RegExp(`(^|_)${k}(_|$)`).test(constraint));
+    return hit ? `${FIELD_LABELS[hit]} مستخدم بالفعل في سجل آخر — غيّره أو راجع السجل المكرر.` : null;
+  }
+  const parts = pairs.map((p) => `${FIELD_LABELS[p.col] ?? p.col}${p.val ? ` "${p.val}"` : ""}`);
+  return `${parts.join(" + ")} مستخدم بالفعل في سجل آخر — غيّره أو راجع السجل المكرر.`;
+}
 
 const RESTRICT_MESSAGE: Record<string, string> = {
   customers: "لا يمكن حذف هذا العميل لأن لديه فواتير أو تحصيلات مسجلة — يمكنك تعديل بياناته بدلاً من حذفه.",
@@ -31,7 +73,7 @@ export function translateDbError(error: PostgrestErrorLike, table?: string): str
   }
   // 23505 = unique_violation
   if (error.code === "23505") {
-    return "يوجد سجل آخر بنفس البيانات بالفعل.";
+    return describeDuplicate(error) ?? "يوجد سجل آخر بنفس البيانات بالفعل.";
   }
   // 42501 / PGRST301-ish = RLS denied the row (permission, not a missing row)
   if (error.code === "42501" || error.code === "PGRST301") {
@@ -54,7 +96,7 @@ export function safeErrorMessage(error: PostgrestErrorLike): string {
   if (msg && ARABIC.test(msg)) return msg;
   switch (error?.code) {
     case "42501": case "PGRST301": return "ليس لديك صلاحية تنفيذ هذا الإجراء.";
-    case "23505": return "يوجد سجل آخر بنفس البيانات بالفعل.";
+    case "23505": return describeDuplicate(error) ?? "يوجد سجل آخر بنفس البيانات بالفعل.";
     case "23503": return "لا يمكن تنفيذ العملية لوجود بيانات مرتبطة بهذا السجل.";
     case "23502": case "23514": case "22P02": case "22003": case "22001": return "البيانات المُدخلة غير صالحة. راجعها وحاول مرة أخرى.";
   }
