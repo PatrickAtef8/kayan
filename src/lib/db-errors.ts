@@ -35,7 +35,7 @@ export function describeDuplicate(error: PostgrestErrorLike): string | null {
   const text = `${error.message ?? ""} ${error.details ?? ""}`;
   let cols: string[] = [];
   let vals: string[] = [];
-  const key = /Key \(([^)]+)\)=\((.+)\) already exists/s.exec(text);
+  const key = /Key \(([^)]+)\)=\(([\s\S]+)\) already exists/.exec(text);
   if (key) {
     cols = key[1].split(",").map((c) => c.trim());
     vals = key[2].split(",").map((v) => v.trim());
