@@ -1,7 +1,8 @@
 "use client";
 
 import { Money } from "@/components/ui/money";
-import { formatMoney } from "@/lib/money";
+import { formatQty, formatDateDigits, formatPercent } from "@/lib/money";
+import { Num } from "@/components/ui/num";
 import { useState } from "react";
 import { Eye, HandCoins, Undo2 } from "lucide-react";
 import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
@@ -25,10 +26,6 @@ const STATUS_CLASS: Record<SalesInvoiceRow["payment_status"], string> = {
   unpaid: "bg-rose/10 text-rose",
 };
 
-function money(n: number | null | undefined) {
-  return formatMoney(n);
-}
-
 export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoices: SalesInvoiceRow[]; canViewFinancial: boolean; canCollect: boolean }) {
   // keep ids, not row copies: after a payment the page data refreshes and the open details follow it
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -44,7 +41,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
         getRowKey={(inv) => inv.id}
         emptyLabel="لا توجد فواتير بيع بعد — أضف أول فاتورة أعلاه"
         columns={[
-          { header: "التاريخ", render: (inv) => <span dir="ltr">{inv.invoice_date}</span> },
+          { header: "التاريخ", render: (inv) => <span dir="ltr">{formatDateDigits(inv.invoice_date)}</span> },
           { header: "رقم الفاتورة", render: (inv) => <span dir="ltr">{inv.invoice_number ?? "—"}</span> },
           { header: "العميل", render: (inv) => inv.customers?.name ?? "—" },
           { header: "المندوب", render: (inv) => inv.sales_representatives?.name ?? "—" },
@@ -126,7 +123,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
           <div className="max-h-[75vh] space-y-3 overflow-y-auto">
             <div className="flex items-center justify-between text-xs text-charcoal/50">
               <span>{viewing.customers?.name ?? "—"}</span>
-              <span dir="ltr">{viewing.invoice_date}</span>
+              <Num>{formatDateDigits(viewing.invoice_date)}</Num>
             </div>
             <InvoiceExportButtons variant="full" build={(org) => salesInvoiceDoc(viewing, org)} />
             <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
@@ -135,19 +132,19 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                   <div className="flex items-center justify-between">
                     <span className="text-charcoal">
                       {item.products?.name ?? "—"}
-                      {item.is_bonus && <span className="mr-2 rounded bg-sageSoft/50 px-1.5 py-0.5 text-[0.65rem] text-sage">Bonus</span>}
+                      {item.is_bonus && <span className="mr-2 rounded bg-sageSoft/50 px-1.5 py-0.5 text-[0.65rem] text-sage">بونص</span>}
                     </span>
-                    <span className="text-charcoal/45" dir="ltr">
-                      {item.quantity}{item.bonus_quantity > 0 ? ` + ${item.bonus_quantity} Bonus` : ""} × {money(item.unit_price)}
+                    <span className="text-charcoal/45" dir="rtl">
+                      <Num>{formatQty(item.quantity)}</Num>{item.bonus_quantity > 0 && <> + <Num>{formatQty(item.bonus_quantity)}</Num> بونص</>} × <Money value={item.unit_price} suffix="" />
                     </span>
-                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="" /></span>
+                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="ج.م" /></span>
                   </div>
-                  <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">
+                  <div className="mt-1 text-[0.6875rem] text-charcoal/40">
                     السعر الصافي للقطعة: <Money value={item.effective_unit_price} />
                   </div>
                   {canViewFinancial && (
-                    <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">
-                      تكلفة: <Money value={item.cost_total} suffix="" /> — ربح: <Money value={item.profit} suffix="" />
+                    <div className="mt-1 text-[0.6875rem] text-charcoal/40">
+                      التكلفة: <Money value={item.cost_total} /> · الربح: <Money value={item.profit} />
                     </div>
                   )}
                 </div>
@@ -168,13 +165,13 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                 .map(([label, v]) => (
                   <div key={label} className="flex items-center justify-between text-charcoal/50">
                     <span>{label}</span>
-                    <span dir="ltr">− <Money value={v} /></span>
+                    <Money value={v} sign="−" />
                   </div>
                 ))}
               {viewing.bonus_units > 0 && (
                 <div className="flex items-center justify-between text-sage">
-                  <span>Bonus (قطع مجانية)</span>
-                  <span dir="ltr">{viewing.bonus_units}</span>
+                  <span>بونص (قطع مجانية)</span>
+                  <Num>{formatQty(viewing.bonus_units)}</Num>
                 </div>
               )}
               {viewing.payment_method && (
@@ -186,7 +183,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
               {viewing.tax_total > 0 && (
                 <div className="flex items-center justify-between text-charcoal/50">
                   <span>الضريبة</span>
-                  <span dir="ltr">+ <Money value={viewing.tax_total} /></span>
+                  <Money value={viewing.tax_total} sign="+" />
                 </div>
               )}
               <div className="flex items-center justify-between font-semibold text-charcoal">
@@ -201,11 +198,11 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                   </div>
                   <div className="flex items-center justify-between font-semibold">
                     <span className="text-charcoal">الربح</span>
-                    <span dir="ltr" className={viewing.profit_total >= 0 ? "text-sage" : "text-rose"}>
+                    <span className={`inline-flex items-center gap-1.5 ${viewing.profit_total >= 0 ? "text-sage" : "text-rose"}`}>
                       <Money value={viewing.profit_total} />
                       {viewing.subtotal - viewing.discount_total > 0 && (
-                        <span className="mr-1 text-[0.6875rem] font-normal text-charcoal/40">
-                          ({((viewing.profit_total / (viewing.subtotal - viewing.discount_total)) * 100).toFixed(1)}%)
+                        <span className="text-[0.6875rem] font-normal text-charcoal/40">
+                          (<Num>{formatPercent((viewing.profit_total / (viewing.subtotal - viewing.discount_total)) * 100)}</Num>)
                         </span>
                       )}
                     </span>
@@ -235,7 +232,7 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                   {viewing.payments.map((p) => (
                     <div key={p.id} className="px-3 py-2 text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-charcoal/60" dir="ltr">{p.collection_date}</span>
+                        <Num className="text-charcoal/60">{formatDateDigits(p.collection_date)}</Num>
                         <span className="font-medium text-charcoal" dir="ltr"><Money value={p.amount} /></span>
                       </div>
                       {(p.payment_method || p.notes) && (
@@ -253,13 +250,13 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                 {viewing.returns_total > 0 && (
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>مرتجعات</span>
-                    <span dir="ltr">− <Money value={viewing.returns_total} /></span>
+                    <Money value={viewing.returns_total} sign="−" />
                   </div>
                 )}
                 {viewing.cash_refunded > 0 && (
                   <div className="flex items-center justify-between text-charcoal/50">
                     <span>مبالغ استُرجعت نقدًا للعميل</span>
-                    <span dir="ltr">+ <Money value={viewing.cash_refunded} /></span>
+                    <Money value={viewing.cash_refunded} sign="+" />
                   </div>
                 )}
                 <div className="flex items-center justify-between text-charcoal/50">
@@ -268,8 +265,8 @@ export function SalesTable({ invoices, canViewFinancial, canCollect }: { invoice
                 </div>
                 <div className="flex items-center justify-between font-semibold">
                   <span className="text-charcoal">المتبقي</span>
-                  <span dir="ltr" className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
-                    {viewing.remaining > 0 ? `${money(viewing.remaining)} ج.م` : "لا يوجد مبلغ متبقي"}
+                  <span className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
+                    {viewing.remaining > 0 ? <Money value={viewing.remaining} /> : "لا يوجد مبلغ متبقي"}
                   </span>
                 </div>
               </div>

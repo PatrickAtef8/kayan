@@ -30,3 +30,25 @@ export function formatMoney(n: number | null | undefined, decimals = 2): string 
 export function negativeClass(n: number | null | undefined): string {
   return isNegativeMoney(Number(n ?? 0)) ? "text-rose" : "";
 }
+
+// ---- the other numbers on screen: quantities, dates, percentages ----
+// Same rule as money: Arabic-Indic digits, and every run is wrapped by the caller in an isolated left-to-right unit
+// (<Num /> in src/components/ui/num.tsx) so Arabic words next to it can never shuffle it.
+
+/** Quantity: ٢٤ / ١٢٫٥ — up to 3 decimals, no thousands grouping noise for small counts. */
+export function formatQty(n: number | null | undefined): string {
+  const v = Number.isFinite(Number(n)) ? Number(n) : 0;
+  return v.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
+}
+
+/** "2026-11-12" -> "٢٠٢٦-١١-١٢" (same order as the stored date, only the digits are Arabic-Indic). */
+export function formatDateDigits(d: string | null | undefined): string {
+  if (!d) return "—";
+  return String(d).slice(0, 10).replace(/\d/g, (c) => String.fromCharCode(0x0660 + Number(c)));
+}
+
+/** 39.1 -> "٣٩٫١٪" */
+export function formatPercent(n: number | null | undefined, decimals = 1): string {
+  const v = Number.isFinite(Number(n)) ? Number(n) : 0;
+  return `${v.toLocaleString("ar-EG", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}٪`;
+}

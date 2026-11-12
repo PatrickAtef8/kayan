@@ -1,7 +1,8 @@
 "use client";
 
 import { Money } from "@/components/ui/money";
-import { formatMoney } from "@/lib/money";
+import { formatQty, formatDateDigits, formatPercent } from "@/lib/money";
+import { Num } from "@/components/ui/num";
 import { useState } from "react";
 import { Eye, HandCoins } from "lucide-react";
 import { FulfilmentBadge } from "@/components/ui/fulfilment-badge";
@@ -23,10 +24,6 @@ const STATUS_CLASS: Record<PurchaseInvoiceRow["payment_status"], string> = {
   unpaid: "bg-rose/10 text-rose",
 };
 
-function money(n: number) {
-  return formatMoney(n);
-}
-
 export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: PurchaseInvoiceRow[]; canPay: boolean; showPayments: boolean }) {
   // keep ids, not row copies: after a payment the page data refreshes and the open details follow it
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -41,7 +38,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
         getRowKey={(inv) => inv.id}
         emptyLabel="لا توجد فواتير شراء بعد — أضف أول فاتورة أعلاه"
         columns={[
-          { header: "التاريخ", render: (inv) => <span dir="ltr">{inv.invoice_date}</span> },
+          { header: "التاريخ", render: (inv) => <span dir="ltr">{formatDateDigits(inv.invoice_date)}</span> },
           { header: "رقم الفاتورة", render: (inv) => <span dir="ltr">{inv.invoice_number ?? "—"}</span> },
           { header: "المورد", render: (inv) => inv.suppliers?.name ?? "—" },
           { header: "المخزن", render: (inv) => inv.warehouses?.name ?? "—" },
@@ -102,7 +99,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
           <div className="max-h-[75vh] space-y-3 overflow-y-auto">
             <div className="flex items-center justify-between text-xs text-charcoal/50">
               <span>{viewing.suppliers?.name ?? "—"}</span>
-              <span dir="ltr">{viewing.invoice_date}</span>
+              <Num>{formatDateDigits(viewing.invoice_date)}</Num>
             </div>
             <InvoiceExportButtons variant="full" build={(org) => purchaseInvoiceDoc(viewing, org)} />
             <div className="divide-y divide-borderSoft rounded-xl border border-borderSoft">
@@ -111,14 +108,14 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                   <div className="flex items-center justify-between">
                     <span className="text-charcoal">
                       {item.products?.name ?? "—"}
-                      {item.is_bonus && <span className="mr-2 rounded bg-sageSoft/50 px-1.5 py-0.5 text-[0.65rem] text-sage">Bonus</span>}
+                      {item.is_bonus && <span className="mr-2 rounded bg-sageSoft/50 px-1.5 py-0.5 text-[0.65rem] text-sage">بونص</span>}
                     </span>
-                    <span className="text-charcoal/45" dir="ltr">
-                      {item.quantity}{item.bonus_quantity > 0 ? ` + ${item.bonus_quantity} Bonus` : ""} × {money(item.unit_cost)}
+                    <span className="text-charcoal/45" dir="rtl">
+                      <Num>{formatQty(item.quantity)}</Num>{item.bonus_quantity > 0 && <> + <Num>{formatQty(item.bonus_quantity)}</Num> بونص</>} × <Money value={item.unit_cost} suffix="" />
                     </span>
-                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="" /></span>
+                    <span className="font-medium text-charcoal"><Money value={item.net_total} suffix="ج.م" /></span>
                   </div>
-                  <div className="mt-1 text-[0.6875rem] text-charcoal/40" dir="ltr">التكلفة الصافية للقطعة: <Money value={item.effective_unit_cost} /></div>
+                  <div className="mt-1 text-[0.6875rem] text-charcoal/40">التكلفة الصافية للقطعة: <Money value={item.effective_unit_cost} /></div>
                 </div>
               ))}
             </div>
@@ -132,9 +129,9 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
               ] as [string, number][])
                 .filter(([, v]) => v > 0)
                 .map(([label, v]) => (
-                  <div key={label} className="flex items-center justify-between"><span>{label}</span><span dir="ltr">− <Money value={v} /></span></div>
+                  <div key={label} className="flex items-center justify-between"><span>{label}</span><Money value={v} sign="−" /></div>
                 ))}
-              {viewing.bonus_units > 0 && <div className="flex items-center justify-between text-sage"><span>Bonus (قطع مجانية)</span><span dir="ltr">{viewing.bonus_units}</span></div>}
+              {viewing.bonus_units > 0 && <div className="flex items-center justify-between text-sage"><span>بونص (قطع مجانية)</span><Num>{formatQty(viewing.bonus_units)}</Num></div>}
               {viewing.payment_method && <div className="flex items-center justify-between"><span>طريقة الدفع</span><span>{viewing.payment_method}</span></div>}
             </div>
             <div className="flex items-center justify-between border-t border-borderSoft pt-3 text-sm">
@@ -155,7 +152,7 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                     {viewing.payments.map((p) => (
                       <div key={p.id} className="px-3 py-2 text-sm">
                         <div className="flex items-center justify-between">
-                          <span className="text-charcoal/60" dir="ltr">{p.payment_date}</span>
+                          <Num className="text-charcoal/60">{formatDateDigits(p.payment_date)}</Num>
                           <span className="font-medium text-charcoal" dir="ltr"><Money value={p.amount} /></span>
                         </div>
                         {(p.payment_method || p.notes) && (
@@ -173,13 +170,13 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                   {viewing.returns_total > 0 && (
                     <div className="flex items-center justify-between text-charcoal/50">
                       <span>مرتجعات للمورد</span>
-                      <span dir="ltr">− <Money value={viewing.returns_total} /></span>
+                      <Money value={viewing.returns_total} sign="−" />
                     </div>
                   )}
                   {viewing.cash_refunded > 0 && (
                     <div className="flex items-center justify-between text-charcoal/50">
                       <span>مبالغ استردها المورد نقدًا</span>
-                      <span dir="ltr">+ <Money value={viewing.cash_refunded} /></span>
+                      <Money value={viewing.cash_refunded} sign="+" />
                     </div>
                   )}
                   <div className="flex items-center justify-between text-charcoal/50">
@@ -188,8 +185,8 @@ export function PurchasesTable({ invoices, canPay, showPayments }: { invoices: P
                   </div>
                   <div className="flex items-center justify-between font-semibold">
                     <span className="text-charcoal">المتبقي</span>
-                    <span dir="ltr" className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
-                      {viewing.remaining > 0 ? `${money(viewing.remaining)} ج.م` : "لا يوجد مبلغ متبقي"}
+                    <span className={viewing.remaining > 0 ? "text-rose" : "text-sage"}>
+                      {viewing.remaining > 0 ? <Money value={viewing.remaining} /> : "لا يوجد مبلغ متبقي"}
                     </span>
                   </div>
                 </div>
