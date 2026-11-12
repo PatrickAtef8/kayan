@@ -28,10 +28,6 @@ export default async function TeamSettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <p className="mb-6 text-xs leading-6 text-charcoal/45">
-        إضافة شخص لديه حساب بالفعل تتم فورًا. أما إضافة بريد إلكتروني جديد تمامًا فترسل له دعوة لإنشاء حساب — يحتاج هذا
-        إلى إعداد مفتاح الخدمة (service role) في متغيرات البيئة، راجع ملف .env.example.
-      </p>
       <TeamManager members={members ?? []} roles={sortedRoles} linkedUserIds={linkedUserIds} freeReps={freeReps} />
       <div className="mt-8 rounded-xl border border-borderSoft bg-paper/60 p-4">
         <p className="mb-3 text-xs font-medium text-charcoal/60">الأدوار في النظام (ثلاثة فقط، ثابتة)</p>
