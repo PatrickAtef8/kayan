@@ -20,7 +20,9 @@ const arabicFont = IBM_Plex_Sans_Arabic({
 });
 
 const TITLE = "كيان — إدارة الأعمال";
-const DESCRIPTION = "منصة إدارة أعمال متكاملة للشركات الصغيرة والمتوسطة";
+const DESCRIPTION = "كيان نظام لإدارة الأعمال للشركات الصغيرة والمتوسطة: المبيعات والمشتريات والمخزون والخزنة والمناديب في مكان واحد، وكل رقم له مصدر.";
+// Link preview (WhatsApp, Facebook, Telegram, X…): a 1200×630 image kept in /public. metadataBase (below) turns this into the absolute URL those apps need.
+const OG_IMAGE = { url: "/og-image.png", width: 1200, height: 630, alt: "كيان — شركتك كلها في شاشة واحدة" };
 const siteUrl = (() => { try { return getSiteUrl(); } catch { return null; } })();
 
 export const metadata: Metadata = {
@@ -28,8 +30,8 @@ export const metadata: Metadata = {
   title: { default: TITLE, template: "%s | كيان" },
   description: DESCRIPTION,
   applicationName: "Kayan",
-  openGraph: { type: "website", locale: "ar_EG", siteName: "كيان", title: TITLE, description: DESCRIPTION },
-  twitter: { card: "summary", title: TITLE, description: DESCRIPTION },
+  openGraph: { type: "website", locale: "ar_EG", siteName: "كيان", title: TITLE, description: DESCRIPTION, url: "/", images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [OG_IMAGE.url] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -36,3 +36,9 @@ Checked: `tsc --noEmit` and `eslint src/components/marketing` clean. `next build
 The example card faded out (and tilted/slid) with scrolling; on a phone it sits near the bottom of the hero, so it nearly vanished right
 after the first scroll. The scroll effect now runs only on large screens with a mouse (>=1024px, fine pointer); on phones and tablets the card
 stays fully visible. Verified: opacity stays 1.00 while scrolling at 390px and 768px.
+
+## Link preview (WhatsApp / Facebook / Telegram / X)
+- New `public/og-image.png` (1200×630, ~62 KB): brand headline + the example dashboard card, rendered with the project's own IBM Plex Sans Arabic.
+- `src/app/layout.tsx`: Open Graph + Twitter tags now carry the image (`summary_large_image`), and the site description was rewritten.
+- The absolute image URL comes from `metadataBase` = `NEXT_PUBLIC_SITE_URL` (or Vercel's production URL). Set `NEXT_PUBLIC_SITE_URL=https://kayan-xi.vercel.app` in Vercel.
+- WhatsApp caches previews: after deploying, test with `https://kayan-xi.vercel.app/?v=2`.
