@@ -23,3 +23,11 @@ phrases, one consistent register (clear everyday Arabic). Facts are unchanged an
 (12 modules, 12 report sections, 3 roles, Excel/PDF export, role access).
 
 Checked: `tsc --noEmit` and `eslint src/components/marketing` clean. `next build` could not run in the sandbox (no access to Google Fonts).
+
+## Responsive pass (checked in a real browser at 320, 390, 768, 1024, 1280, 1536 px)
+- No horizontal overflow at any size; the CTA text is dark on the light button at every size.
+- Hero headline was too big for the new (longer) text and wrapped to 4 lines on laptops: sizes retuned (2.5rem phone -> 4.2rem wide screens; smaller on <=360px).
+- Hero mini chart never rendered (bars had no height to resolve % against): fixed height added.
+- Hero tag row and buttons were pushed to the opposite side from the text in RTL (`justify-end`): now `justify-start`.
+- Feature / how-it-works cards used absolutely-positioned text that could overlap the icon row on narrow screens: now normal flex flow.
+- Signal card: "أرقام للتوضيح فقط" no longer overlaps the text on phones; value no longer forced LTR.

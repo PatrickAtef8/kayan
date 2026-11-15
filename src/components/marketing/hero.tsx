@@ -42,7 +42,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
-            className="mb-7 flex items-center justify-end gap-3 text-xs font-medium tracking-[0.18em] text-charcoal/45"
+            className="mb-7 flex items-center justify-start gap-3 text-xs font-medium tracking-[0.18em] text-charcoal/45"
           >
             <span>حساباتك واضحة. وقرارك أسرع.</span>
             <span className="h-px w-10 bg-sage" />
@@ -53,7 +53,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             variants={container}
             initial="hidden"
             animate="show"
-            className="max-w-3xl text-[3.6rem] font-medium leading-[1.02] tracking-[-0.055em] text-charcoal sm:text-7xl lg:text-[6.4rem]"
+            className="max-w-3xl text-[2.5rem] max-[360px]:text-[2.15rem] font-medium leading-[1.15] tracking-[-0.045em] text-charcoal sm:text-6xl lg:text-[3.5rem] xl:text-[4.2rem]"
           >
             {headline.map((w, i) => (
               <m.span key={w} variants={word} className="block">
@@ -75,7 +75,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.78, duration: 0.7 }}
-            className="mt-9 flex flex-wrap items-center justify-end gap-3"
+            className="mt-9 flex flex-wrap items-center justify-start gap-3"
           >
             <PrimaryButton href={signedIn ? "/dashboard" : trialDays ? "/signup?trial=1" : "/signup"} >
               {signedIn ? "افتح لوحة التحكم" : trialDays ? "ابدأ مجانًا" : "ابدأ الآن"}
@@ -103,9 +103,9 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
               <div className="flex flex-col justify-between border border-borderSoft p-4">
                 <div>
                   <p className="text-xs text-charcoal/45">صافي الربح هذا الشهر</p>
-                  <p className="mt-3 text-4xl font-medium tracking-tight text-charcoal" dir="ltr">14,950 <span className="text-base text-charcoal/50">ج.م</span></p>
+                  <p className="mt-3 whitespace-nowrap text-3xl font-medium tracking-tight text-charcoal sm:text-4xl" dir="ltr">14,950 <span className="text-base text-charcoal/50">ج.م</span></p>
                 </div>
-                <div className="flex items-end gap-1.5 pt-12" aria-label="رسم بياني لصافي الربح">
+                <div className="mt-10 flex h-36 items-end gap-1.5" aria-label="رسم بياني لصافي الربح">
                   {[24, 38, 30, 56, 45, 72, 88].map((height, i) => (
                     <m.span
                       key={height + i}

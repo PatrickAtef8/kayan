@@ -21,7 +21,7 @@ export function SignalSurface() {
       <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
         <div>
           <p className="mb-5 text-xs tracking-[0.18em] text-sage">٠٢ / نظرة سريعة</p>
-          <h2 className="max-w-md text-4xl font-medium leading-[1.08] tracking-[-0.04em] sm:text-5xl">أهم أرقامك أمامك كل يوم.</h2>
+          <h2 className="max-w-md text-4xl font-medium leading-[1.08] tracking-[-0.04em] sm:text-5xl">أهم أرقامك أمامك.</h2>
           <p className="mt-6 max-w-sm text-sm leading-7 text-charcoal/50">من الصفحة الرئيسية ترى أهم أرقامك، وتصل الإشعارات إلى كل شخص بما يخصه: نقص في المخزون، أو تحصيل جديد، أو أمر صرف ينتظر التأكيد.</p>
           <div className="mt-9 space-y-2">
             {SIGNALS.map((item, index) => {
@@ -36,7 +36,7 @@ export function SignalSurface() {
           </div>
         </div>
 
-        <div className="relative min-h-[538px] border border-borderSoft p-3 sm:p-5">
+        <div className="relative min-h-[538px] border border-borderSoft p-3 pb-12 sm:p-5 sm:pb-12">
           <div className="flex items-center justify-between border-b border-borderSoft pb-4 text-[0.625rem] tracking-[0.16em] text-charcoal/45"><span>كيان / نظرة سريعة</span><span>مثال توضيحي</span></div>
           <AnimatePresence mode="wait">
             <m.div key={signal.id} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -18 }} transition={{ duration: 0.35 }} className="pt-9" dir="rtl">
@@ -44,7 +44,7 @@ export function SignalSurface() {
               <div className="mt-14 flex items-end gap-2 border-b border-borderSoft pb-4" aria-label={signal.title}>
                 {signal.bars.map((bar, index) => <m.span key={index} initial={{ height: 0 }} animate={{ height: `${bar * 1.9}px` }} transition={{ delay: index * 0.06, duration: 0.55, ease: [0.22, 1, 0.36, 1] }} className={`w-full ${index === signal.bars.length - 1 ? "bg-sage" : "bg-sageSoft"}`} />)}
               </div>
-              <div className="mt-5 flex items-end justify-between gap-6"><div><p className="text-5xl font-medium tracking-[-0.05em] text-sage" dir="ltr">{signal.value}</p><p className="mt-2 text-sm text-charcoal/45">{signal.detail}</p></div><ArrowUpLeft size={25} className="text-charcoal/45" /></div>
+              <div className="mt-5 flex items-end justify-between gap-6"><div><p className="text-4xl font-medium tracking-[-0.05em] text-sage sm:text-5xl">{signal.value}</p><p className="mt-2 text-sm text-charcoal/45">{signal.detail}</p></div><ArrowUpLeft size={25} className="text-charcoal/45" /></div>
             </m.div>
           </AnimatePresence>
           <div className="absolute bottom-5 left-5 text-[0.625rem] text-charcoal/40">أرقام للتوضيح فقط</div>

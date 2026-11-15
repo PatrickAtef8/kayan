@@ -20,7 +20,7 @@ export function Features() {
         <m.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-14 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
             <p className="mb-4 text-xs font-medium tracking-[0.16em] text-sage">٠٣ / ماذا يقدّم كيان</p>
-            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل الدفاتر وملفات Excel المتفرقة.</h2>
+            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل الدفاتر وملفات Excel.</h2>
           </div>
           <p className="max-w-xs text-sm leading-7 text-charcoal/50 md:text-left">كل ما تحتاجه شركتك، مرتّب على طريقة شغلك أنت، لا على طريقة البرامج المعقدة.</p>
         </m.div>
@@ -34,13 +34,13 @@ export function Features() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ delay: index * 0.07, duration: 0.6 }}
-                className={`${feature.size} group relative min-h-[275px] overflow-hidden border border-borderSoft bg-white/50 p-6 text-charcoal transition-colors duration-300 hover:border-sage`}
+                className={`${feature.size} group relative flex min-h-[275px] flex-col justify-between gap-10 overflow-hidden border border-borderSoft bg-white/50 p-6 text-charcoal transition-colors duration-300 hover:border-sage`}
               >
                 <div className="flex items-start justify-between">
                   <span className="text-xs text-charcoal/45">{feature.eyebrow}</span>
                   <div className="flex h-9 w-9 items-center justify-center border border-borderSoft"><Icon size={21} strokeWidth={1.7} /></div>
                 </div>
-                <div className="absolute bottom-6 right-6 left-6 flex items-end justify-between gap-5">
+                <div className="flex items-end justify-between gap-5">
                   <div>
                     <h3 className="max-w-md text-xl font-medium leading-snug">{feature.title}</h3>
                     <p className="mt-2 max-w-sm text-sm leading-6 text-charcoal/50">{feature.description}</p>
