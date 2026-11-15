@@ -31,3 +31,8 @@ Checked: `tsc --noEmit` and `eslint src/components/marketing` clean. `next build
 - Hero tag row and buttons were pushed to the opposite side from the text in RTL (`justify-end`): now `justify-start`.
 - Feature / how-it-works cards used absolutely-positioned text that could overlap the icon row on narrow screens: now normal flex flow.
 - Signal card: "أرقام للتوضيح فقط" no longer overlaps the text on phones; value no longer forced LTR.
+
+## Hero card on mobile
+The example card faded out (and tilted/slid) with scrolling; on a phone it sits near the bottom of the hero, so it nearly vanished right
+after the first scroll. The scroll effect now runs only on large screens with a mouse (>=1024px, fine pointer); on phones and tablets the card
+stays fully visible. Verified: opacity stays 1.00 while scrolling at 390px and 768px.

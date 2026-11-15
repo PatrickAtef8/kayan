@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { m, useMotionValue, useScroll, useSpring, useTransform } from "framer-motion";
 import { ArrowLeft, MoveUpLeft, Sparkles } from "lucide-react";
 import { PrimaryButton, SecondaryLink } from "./effects/buttons";
@@ -16,6 +16,16 @@ const word = {
 
 export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolean; trialDays?: number | null }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The card's scroll effect (fade / tilt / slide) is for big screens with a mouse only. On a phone the card sits near the bottom of the
+  // hero, so tying its opacity to scroll made it fade out almost as soon as the person started scrolling.
+  const [enhanced, setEnhanced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px) and (pointer: fine)");
+    const update = () => setEnhanced(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
   const pointerX = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
   const pointerY = useSpring(useMotionValue(0), { stiffness: 90, damping: 20 });
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
@@ -89,7 +99,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
           </m.div>
         </div>
 
-        <m.div style={{ y, rotate, opacity, x: pointerX }} className="relative mx-auto w-full max-w-[650px] lg:mb-[-2.5rem]">
+        <m.div style={enhanced ? { y, rotate, opacity, x: pointerX } : undefined} className="relative mx-auto w-full max-w-[650px] lg:mb-[-2.5rem]">
           <m.div style={{ x: useTransform(pointerX, (value) => value * -1.8), y: useTransform(pointerY, (value) => value * -1.8) }} className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-sage/30" />
           <div className="absolute -left-3 top-14 z-20 hidden -rotate-6 rounded-[4px] bg-sage px-4 py-3 text-xs font-medium text-ivory shadow-[10px_10px_0_rgba(52,78,65,0.12)] sm:block">
             كل رقم له مصدر
