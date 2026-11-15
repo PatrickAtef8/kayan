@@ -4,10 +4,10 @@ import { m } from "framer-motion";
 import { Building2, LayoutGrid, UsersRound, Rocket, ArrowDownLeft } from "lucide-react";
 
 const STEPS = [
-  { index: "٠١", icon: Building2, title: "أنشئ شركتك", description: "اسم الشركة ونوع نشاطها — أقل من دقيقة." },
-  { index: "٠٢", icon: LayoutGrid, title: "فعّل وحداتك", description: "اختر ما تحتاجه الآن من المبيعات والمخزون والخزنة وغيرها، وعدّله لاحقًا من الإعدادات." },
-  { index: "٠٣", icon: UsersRound, title: "أضف فريقك", description: "ادعُ المناديب وأمناء المخازن، وكل واحد يدخل بصلاحياته فقط." },
-  { index: "٠٤", icon: Rocket, title: "ابدأ وراقب", description: "سجّل أول فاتورة، وشاهد الأرباح والخزنة تتحدّث من الرئيسية." },
+  { index: "٠١", icon: Building2, title: "أنشئ شركتك", description: "اكتب اسم شركتك ونوع نشاطها، وتنتهي في أقل من دقيقة." },
+  { index: "٠٢", icon: LayoutGrid, title: "شغّل وحداتك", description: "من الإعدادات شغّل الوحدات المشمولة في باقتك، وأوقف ما لا تحتاجه، وغيّر رأيك في أي وقت." },
+  { index: "٠٣", icon: UsersRound, title: "أضف فريقك", description: "ادعُ المناديب وأمناء المخازن، وكل واحد منهم يدخل بصلاحياته هو فقط." },
+  { index: "٠٤", icon: Rocket, title: "ابدأ وتابع", description: "سجّل أول فاتورة، وتابع الأرباح والخزنة وهي تتحدّث في الصفحة الرئيسية." },
 ];
 
 export function HowItWorks() {
@@ -15,8 +15,8 @@ export function HowItWorks() {
     <section id="how" className="border-t border-borderSoft px-6 py-28 sm:py-36">
       <div className="mx-auto max-w-6xl">
         <m.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-16 flex items-end justify-between gap-6">
-          <h2 className="max-w-xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">من الفكرة إلى أول فاتورة.</h2>
-          <p className="hidden text-xs tracking-[0.16em] text-charcoal/40 sm:block" dir="ltr">٠٥ / كيف يعمل</p>
+          <h2 className="max-w-xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">من التسجيل إلى أول فاتورة.</h2>
+          <p className="hidden text-xs tracking-[0.16em] text-charcoal/50 sm:block">٠٥ / كيف يعمل</p>
         </m.div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => {

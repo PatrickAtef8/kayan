@@ -4,13 +4,13 @@ import { m } from "framer-motion";
 import { ShoppingCart, Boxes, Wallet, BarChart3, UserCheck, Truck, Zap, ArrowUpLeft } from "lucide-react";
 
 const FEATURES = [
-  { eyebrow: "المبيعات", title: "من الفاتورة إلى الربح، بلا خطوة ضائعة", description: "خصومات بالنسبة المئوية وشرائح خصم وبونص يدوي، ومرتجعات بنفس السعر الفعلي. كل فاتورة تحدّث المخزون والخزنة والربح معًا.", icon: ShoppingCart, size: "md:col-span-7" },
-  { eyebrow: "المخزون", title: "اعرف اللي عندك فعلًا", description: "رصيد لكل مخزن، تحويل بينها، جرد وتسوية، ودفعات بتواريخ صلاحية — والكمية المباعة تُحجز قبل صرفها.", icon: Boxes, size: "md:col-span-5" },
-  { eyebrow: "المشتريات والموردين", title: "من المورد إلى الرف", description: "فواتير مشتريات بمتوسط تكلفة مرجّح، ومرتجعات، وكشف حساب لكل مورد.", icon: Truck, size: "md:col-span-4" },
-  { eyebrow: "الخزنة والمصروفات", title: "رصيدك الحقيقي", description: "حركة لكل تحصيل ودفعة ومصروف، مع مرفقات، وسحوبات الشركاء بمعزل عن الأرباح.", icon: Wallet, size: "md:col-span-4" },
-  { eyebrow: "المندوبين", title: "أداء كل مندوب أمامك", description: "أهداف شهرية وحد أدنى للعمولة، وتحصيل من عملائه المسندين إليه فقط.", icon: UserCheck, size: "md:col-span-4" },
-  { eyebrow: "التقارير", title: "أرقام تفهمها من أول نظرة", description: "أرباح وخسائر، ديون العملاء والموردين، المركز المالي، رواتب المناديب والمرتجعات — لأي شهر أو سنة تختارها.", icon: BarChart3, size: "md:col-span-7" },
-  { eyebrow: "ابدأ بسرعة", title: "ابحث وصدّر في ثانية", description: "ابحث في كل شيء من مكان واحد، وصدّر تقاريرك بصيغة Excel أو PDF جاهزة للمشاركة.", icon: Zap, size: "md:col-span-5" },
+  { eyebrow: "المبيعات", title: "من الفاتورة إلى الربح، دون خطوة ناقصة", description: "خصومات بالنسبة المئوية وشرائح للخصم، وبونص تدخله بنفسك، ومرتجعات بنفس السعر الذي بيعت به. وتنعكس كل فاتورة على المخزون والخزنة والأرباح.", icon: ShoppingCart, size: "md:col-span-7" },
+  { eyebrow: "المخزون", title: "اعرف ما عندك فعلًا", description: "رصيد لكل مخزن، وتحويل بين المخازن، وجرد وتسوية، ودفعات بتواريخ صلاحية. والكمية المباعة تُحجز من لحظة الفاتورة قبل صرفها.", icon: Boxes, size: "md:col-span-5" },
+  { eyebrow: "المشتريات والموردين", title: "من المورد إلى الرف", description: "فواتير الشراء بمتوسط التكلفة المرجّح، والمرتجعات، وكشف حساب لكل مورد.", icon: Truck, size: "md:col-span-4" },
+  { eyebrow: "الخزنة والمصروفات", title: "رصيد خزنتك الحقيقي", description: "كل تحصيل ودفعة ومصروف يُسجَّل كحركة، مع المرفقات، وسحوبات الشركاء منفصلة عن الأرباح.", icon: Wallet, size: "md:col-span-4" },
+  { eyebrow: "المناديب", title: "أداء كل مندوب أمامك", description: "لكل مندوب هدف شهري وحد أدنى للعمولة، ويحصّل من عملائه هو فقط.", icon: UserCheck, size: "md:col-span-4" },
+  { eyebrow: "التقارير", title: "أرقام تفهمها من أول نظرة", description: "الأرباح والخسائر، وديون العملاء والموردين، والمركز المالي، ورواتب المناديب، والمرتجعات، عن أي شهر أو سنة تختارها.", icon: BarChart3, size: "md:col-span-7" },
+  { eyebrow: "البحث والتصدير", title: "ابحث وصدّر بضغطة واحدة", description: "ابحث في كل شيء من مكان واحد، وصدّر أي تقرير بصيغة Excel أو PDF جاهز للمشاركة.", icon: Zap, size: "md:col-span-5" },
 ];
 
 export function Features() {
@@ -19,10 +19,10 @@ export function Features() {
       <div className="mx-auto max-w-6xl">
         <m.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-14 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
-            <p className="mb-4 text-xs font-medium tracking-[0.16em] text-sage">٠٣ / ما الذي يتضمنه كيان</p>
-            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل أوراق وجداول متفرقة.</h2>
+            <p className="mb-4 text-xs font-medium tracking-[0.16em] text-sage">٠٣ / ماذا يقدّم كيان</p>
+            <h2 className="max-w-2xl text-4xl font-medium leading-tight tracking-[-0.04em] text-charcoal sm:text-5xl">نظام واحد بدل الدفاتر وملفات Excel المتفرقة.</h2>
           </div>
-          <p className="max-w-xs text-sm leading-7 text-charcoal/50 md:text-left">الأدوات التي تحتاجها شركتك، مرتبة حول طريقة عملك — لا حول تعقيد البرنامج.</p>
+          <p className="max-w-xs text-sm leading-7 text-charcoal/50 md:text-left">كل ما تحتاجه شركتك، مرتّب على طريقة شغلك أنت، لا على طريقة البرامج المعقدة.</p>
         </m.div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
           {FEATURES.map((feature, index) => {

@@ -4,10 +4,10 @@ import { m } from "framer-motion";
 import { NumberTicker } from "./effects/number-ticker";
 
 const STATS = [
-  { value: 12, suffix: "", label: "وحدة تشغيلية متكاملة", index: "٠١" },
-  { value: 12, suffix: "", label: "قسم تقارير مالية وتشغيلية", index: "٠٢" },
-  { value: 3, suffix: "", label: "أدوار بصلاحيات مفصولة", index: "٠٣" },
-  { value: 100, suffix: "%", label: "واجهة عربية من اليمين لليسار", index: "٠٤" },
+  { value: 12, suffix: "", label: "وحدة تغطي شغلك كله", index: "٠١" },
+  { value: 12, suffix: "", label: "تقرير مالي وتشغيلي", index: "٠٢" },
+  { value: 3, suffix: "", label: "أدوار، لكل دور صلاحياته", index: "٠٣" },
+  { value: 100, suffix: "%", label: "عربي بالكامل، من اليمين لليسار", index: "٠٤" },
 ];
 
 export function Stats() {

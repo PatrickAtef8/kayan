@@ -4,8 +4,9 @@ import { useRef } from "react";
 import { m, useMotionValue, useScroll, useSpring, useTransform } from "framer-motion";
 import { ArrowLeft, MoveUpLeft, Sparkles } from "lucide-react";
 import { PrimaryButton, SecondaryLink } from "./effects/buttons";
+import { daysText } from "@/lib/billing/trial";
 
-const headline = ["كل عملية", "تترك أثرًا."];
+const headline = ["شركتك كلها", "في شاشة واحدة."];
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.12 } } };
 const word = {
@@ -43,7 +44,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             transition={{ duration: 0.7 }}
             className="mb-7 flex items-center justify-end gap-3 text-xs font-medium tracking-[0.18em] text-charcoal/45"
           >
-            <span>إدارة أبسط. قرار أسرع.</span>
+            <span>حساباتك واضحة. وقرارك أسرع.</span>
             <span className="h-px w-10 bg-sage" />
             <span className="text-sage">٠١ / ٠٦</span>
           </m.div>
@@ -67,7 +68,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             transition={{ delay: 0.65, duration: 0.7 }}
             className="mt-8 max-w-md text-base leading-8 text-charcoal/58 sm:text-lg"
           >
-            كيان يجمع مبيعاتك ومشترياتك ومخزونك وخزنتك ومندوبيك في نظام واحد، ويربط كل رقم بمصدره، لتعرف ماذا يحدث في شركتك قبل أن تسأل.
+            كيان يجمع المبيعات والمشتريات والمخزون والخزنة والمناديب في مكان واحد. وأي رقم تراه تستطيع أن تفتحه وتعرف من أين جاء.
           </m.p>
 
           <m.div
@@ -76,13 +77,13 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
             transition={{ delay: 0.78, duration: 0.7 }}
             className="mt-9 flex flex-wrap items-center justify-end gap-3"
           >
-            <PrimaryButton href={signedIn ? "/dashboard" : trialDays ? "/signup?trial=1" : "/signup"} className="rounded-[4px] px-6 py-3.5">
+            <PrimaryButton href={signedIn ? "/dashboard" : trialDays ? "/signup?trial=1" : "/signup"} >
               {signedIn ? "افتح لوحة التحكم" : trialDays ? "ابدأ مجانًا" : "ابدأ الآن"}
               <ArrowLeft size={19} strokeWidth={2} />
             </PrimaryButton>
-            {!signedIn && trialDays ? <p className="w-full text-xs text-charcoal/45">تجربة مجانية {trialDays === 1 ? "ليوم واحد" : `لمدة ${trialDays} يومًا`} · بدون بطاقة ائتمان</p> : null}
+            {!signedIn && trialDays ? <p className="w-full text-xs text-charcoal/55">جرّب مجانًا لمدة {daysText(trialDays)}، بدون بطاقة ائتمان.</p> : null}
             <SecondaryLink href="#how" className="rounded-[4px] border border-borderSoft px-5 py-3.5 hover:border-charcoal">
-              شاهد كيف يعمل
+              كيف يعمل كيان
               <MoveUpLeft size={19} strokeWidth={1.8} />
             </SecondaryLink>
           </m.div>
@@ -91,11 +92,11 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
         <m.div style={{ y, rotate, opacity, x: pointerX }} className="relative mx-auto w-full max-w-[650px] lg:mb-[-2.5rem]">
           <m.div style={{ x: useTransform(pointerX, (value) => value * -1.8), y: useTransform(pointerY, (value) => value * -1.8) }} className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-sage/30" />
           <div className="absolute -left-3 top-14 z-20 hidden -rotate-6 rounded-[4px] bg-sage px-4 py-3 text-xs font-medium text-ivory shadow-[10px_10px_0_rgba(52,78,65,0.12)] sm:block">
-            كل رقم في مكانه
+            كل رقم له مصدر
           </div>
           <div className="relative overflow-hidden border border-borderSoft bg-white p-2 shadow-[18px_22px_0_rgba(52,78,65,0.14)]">
             <div className="flex items-center justify-between border-b border-borderSoft px-4 py-3 text-[0.625rem] tracking-[0.16em] text-charcoal/45">
-              <span dir="ltr">كيان / نظرة عامة</span>
+              <span>كيان / نظرة عامة</span>
               <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sage" /> مثال توضيحي</span>
             </div>
             <div className="grid min-h-[463px] gap-4 p-4 sm:grid-cols-[0.85fr_1.15fr] sm:p-5" dir="rtl">
@@ -126,7 +127,7 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
                   ["فاتورة بيع S-001042", "+ 2,400 ج.م"],
                   ["فاتورة شراء P-000318", "− 8,100 ج.م"],
                   ["تحصيل من عميل", "+ 1,850 ج.م"],
-                  ["مصروف — إيجار", "− 620 ج.م"],
+                  ["مصروف: إيجار", "− 620 ج.م"],
                 ].map(([label, amount], i) => (
                   <m.div
                     key={label}
@@ -143,13 +144,13 @@ export function Hero({ signedIn = false, trialDays = null }: { signedIn?: boolea
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-borderSoft px-4 py-3 text-[0.625rem] text-charcoal/35">
-              <span>أرقام توضيحية لشكل الرئيسية</span>
-              <span dir="ltr">١٢ وحدة تشغيلية</span>
+              <span>أرقام للتوضيح فقط</span>
+              <span>١٢ وحدة في النظام</span>
             </div>
           </div>
           <div className="mt-5 flex items-center justify-between text-xs text-charcoal/40">
-            <span>مساحة واحدة لكل قرار مهم.</span>
-            <span dir="ltr">مرّر للاستكشاف ↓</span>
+            <span>كل ما يهمك في مكان واحد.</span>
+            <span>مرّر لتكتشف المزيد ↓</span>
           </div>
         </m.div>
       </div>
