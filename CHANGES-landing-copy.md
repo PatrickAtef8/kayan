@@ -42,3 +42,8 @@ stays fully visible. Verified: opacity stays 1.00 while scrolling at 390px and 7
 - `src/app/layout.tsx`: Open Graph + Twitter tags now carry the image (`summary_large_image`), and the site description was rewritten.
 - The absolute image URL comes from `metadataBase` = `NEXT_PUBLIC_SITE_URL` (or Vercel's production URL). Set `NEXT_PUBLIC_SITE_URL=https://kayan-xi.vercel.app` in Vercel.
 - WhatsApp caches previews: after deploying, test with `https://kayan-xi.vercel.app/?v=2`.
+
+## Merge note
+Merged onto the newer working version (receipt notes, backorders, purchase price history, party contact fields, split returns reports…).
+None of those files were touched by the landing work. One consequence: sales and purchase returns are now two separate reports,
+so the landing stat "تقرير مالي وتشغيلي" went from 12 to 13.

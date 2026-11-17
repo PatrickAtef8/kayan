@@ -5,7 +5,7 @@ import { NumberTicker } from "./effects/number-ticker";
 
 const STATS = [
   { value: 12, suffix: "", label: "وحدة تغطي شغلك كله", index: "٠١" },
-  { value: 12, suffix: "", label: "تقرير مالي وتشغيلي", index: "٠٢" },
+  { value: 13, suffix: "", label: "تقرير مالي وتشغيلي", index: "٠٢" },
   { value: 3, suffix: "", label: "أدوار، لكل دور صلاحياته", index: "٠٣" },
   { value: 100, suffix: "%", label: "عربي بالكامل، من اليمين لليسار", index: "٠٤" },
 ];
