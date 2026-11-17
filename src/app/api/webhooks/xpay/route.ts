@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyWebhookSignature } from "@/lib/billing/webhook-signature";
-import { handleXpayEvent, isHandledEventType, type XpayEvent } from "@/lib/billing/reconcile";
+import { handleXpayEvent, isAttentionEventType, isHandledEventType, recordAttentionEvent, type XpayEvent } from "@/lib/billing/reconcile";
 import { createSupabaseBillingStore } from "@/lib/billing/store.server";
 import { getXpay, xpayWebhookSecret } from "@/lib/billing/xpay.server";
 import { notifyPaymentRecorded } from "@/lib/billing/notify.server";
@@ -43,6 +43,17 @@ export async function POST(request: NextRequest) {
     event = JSON.parse(raw) as XpayEvent;
   } catch {
     return NextResponse.json({ error: "invalid payload" }, { status: 400 });
+  }
+
+  // refunds, disputes and risk holds: nothing is granted or revoked, but they are recorded so the Super Admin panel can flag them
+  if (isAttentionEventType(event?.type)) {
+    try {
+      const r = await recordAttentionEvent(event, { store: createSupabaseBillingStore(), log: (msg, meta) => console.error(msg, meta ?? {}) });
+      return NextResponse.json({ received: true, outcome: r.outcome }, { status: r.status });
+    } catch (e) {
+      console.error("billing webhook: could not start —", e instanceof Error ? e.message : e);
+      return NextResponse.json({ error: "temporarily unavailable" }, { status: 500 });
+    }
   }
 
   // events we do not act on are acknowledged without touching the database or XPay (no pointless retries)

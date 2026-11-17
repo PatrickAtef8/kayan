@@ -74,6 +74,9 @@ already paid through, so renewing early loses nothing; a lapsed account renews f
 2. **XPay dashboard → Developer → Webhooks**: add `https://<your-site>/api/webhooks/xpay` subscribed to
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
    `checkout.session.expired`; copy its `whsec_…` into `XPAY_WEBHOOK_SECRET`. Test and live have separate endpoints and secrets.
+   Those four are the only events Kayan acts on. Everything else XPay can send (customers, prices, products, payouts…) is acknowledged and ignored.
+   **Optional:** also subscribe to refund events (`refund.created`, `refund.failed`, `charge.refunded`) and the risk-hold events: Kayan only RECORDS them
+   (they show up, flagged, in the Super Admin panel «نبض المدفوعات») — it never grants or revokes access because of them.
 3. **Run migration `0060_billing_xpay.sql`** (additive; organizations without a license are untouched).
 4. **Replace the placeholder prices and review the terms text** in `pricing.config.ts`, then set `BILLING_PRICES_CONFIRMED=true`.
    Until then, production checkout is closed (non-production is open). Also decide VAT: amounts are sent as shown, no VAT line.
@@ -166,3 +169,16 @@ Settings → Modules shows modules outside the package locked. See `CHANGES-pack
 
 ## Free trial and free hosting (migration 0074)
 See `CHANGES-free-trial-and-free-hosting.md`. States added: `trial` (open) and `trial_expired` (closed). The trial applies only while a company has no license; hosting price 0 makes a perpetual license `license_only` (open, no end date).
+
+## Going live (swapping the test keys for the live ones)
+
+1. XPay dashboard, **Live mode** → Developer → API Keys: copy the `sk_live_…` secret key.
+2. Live mode → Developer → Webhooks → add `https://<your-site>/api/webhooks/xpay` with the four events above → copy its `whsec_…`
+   (the live endpoint has its OWN secret; the test one will not verify live deliveries).
+3. Vercel → Project → Settings → Environment Variables. For the **Production** environment set: `XPAY_SECRET_KEY` = `sk_live_…`,
+   `XPAY_WEBHOOK_SECRET` = the live `whsec_…`, `BILLING_PRICES_CONFIRMED` = `true`, `NEXT_PUBLIC_SITE_URL` = `https://<your-site>`;
+   delete `XPAY_API_BASE_URL` if it is set. Keep the test keys only on Preview / Development (Production refuses a `sk_test_…` key by design).
+4. **Redeploy** (an environment variable change only applies to a new deployment).
+5. Super Admin → نظرة عامة: «جاهزية الإنتاج» must say `مفتاح حقيقي (live) — لا موانع`, and «نبض المدفوعات» shows the live badge. Make one small real payment
+   with your own card; the panel should show «تم تسجيل الدفع» within seconds. Refund it from the XPay dashboard if you like: it appears as «استرداد».
+

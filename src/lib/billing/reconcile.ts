@@ -96,6 +96,30 @@ const SESSION_EVENTS = new Set([
 export const isHandledEventType = (t: unknown): boolean => typeof t === "string" && SESSION_EVENTS.has(t);
 
 /**
+ * Events that change nothing in Kayan by themselves but that a human must see: a refund, a dispute or a risk hold made at XPay does not
+ * touch the customer's license. They are only RECORDED (so the Super Admin panel can flag them); nothing here grants or revokes access.
+ * Matched by prefix so a renamed or newly added refund / hold event is still caught.
+ */
+const ATTENTION_EVENT = /^(refund\.|charge\.refunded$|charge\.dispute|payment\.(held|hold))/;
+export const isAttentionEventType = (t: unknown): boolean => typeof t === "string" && ATTENTION_EVENT.test(t);
+
+/** Records one refund / dispute / hold event for the admin panel. Same contract as handleXpayEvent: 200 done / duplicate / ignored, 400 unreadable, 500 transient. */
+export async function recordAttentionEvent(event: XpayEvent, deps: Pick<Deps, "store" | "log">): Promise<HandlerResult> {
+  if (typeof event.id !== "string" || !event.id || typeof event.type !== "string") return { status: 400, outcome: "invalid_event" };
+  if (!isAttentionEventType(event.type)) return { status: 200, outcome: "ignored_type" };
+  try {
+    // data.object.id of these events is a refund / charge id, not a checkout session: no session is recorded
+    const fresh = await deps.store.beginWebhookEvent(event.id, event.type, null);
+    if (!fresh) return { status: 200, outcome: "duplicate" };
+    await deps.store.finishWebhookEvent(event.id, "needs_attention");
+    return { status: 200, outcome: "needs_attention" };
+  } catch (e) {
+    deps.log?.("billing: could not record an attention event, XPay will retry", { event: event.id, error: e instanceof Error ? e.message : String(e) });
+    return { status: 500, outcome: "retry_later" };
+  }
+}
+
+/**
  * Handles one verified webhook delivery. Contract with XPay's retry schedule (non-2xx / timeout → retried up to 5 times):
  *   200  processed, duplicate, ignored, or needs a human (a retry would not help — it is logged and flagged in the DB)
  *   400  the payload is not an event we can read

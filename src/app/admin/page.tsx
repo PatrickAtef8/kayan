@@ -7,6 +7,9 @@ import { loadPricingConfig } from "@/lib/billing/config";
 import { fmtDate, ADMIN_ACTION_LABEL } from "@/lib/admin/format";
 import { billingReadiness } from "@/lib/billing/xpay.server";
 import { loadEmailConfig, describeConfigProblem } from "@/lib/email/config";
+import { PaymentsPulse } from "@/components/admin/payments-pulse";
+import { loadWebhookActivity } from "@/lib/billing/webhook-activity.server";
+import { getSiteUrl } from "@/lib/site-url";
 
 export default async function AdminHome() {
   await requireSuperAdminPage();
@@ -14,7 +17,7 @@ export default async function AdminHome() {
   const admins = configuredAdmins();
   const readiness = billingReadiness();
   const mail = loadEmailConfig();
-  const [stats, pricing, audit, unpaid, review, trials] = await Promise.all([
+  const [stats, pricing, audit, unpaid, review, trials, activity] = await Promise.all([
     // ONE query for the four counters (companies, users, paid, free). Before: the companies function, an Auth-API call and a download
     // of every license row. If it fails the cards show «—», never a silent 0.
     admin.rpc("admin_overview_stats"),
@@ -23,7 +26,9 @@ export default async function AdminHome() {
     admin.rpc("admin_unpaid_company_count", { p_exclude_users: admins.ids, p_exclude_emails: admins.emails }),
     admin.from("billing_orders").select("id", { count: "exact", head: true }).eq("needs_review", true),
     admin.rpc("admin_trial_stats"),
+    loadWebhookActivity(admin),
   ]);
+  const endpoint = (() => { try { return `${getSiteUrl()}/api/webhooks/xpay`; } catch { return "/api/webhooks/xpay"; } })();
   const tr = (trials.error ? null : trials.data) as { active?: number; expired?: number } | null;
   const s = (stats.error ? null : stats.data) as { companies?: number; users?: number; paid?: number; complimentary?: number } | null;
   const num = (v: number | undefined) => (s && typeof v === "number" ? v : "—");
@@ -54,6 +59,7 @@ export default async function AdminHome() {
           <li>البريد (Resend): {mail.ok ? <span className="text-sage">مضبوط{mail.config.testingSender ? " — مرسل اختبار: يصل فقط لبريد حساب Resend" : ""}</span> : <span className="text-rose">{describeConfigProblem(mail.problem)}</span>}</li>
         </ul>
       </Card>
+      <PaymentsPulse activity={activity} mode={readiness.mode} endpoint={endpoint} />
       <Card className="mt-4 flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-charcoal/70">إعدادات الباقات الحالية: <span className="font-medium text-charcoal">{pricing.custom ? `معدّلة (آخر تعديل ${fmtDate(pricing.updatedAt)})` : "الإعدادات الأصلية كما شُحنت"}</span></p>
         <Link href="/admin/packages" className="text-sm font-medium text-sage hover:underline">الباقات والأسعار</Link>
