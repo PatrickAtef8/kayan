@@ -1,19 +1,25 @@
-// Browser side of the in-page payment window (XPay "drop-in"): loads XPay's script once and opens the checkout in a window on Kayan's own page.
-// Client-safe: no secrets, no server-only import. The only key it ever sees is the PUBLISHABLE one (pk_…), which XPay designed to be public.
+// Browser side of the in-page payment (XPay "drop-in", inline): loads XPay's script once and mounts the checkout inside a container on Kayan's own
+// /checkout/pay page. Client-safe: no secrets, no server-only import. The only key it ever sees is the PUBLISHABLE one (pk_…), which XPay made public.
 // Docs: https://docs.xpay.app/en/integrate/integration-patterns/drop-in  and  https://docs.xpay.app/en/sdk/sdk-js
 //
 // The script comes from XPay's own host (https://checkout.xpay.app/v1/sdk.js) and exposes a global `XPay(publishableKey)`; card data is typed inside
-// XPay's iframe and never reaches Kayan's page or servers.
+// XPay's iframe and never reaches Kayan's page or servers. XPay's form also shows the Fawry reference, the 3-D Secure step and Apple Pay.
 
 export const XPAY_SDK_URL = "https://checkout.xpay.app/v1/sdk.js";
 
-export type XpayCompleteResult = { status?: string; paymentStatus?: string; paymentIntentId?: string; chargeId?: string; redirectUrl?: string };
+export type XpayCompleteResult = { status?: string; paymentIntentId?: string; chargeId?: string; redirectUrl?: string };
 export type XpayCheckoutOptions = {
   clientSecret: string;
-  mode: "modal";
+  mode: "modal" | "inline";
+  /** inline mode: the element (or CSS selector) the form is mounted in */
+  container?: string | HTMLElement;
   locale?: "ar" | "en";
-  appearance?: { colorMode?: "light" | "dark" | "system"; borderStyle?: "rounded" | "sharp" | "pill"; colors?: Record<string, string> };
-  onReady?: () => void;
+  appearance?: {
+    colorMode?: "light" | "dark" | "system"; borderStyle?: "rounded" | "sharp" | "pill"; spacing?: "condensed" | "normal" | "spacious";
+    inputSize?: "small" | "medium" | "large"; inputStyle?: "outlined" | "flat" | "filled"; formLayout?: "compact" | "spacious";
+    colors?: Record<string, string>; fontFamily?: string;
+  };
+  onReady?: (session?: unknown) => void;
   onComplete?: (result: XpayCompleteResult) => void;
   onClose?: () => void;
   onError?: (error: { message?: string; code?: string }) => void;
@@ -49,37 +55,49 @@ export function loadXpaySdk(env?: SdkEnv, timeoutMs = 15_000): Promise<XpayFacto
   return p;
 }
 
-/** The page Kayan sends the customer to once the window reports a finished payment: it asks XPay what really happened (the webhook is the authority). */
+/** Kayan's own pages around the payment. The result page asks XPay what really happened (the webhook is the authority); an address XPay hands back is never followed. */
 export const successPath = (orderId: string) => `/checkout/success?order=${encodeURIComponent(orderId)}`;
+export const payPath = (orderId: string) => `/checkout/pay?order=${encodeURIComponent(orderId)}`;
 
-/** Kayan's look inside XPay's window: calm, the same green as the buttons. */
+/** Kayan's look inside XPay's form: the same ivory / charcoal / green as the rest of the site, roomy inputs for a phone. */
 export const KAYAN_APPEARANCE: NonNullable<XpayCheckoutOptions["appearance"]> = {
   colorMode: "light",
   borderStyle: "rounded",
-  colors: { primary: "#344E41", primaryForeground: "#F7F6F2" },
+  spacing: "normal",
+  inputSize: "large",
+  inputStyle: "outlined",
+  formLayout: "spacious",
+  colors: {
+    primary: "#344E41", primaryForeground: "#F7F6F2",
+    background: "#FFFFFF", foreground: "#1C1C1A",
+    muted: "#F7F6F2", mutedForeground: "#6F6F6A",
+    accent: "#E7EDE8", accentForeground: "#344E41",
+    border: "#E5E3DD", input: "#E5E3DD", ring: "#344E41",
+    destructive: "#9C4F45",
+  },
 };
 
-export type OpenHandlers = {
-  /** the payment finished (cards / ValU: paid; Fawry: waiting for the customer to pay at a kiosk) — go to the result page */
+export type MountHandlers = {
+  /** the form is on screen */
+  onReady: () => void;
+  /** the payment finished (cards / ValU: paid; Fawry: the reference was issued and the customer pays at a kiosk) — go to the result page */
   onComplete: () => void;
-  /** the window was closed without finishing */
-  onClose: () => void;
-  /** an attempt did not go through (the window itself shows the reason and a retry) */
+  /** an attempt did not go through (the form itself shows the reason and a retry) */
   onError: () => void;
 };
 
-/** Opens the window. Resolves with a handle to re-open or tear it down. Rejects if the script cannot load. */
-export async function openEmbeddedCheckout(input: { publishableKey: string; clientSecret: string } & OpenHandlers, env?: SdkEnv): Promise<{ reopen(): void; destroy(): void }> {
+/** Mounts XPay's form inside `container`. Resolves with a handle to tear it down. Rejects if the script cannot load. */
+export async function mountInlineCheckout(input: { publishableKey: string; clientSecret: string; container: HTMLElement } & MountHandlers, env?: SdkEnv): Promise<{ destroy(): void }> {
   const XPay = await loadXpaySdk(env);
   const checkout = XPay(input.publishableKey).checkout({
     clientSecret: input.clientSecret,
-    mode: "modal",
+    mode: "inline",
+    container: input.container,
     locale: "ar",
     appearance: KAYAN_APPEARANCE,
+    onReady: () => input.onReady(),
     onComplete: () => input.onComplete(),
-    onClose: () => input.onClose(),
     onError: () => input.onError(),
   });
-  checkout.open();
-  return { reopen: () => checkout.open(), destroy: () => checkout.destroy() };
+  return { destroy: () => checkout.destroy() };
 }

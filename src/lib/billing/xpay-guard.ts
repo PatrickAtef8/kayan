@@ -35,8 +35,8 @@ export function checkXpayConfig(env: Env): GuardReport {
 
   // optional: the embedded (in-page) checkout. Not set = Kayan keeps sending customers to XPay's own page; a wrong key just switches it off.
   const emb = embeddedCheckout(env);
-  if (!emb.enabled && emb.reason === "invalid_key") warnings.push("XPAY_PUBLISHABLE_KEY does not look like an XPay publishable key (pk_live_… / pk_test_…): the in-page payment window stays off.");
-  if (!emb.enabled && emb.reason === "mode_mismatch") warnings.push("XPAY_PUBLISHABLE_KEY and XPAY_SECRET_KEY are from different modes (test vs live): the in-page payment window stays off.");
+  if (!emb.enabled && emb.reason === "invalid_key") warnings.push("XPAY_PUBLISHABLE_KEY does not look like an XPay publishable key (pk_live_… / pk_test_…): the in-page payment stays off.");
+  if (!emb.enabled && emb.reason === "mode_mismatch") warnings.push("XPAY_PUBLISHABLE_KEY and XPAY_SECRET_KEY are from different modes (test vs live): the in-page payment stays off.");
 
   return { realProduction: real, mode, blocking, warnings };
 }

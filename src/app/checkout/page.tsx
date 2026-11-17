@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadPricingConfig } from "@/lib/billing/config";
 import { buildQuote, describeFitViolations, getPackage, type FitViolation, type Quote } from "@/lib/billing/pricing";
 import { parseSelection } from "@/lib/billing/selection";
-import { pricesConfirmed, xpayIsConfigured, xpayIsTestMode } from "@/lib/billing/xpay.server";
+import { embeddedCheckoutStatus, pricesConfirmed, xpayIsConfigured, xpayIsTestMode } from "@/lib/billing/xpay.server";
 import { PURPOSE_LABEL } from "@/lib/billing/labels";
 import { MODULE_FEATURES, PACKAGE_MODULE_ORDER, INCLUDED_IN_EVERY_PACKAGE } from "@/config/pricing.config";
 import { formatMoney } from "@/lib/money";
@@ -113,7 +113,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               ? <CheckoutButton kind="renew" legal={legalVersions} disabled={!!closedReason}>متابعة إلى الدفع</CheckoutButton>
               : <CheckoutButton kind="purchase" legal={legalVersions} plan={pkg.key} disabled={!!closedReason || misfit.length > 0}>متابعة إلى الدفع</CheckoutButton>}
           </div>
-          <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-charcoal/45"><ShieldCheck size={14} className="mt-0.5 shrink-0" />يتم الدفع في صفحة XPay الآمنة؛ لا تمرّ بيانات بطاقتك بخوادم كيان.{xpayIsTestMode() ? " (وضع تجريبي)" : ""}</p>
+          <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-charcoal/45"><ShieldCheck size={14} className="mt-0.5 shrink-0" />{embeddedCheckoutStatus().enabled ? "تُكمل الدفع في الخطوة التالية داخل كيان؛ تُدخل بيانات بطاقتك في نموذج XPay الآمن ولا تمرّ بخوادم كيان." : "يتم الدفع في صفحة XPay الآمنة؛ لا تمرّ بيانات بطاقتك بخوادم كيان."}{xpayIsTestMode() ? " (وضع تجريبي)" : ""}</p>
           {legal.supportUrl && <p className="mt-3 text-xs text-charcoal/55"><a href={legal.supportUrl} className="underline underline-offset-4">تواصل مع الدعم</a></p>}
         </Card>
       </div>

@@ -14,8 +14,8 @@
 5. Known caveat: nonces require pages to be rendered dynamically per request. Kayan's pages already read cookies/sessions; the static public pages may get the nonce only when rendered dynamically — verify the landing page in step 1 specifically.
 6. `style-src` keeps `'unsafe-inline'` (Tailwind / Next inject style attributes). `script-src` has no `'unsafe-inline'`.
 
-## XPay in-page payment window
+## XPay in-page payment (`/checkout/pay`)
 `Permissions-Policy: payment=(self "https://checkout.xpay.app")` (was `payment=()`, which would block Apple Pay inside XPay's iframe) and, in the nonce CSP,
 `script-src` / `connect-src` / `frame-src` for `https://checkout.xpay.app` (+ `https://api.xpay.app` for connect). Browser checklist before enforcing the CSP:
-open the pricing page with `XPAY_PUBLISHABLE_KEY` set, press pay, and confirm no CSP report mentions anything but these hosts.
+open `/checkout/pay` with `XPAY_PUBLISHABLE_KEY` set (continue from the checkout page), and confirm no CSP report mentions anything but these hosts.
 

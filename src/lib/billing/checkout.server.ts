@@ -6,18 +6,14 @@ import { loadPricingConfig } from "./config.ts";
 import { buildQuote, describeFitViolations, type FitViolation, type Purpose } from "./pricing.ts";
 import { buildCheckoutSessionBody, XpayError } from "./xpay-client.ts";
 import { BillingConfigError, embeddedCheckoutStatus, getXpay, pricesConfirmed } from "./xpay.server.ts";
+import { payPath } from "./xpay-sdk.ts";
 import type { LegalVersions } from "../legal/acceptance.ts";
 import { rateLimit, RATE_POLICIES, tooManyRequestsMessage } from "@/lib/rate-limit.server";
 
 // Starts (or resumes) a checkout for an organization whose OWNER has already been verified by the caller.
 // What is charged is decided HERE, from the plan ("monthly" or "one_time"), never from an amount sent by the browser.
 
-// redirect: send the browser to XPay's own page (or to Kayan's result page). embedded: open XPay's checkout in a window on Kayan's own page — the browser
-// gets the session's clientSecret (scoped to this one session, meant for the browser) and the PUBLISHABLE key, never the secret key.
-export type StartResult =
-  | { ok: true; kind: "redirect"; url: string; orderId: string }
-  | { ok: true; kind: "embedded"; clientSecret: string; publishableKey: string; orderId: string }
-  | { ok: false; error: string };
+export type StartResult = { ok: true; url: string; orderId: string } | { ok: false; error: string };
 
 const MSG = {
   notOwner: "هذه العملية متاحة لمالك الحساب فقط.",
@@ -28,7 +24,6 @@ const MSG = {
   gatewayDown: "تعذّر الاتصال ببوابة الدفع. لم يُخصم أي مبلغ — حاول مرة أخرى بعد قليل.",
   invalid: "طلب غير صالح. حدّث الصفحة وحاول مرة أخرى.",
   generic: "تعذّر بدء عملية الدفع. لم يُخصم أي مبلغ — حاول مرة أخرى.",
-  sessionClosed: "انتهت صلاحية نافذة الدفع السابقة. حدّث الصفحة وابدأ من جديد — لم يُخصم أي مبلغ.",
   legalStale: "تم تحديث الشروط أو السياسات منذ فتحت هذه الصفحة. حدّث الصفحة وراجعها ثم وافق من جديد.",
   legalUnavailable: "الصفحات القانونية غير متاحة حاليًا، ولا يمكن بدء الدفع الآن. تواصل مع فريق كيان.",
 };
@@ -117,40 +112,32 @@ export async function startCheckout(input: {
     xpay.expireCheckoutSession(res.superseded_session_id, `expire-${res.superseded_session_id}`).catch((e) => console.error("billing: could not expire a superseded session", e instanceof Error ? e.message : e));
   }
 
-  const embedded = embeddedCheckoutStatus();
-
   // clicking "pay" again resumes the same open payment page
-  if (order.checkout_url) return { ok: true, kind: "redirect", url: order.checkout_url, orderId: order.id };
+  if (order.checkout_url) return { ok: true, url: order.checkout_url, orderId: order.id };
+  // an in-page session has no XPay page address: it lives on Kayan's own payment page, which reads the session back from XPay
+  if (order.xpay_session_id) return { ok: true, url: payPath(order.id), orderId: order.id };
 
-  // a window-style (embedded) session has no page address: it is resumed by reading the session back (XPay returns its clientSecret again)
-  const resume = async (): Promise<StartResult | null> => {
-    const { data: row } = await admin.from("billing_orders").select("checkout_url, xpay_session_id").eq("id", order.id).maybeSingle();
-    if (row?.checkout_url) return { ok: true, kind: "redirect", url: row.checkout_url as string, orderId: order.id };
-    if (!row?.xpay_session_id) return null;
-    const s = await xpay.getCheckoutSession(row.xpay_session_id as string);
-    if (s.status === "complete") return { ok: true, kind: "redirect", url: `/checkout/success?order=${encodeURIComponent(order.id)}`, orderId: order.id };   // already paid: show the result page
-    if (s.status === "open" && s.clientSecret && embedded.enabled) return { ok: true, kind: "embedded", clientSecret: s.clientSecret, publishableKey: embedded.publishableKey, orderId: order.id };
-    return { ok: false, error: MSG.sessionClosed };
-  };
+  // in-page payment (XPAY_PUBLISHABLE_KEY set): the form is XPay's, embedded in Kayan's /checkout/pay page. Otherwise: XPay's own page, as before.
+  const embedded = embeddedCheckoutStatus().enabled;
 
   try {
-    if (order.xpay_session_id) { const r = await resume(); if (r) return r; }
-
     // the order id is the Idempotency-Key: if this request times out and is retried (here or by a second click),
     // XPay returns the session it already created instead of opening another one
     const session = await xpay.createCheckoutSession(
-      buildCheckoutSessionBody({ orderId: order.id, organizationId: input.organizationId, siteUrl, currency: quote.currency, lines: quote.lines.map((l) => ({ label: l.label, amount: l.amount })), ui: embedded.enabled ? "embedded" : "hosted" }),
-      embedded.enabled ? `${order.id}-embedded` : order.id,
+      buildCheckoutSessionBody({ orderId: order.id, organizationId: input.organizationId, siteUrl, currency: quote.currency, lines: quote.lines.map((l) => ({ label: l.label, amount: l.amount })), ui: embedded ? "embedded" : "hosted" }),
+      embedded ? `${order.id}-embedded` : order.id,
     );
-    // an embedded session is opened by its clientSecret, so no page address is stored for it (a stored one would be followed by a later "resume")
-    const { data: attached, error: attachError } = await admin.rpc("billing_attach_session", { p_order: order.id, p_session: session.id, p_url: embedded.enabled ? null : session.url });
+    // an in-page session is opened by its clientSecret on Kayan's page, so no XPay page address is stored for it
+    const { data: attached, error: attachError } = await admin.rpc("billing_attach_session", { p_order: order.id, p_session: session.id, p_url: embedded ? null : session.url });
     if (attachError) throw new Error(attachError.message);
     if (attached !== true) {
       // someone else attached a session to this order in the meantime: use theirs
-      return (await resume()) ?? { ok: false, error: MSG.generic };
+      const { data: row } = await admin.from("billing_orders").select("checkout_url, xpay_session_id").eq("id", order.id).maybeSingle();
+      if (row?.checkout_url) return { ok: true, url: row.checkout_url as string, orderId: order.id };
+      if (row?.xpay_session_id) return { ok: true, url: payPath(order.id), orderId: order.id };
+      return { ok: false, error: MSG.generic };
     }
-    if (embedded.enabled) return { ok: true, kind: "embedded", clientSecret: session.clientSecret!, publishableKey: embedded.publishableKey, orderId: order.id };
-    return { ok: true, kind: "redirect", url: session.url!, orderId: order.id };
+    return { ok: true, url: embedded ? payPath(order.id) : session.url!, orderId: order.id };
   } catch (e) {
     console.error("billing: could not create the XPay checkout session —", e instanceof XpayError ? `${e.status} ${e.code ?? ""} ${e.message}` : e);
     return { ok: false, error: e instanceof XpayError && e.status === 0 ? MSG.gatewayDown : MSG.generic };

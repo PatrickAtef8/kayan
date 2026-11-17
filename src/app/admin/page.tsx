@@ -55,7 +55,7 @@ export default async function AdminHome() {
         <ul className="mt-2 space-y-1 text-xs text-charcoal/70">
           <li>مدفوعات تحتاج مراجعة: <b className="num">{review.error ? "—" : review.count ?? 0}</b> {(review.count ?? 0) > 0 && <Link href="/admin/review" className="font-medium text-sage hover:underline">عرض</Link>}</li>
           <li>XPay: {readiness.mode === "unset" ? "غير مضبوط" : readiness.mode === "live" ? "مفتاح حقيقي (live)" : "مفتاح تجريبي (test)"}{readiness.blocking.length > 0 ? <span className="text-rose"> — يمنع الدفع: {readiness.blocking.join(" ")}</span> : <span className="text-sage"> — لا موانع</span>}</li>
-          <li>نافذة الدفع داخل الموقع: {embeddedCheckoutStatus().enabled ? <span className="text-sage">مفعّلة، لا يغادر العميل كيان</span> : <span className="text-charcoal/60">غير مفعّلة، يُحوَّل العميل إلى صفحة XPay</span>}</li>
+          <li>الدفع داخل الموقع: {embeddedCheckoutStatus().enabled ? <span className="text-sage">مفعّل، لا يغادر العميل كيان</span> : <span className="text-charcoal/60">غير مفعّل، يُحوَّل العميل إلى صفحة XPay</span>}</li>
           {readiness.warnings.map((w) => <li key={w} className="text-amber-700">{w}</li>)}
           <li>البريد (Resend): {mail.ok ? <span className="text-sage">مضبوط{mail.config.testingSender ? " — مرسل اختبار: يصل فقط لبريد حساب Resend" : ""}</span> : <span className="text-rose">{describeConfigProblem(mail.problem)}</span>}</li>
         </ul>
