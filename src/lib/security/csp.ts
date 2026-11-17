@@ -14,14 +14,19 @@ export function generateNonce(): string {
   return btoa(bin);
 }
 
+// XPay's in-page payment window: its script, its iframe, and the calls its SDK makes. (https://docs.xpay.app/en/integrate/integration-patterns/drop-in → Production checklist)
+const XPAY_CHECKOUT = "https://checkout.xpay.app";
+const XPAY_API = "https://api.xpay.app";
+
 export function buildCsp(opts: { nonce: string; supabaseUrl?: string; isDev?: boolean; extraConnect?: string[] }): string {
   const supa = (opts.supabaseUrl ?? "").trim().replace(/\/+$/, "");
   const ws = supa.replace(/^http/, "ws");
-  const connect = ["'self'", supa, ws, ...(opts.extraConnect ?? [])].filter(Boolean).join(" ");
+  const connect = ["'self'", supa, ws, XPAY_CHECKOUT, XPAY_API, ...(opts.extraConnect ?? [])].filter(Boolean).join(" ");
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${opts.nonce}' 'strict-dynamic'${opts.isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' ${XPAY_CHECKOUT} 'nonce-${opts.nonce}' 'strict-dynamic'${opts.isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
+    `frame-src 'self' ${XPAY_CHECKOUT}`,
     `img-src 'self' data: blob:${supa ? ` ${supa}` : ""}`,
     "font-src 'self' data:",
     `connect-src ${connect}`,

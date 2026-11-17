@@ -412,3 +412,32 @@ test("an email match needs a CONFIRMED email", () => {
   assert.equal(isSuperAdmin({ id: U, email: "boss@kayan.test", email_confirmed_at: null }, env), false);
   assert.equal(isSuperAdmin({ id: U, email: "boss@kayan.test.evil", email_confirmed_at: "x" }, env), false);
 });
+
+// ------------------------------------------------------------- embedded (in-page) checkout
+test("an embedded session body has uiMode embedded, a redirect afterCompletion and NO cancelUrl (XPay rejects it)", () => {
+  const b = buildCheckoutSessionBody({ orderId: "11111111-1111-1111-1111-111111111111", organizationId: "org", siteUrl: "https://kayan.example/", currency: "EGP", lines: [{ label: "x", amount: 149900 }], ui: "embedded" });
+  assert.equal(b.uiMode, "embedded");
+  assert.equal("cancelUrl" in b, false);
+  assert.deepEqual(b.afterCompletion, { type: "redirect", redirect: { url: "https://kayan.example/checkout/success?order=11111111-1111-1111-1111-111111111111" } });
+  assert.deepEqual(b.lineItems, [{ priceData: { currency: "EGP", unitAmount: 149900, productData: { name: "x" } }, quantity: 1 }]);
+  // the default stays hosted, byte for byte
+  const h = buildCheckoutSessionBody({ orderId: "o", organizationId: "g", siteUrl: "https://kayan.example", currency: "EGP", lines: [] });
+  assert.equal(h.uiMode, "hosted"); assert.equal(h.cancelUrl, "https://kayan.example/checkout/fail?order=o");
+});
+
+test("parseSession keeps the clientSecret (embedded) and tolerates its absence (hosted)", () => {
+  assert.equal(parseSession(sessionJson({ clientSecret: "cs_test_x_secret_y" })).clientSecret, "cs_test_x_secret_y");
+  assert.equal(parseSession(sessionJson()).clientSecret, null);
+  assert.equal(parseSession(sessionJson({ clientSecret: "" })).clientSecret, null);
+  assert.equal(parseSession(sessionJson({ clientSecret: 5 })).clientSecret, null);
+});
+
+test("createCheckoutSession: an embedded session needs a clientSecret (not a url); a hosted one still needs a url", async () => {
+  const mk = (payload: unknown) => createXpayClient({ secretKey: "sk_test_k", retries: 0, sleep: async () => {}, fetchImpl: (async () => new Response(JSON.stringify(payload), { status: 201 })) as typeof fetch });
+  const embeddedBody = buildCheckoutSessionBody({ orderId: "o", organizationId: "g", siteUrl: "https://k.example", currency: "EGP", lines: [{ label: "a", amount: 100 }], ui: "embedded" });
+  const hostedBody = buildCheckoutSessionBody({ orderId: "o", organizationId: "g", siteUrl: "https://k.example", currency: "EGP", lines: [{ label: "a", amount: 100 }] });
+  const ok = await mk(sessionJson({ url: null, clientSecret: "cs_test_a_secret_b", status: "open", paymentStatus: "unpaid" })).createCheckoutSession(embeddedBody, "o-embedded");
+  assert.equal(ok.clientSecret, "cs_test_a_secret_b");
+  await assert.rejects(mk(sessionJson({ url: "https://pay.example/x", status: "open", paymentStatus: "unpaid" })).createCheckoutSession(embeddedBody, "k"), /client secret/);
+  await assert.rejects(mk(sessionJson({ url: null, clientSecret: "cs_test_a_secret_b", status: "open", paymentStatus: "unpaid" })).createCheckoutSession(hostedBody, "k"), /checkout URL/);
+});

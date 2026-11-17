@@ -182,3 +182,19 @@ See `CHANGES-free-trial-and-free-hosting.md`. States added: `trial` (open) and `
 5. Super Admin → نظرة عامة: «جاهزية الإنتاج» must say `مفتاح حقيقي (live) — لا موانع`, and «نبض المدفوعات» shows the live badge. Make one small real payment
    with your own card; the panel should show «تم تسجيل الدفع» within seconds. Refund it from the XPay dashboard if you like: it appears as «استرداد».
 
+## In-page payment window (the customer never leaves Kayan)
+
+By default «متابعة إلى الدفع» sends the customer to XPay's hosted page. With one more variable the same button opens XPay's checkout in a
+window ON Kayan's page (XPay's "drop-in", `uiMode: "embedded"`): card, ValU, Fawry and 3-D Secure all run inside XPay's iframe, so card data still
+never touches Kayan. When the window reports a finished payment the browser goes to `/checkout/success?order=…`, which asks XPay what really
+happened; the webhook stays the only thing that marks an order paid. Closing the window without paying re-enables the button; clicking again resumes
+the same session.
+
+* Turn on: set **`XPAY_PUBLISHABLE_KEY`** (`pk_live_…` with the live secret key, `pk_test_…` with the test one; Dashboard → Developer → API Keys). It is
+  public by design: the browser SDK needs it. A wrong or mismatching key just leaves the feature off (the admin overview shows a warning).
+* Turn off (instant fallback to XPay's own page): remove `XPAY_PUBLISHABLE_KEY` and redeploy.
+* Sessions created before the switch keep working as they were (a hosted session is resumed by its page address, an embedded one by its client secret).
+* Security headers: `Permissions-Policy` now allows `payment` for Kayan and `https://checkout.xpay.app` (Apple Pay inside the window), and the
+  nonce-based CSP (report-only) allows XPay's script, iframe and API host.
+* If the window does not open: an ad blocker or a corporate network blocking `checkout.xpay.app`. The button says so and nothing is charged.
+

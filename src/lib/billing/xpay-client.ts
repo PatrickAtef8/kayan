@@ -1,4 +1,4 @@
-// Minimal, dependency-free client for the parts of the XPay API Kayan uses (Hosted Checkout):
+// Minimal, dependency-free client for the parts of the XPay API Kayan uses (Hosted Checkout, or the embedded drop-in):
 //   POST /checkout/sessions            create the payment page          (https://docs.xpay.app/en/integrate/checkout-session/overview)
 //   GET  /checkout/sessions/:id        read it back — the authoritative payment status
 //   POST /checkout/sessions/:id/expire close a session nobody should pay any more
@@ -15,6 +15,8 @@ export type XpaySession = {
   amountTotal: number;
   currency: string;
   url: string | null;
+  /** Embedded (drop-in) sessions only: what the browser SDK needs to open the payment window. Scoped to this one session, safe to send to the browser. */
+  clientSecret: string | null;
   metadata: Record<string, string>;
   paymentIntentId: string | null;
   livemode: boolean | null;
@@ -42,21 +44,26 @@ export type CheckoutBodyInput = {
   currency: string;
   lines: { label: string; amount: number }[];
   expiresAfterMinutes?: number;
+  /** "hosted" (default): the customer is sent to XPay's page. "embedded": XPay's checkout opens in a window on Kayan's own page (drop-in SDK). */
+  ui?: "hosted" | "embedded";
 };
 
 /** The exact JSON sent to POST /checkout/sessions. Amounts are integer piasters, as XPay expects (`unitAmount`). */
 export function buildCheckoutSessionBody(input: CheckoutBodyInput) {
   const base = input.siteUrl.replace(/\/+$/, "");
   const order = encodeURIComponent(input.orderId);
+  const embedded = input.ui === "embedded";
   return {
     mode: "payment",
-    uiMode: "hosted",
+    uiMode: embedded ? "embedded" : "hosted",
     submitType: "PAY",
     locale: "ar",
     // Kayan's own result pages. Neither is proof of anything: they ask XPay (server to server) what happened to this order.
+    // (embedded: required and must be a redirect; it is also where a customer lands if their bank takes over the whole tab for verification)
     afterCompletion: { type: "redirect", redirect: { url: `${base}/checkout/success?order=${order}` } },
-    // a declined card / rejected 3-D Secure / the customer leaving XPay's page comes back here instead of staying on XPay's retry screen
-    cancelUrl: `${base}/checkout/fail?order=${order}`,
+    // hosted only: a declined card / rejected 3-D Secure / the customer leaving XPay's page comes back here instead of staying on XPay's retry screen.
+    // XPay REJECTS cancelUrl for embedded sessions: the window shows failures itself, with a retry.
+    ...(embedded ? {} : { cancelUrl: `${base}/checkout/fail?order=${order}` }),
     lineItems: input.lines.map((l) => ({
       priceData: { currency: input.currency, unitAmount: l.amount, productData: { name: l.label } },
       quantity: 1,
@@ -93,6 +100,7 @@ export function parseSession(raw: unknown): XpaySession {
     amountTotal: o.amountTotal,
     currency: o.currency.toUpperCase(),
     url: typeof o.url === "string" ? o.url : null,
+    clientSecret: typeof o.clientSecret === "string" && o.clientSecret ? o.clientSecret : null,
     metadata: meta,
     paymentIntentId: pi && typeof pi.id === "string" ? pi.id : null,
     livemode: typeof o.livemode === "boolean" ? o.livemode : null,
@@ -165,7 +173,9 @@ export function createXpayClient(opts: XpayClientOptions): XpayApi {
   return {
     async createCheckoutSession(body, idempotencyKey) {
       const s = parseSession(await call("POST", "/checkout/sessions", body, idempotencyKey));
-      if (!s.url) throw new XpayError("XPay did not return a checkout URL", { status: 502, code: "invalid_response", retryable: true });
+      if (body.uiMode === "embedded") {
+        if (!s.clientSecret) throw new XpayError("XPay did not return a client secret for the embedded checkout", { status: 502, code: "invalid_response", retryable: true });
+      } else if (!s.url) throw new XpayError("XPay did not return a checkout URL", { status: 502, code: "invalid_response", retryable: true });
       return s;
     },
     async getCheckoutSession(id) {

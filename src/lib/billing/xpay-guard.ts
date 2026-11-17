@@ -33,7 +33,29 @@ export function checkXpayConfig(env: Env): GuardReport {
   if (real && !env.NEXT_PUBLIC_SITE_URL?.trim()) warnings.push("NEXT_PUBLIC_SITE_URL is not set: return URLs fall back to VERCEL_PROJECT_PRODUCTION_URL.");
   if (real && env.NEXT_PUBLIC_SITE_URL && !/^https:\/\//i.test(env.NEXT_PUBLIC_SITE_URL.trim())) warnings.push("NEXT_PUBLIC_SITE_URL should start with https:// in production.");
 
+  // optional: the embedded (in-page) checkout. Not set = Kayan keeps sending customers to XPay's own page; a wrong key just switches it off.
+  const emb = embeddedCheckout(env);
+  if (!emb.enabled && emb.reason === "invalid_key") warnings.push("XPAY_PUBLISHABLE_KEY does not look like an XPay publishable key (pk_live_… / pk_test_…): the in-page payment window stays off.");
+  if (!emb.enabled && emb.reason === "mode_mismatch") warnings.push("XPAY_PUBLISHABLE_KEY and XPAY_SECRET_KEY are from different modes (test vs live): the in-page payment window stays off.");
+
   return { realProduction: real, mode, blocking, warnings };
+}
+
+export type EmbeddedStatus = { enabled: true; publishableKey: string } | { enabled: false; reason: "not_set" | "invalid_key" | "mode_mismatch" };
+
+/**
+ * Is the in-page (drop-in) checkout switched on? Only when a publishable key is set, looks right, and is from the SAME mode as the secret key
+ * (a pk_test with an sk_live would fail at payment time). Anything else = off, and checkout falls back to XPay's own page, which always works.
+ */
+export function embeddedCheckout(env: Env): EmbeddedStatus {
+  const pk = env.XPAY_PUBLISHABLE_KEY?.trim() ?? "";
+  if (!pk) return { enabled: false, reason: "not_set" };
+  const m = /^pk_(test|live)_[A-Za-z0-9_-]+$/.exec(pk);
+  if (!m) return { enabled: false, reason: "invalid_key" };
+  const sk = env.XPAY_SECRET_KEY?.trim() ?? "";
+  const skMode = sk.startsWith("sk_live_") ? "live" : sk.startsWith("sk_test_") ? "test" : null;
+  if (skMode && m[1] !== skMode) return { enabled: false, reason: "mode_mismatch" };
+  return { enabled: true, publishableKey: pk };
 }
 
 /** Throws (message safe to show) when the key may not be used in this environment. */

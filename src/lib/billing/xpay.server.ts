@@ -1,5 +1,5 @@
 import { validateXpayBaseUrl } from "./xpay-base-url";
-import { assertKeyAllowed, checkXpayConfig, type GuardReport } from "./xpay-guard.ts";
+import { assertKeyAllowed, checkXpayConfig, embeddedCheckout, type EmbeddedStatus, type GuardReport } from "./xpay-guard.ts";
 import "server-only";
 import { createXpayClient, type XpayApi } from "./xpay-client.ts";
 
@@ -10,6 +10,7 @@ import { createXpayClient, type XpayApi } from "./xpay-client.ts";
 //   XPAY_SECRET_KEY      sk_test_… (test mode) or sk_live_… — Dashboard → Developer → API Keys
 //   XPAY_WEBHOOK_SECRET  whsec_…  — the signing secret of the webhook endpoint you create for /api/webhooks/xpay
 //   XPAY_API_BASE_URL    optional, defaults to https://api.xpay.app
+//   XPAY_PUBLISHABLE_KEY optional, pk_test_… / pk_live_…: turns on the in-page payment window (it is PUBLIC by design — the browser SDK needs it)
 
 export class BillingConfigError extends Error {}
 
@@ -32,6 +33,9 @@ export function xpayWebhookSecret(): string {
 export function xpayIsTestMode(): boolean {
   try { return xpaySecretKey().startsWith("sk_test_"); } catch { return false; }
 }
+
+/** Is the in-page payment window on? (see embeddedCheckout in xpay-guard.ts) */
+export function embeddedCheckoutStatus(): EmbeddedStatus { return embeddedCheckout(process.env); }
 
 export function xpayIsConfigured(): boolean {
   try { xpaySecretKey(); return true; } catch { return false; }

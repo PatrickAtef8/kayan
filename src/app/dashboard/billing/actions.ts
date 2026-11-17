@@ -14,7 +14,13 @@ import { revalidatePath } from "next/cache";
 // Server-side authorization for every billing action: the caller must be signed in AND be an active OWNER of their
 // organization (checked again inside billing_begin_order). The browser only says WHICH plan it wants ("monthly" or "one_time")
 // — never an amount, never an organization id.
-export type CheckoutActionResult = { error: string | null; url?: string };
+// url: send the browser there. embedded: open XPay's payment window on Kayan's own page (clientSecret is scoped to this one session; the key is the PUBLISHABLE one).
+export type CheckoutActionResult = { error: string | null; url?: string; embedded?: { clientSecret: string; publishableKey: string; orderId: string } };
+
+function toActionResult(r: Awaited<ReturnType<typeof startCheckout>>): CheckoutActionResult {
+  if (!r.ok) return { error: r.error };
+  return r.kind === "embedded" ? { error: null, embedded: { clientSecret: r.clientSecret, publishableKey: r.publishableKey, orderId: r.orderId } } : { error: null, url: r.url };
+}
 
 async function ownerContext() {
   const supabase = await createClient();
@@ -50,7 +56,7 @@ export async function startPurchase(input: { plan: string; accept: AcceptanceInp
   const a = await acceptanceFor(input.accept);
   if ("error" in a) return { error: a.error };
   const r = await startCheckout({ userId: ctx.userId, organizationId: ctx.organizationId, plan: input.plan, purpose: "initial", acceptance: a.acceptance });
-  return r.ok ? { error: null, url: r.url } : { error: r.error };
+  return toActionResult(r);
 }
 
 /** Pay the next month of hosting & maintenance (option A) or of the subscription (option B). */
@@ -63,7 +69,7 @@ export async function startRenewal(input: { accept: AcceptanceInput }): Promise<
   const { data: license } = await ctx.supabase.from("organization_licenses").select("payment_option").eq("organization_id", ctx.organizationId).maybeSingle();
   if (!license) return { error: "لا توجد باقة مفعّلة لتجديدها." };
   const r = await startCheckout({ userId: ctx.userId, organizationId: ctx.organizationId, plan: license.payment_option, purpose: "renewal", acceptance: a.acceptance });
-  return r.ok ? { error: null, url: r.url } : { error: r.error };
+  return toActionResult(r);
 }
 
 /**
